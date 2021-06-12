@@ -1,0 +1,15 @@
+<launch>
+    <param name="/use_sim_time" value="false" />
+
+    <arg name="udp_ip" default="127.0.0.1"/>
+    <arg name="udp_port" default="9763"/>
+
+    <node pkg="roport" type="roport_xsens_server.py" name="roport_xsens_server" output="screen">
+        <param name="udp_ip" value="$(arg udp_ip)"/>
+        <param name="udp_port" value="$(arg udp_port)"/>
+        <!-- The reference frame will have x=y=z=0, could be 'Pelvis' or 'T8' -->
+        <rosparam param="ref_frame">T8</rosparam>
+        <rosparam param="publish_rate">60</rosparam>
+    </node>
+
+</launch>

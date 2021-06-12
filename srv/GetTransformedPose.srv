@@ -1,0 +1,20 @@
+# Given a pose in an reference frame (like the camera frame),
+# transfer it to the target reference frame (like the base frame)
+
+# Requests
+# pose: the pose in the source frame
+# source_frame: the source frame
+# target_frame: the target frame
+
+# Responses
+# trans_pose: the transformed pose in the target reference frame
+
+std_msgs/Header header
+geometry_msgs/Pose pose
+string source_frame
+string target_frame
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status
+geometry_msgs/Pose trans_pose

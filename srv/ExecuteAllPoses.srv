@@ -1,0 +1,32 @@
+# For each activated group in MoveIt, given its name, goal, stamp (time to reach the goal),
+# and the tolerance for terminate the movement, move the groups to the goals simultaneously.
+
+# The goals and stamps should be given in the same order as group_names.
+
+# Execute the pose goals for multiple planning groups.
+
+# Requests
+# group_names: The groups providing the reference frames
+# goal_type: BASE_ABS: Absolute pose wrt the base frame (robot base)
+#            BASE_REL: Relative pose wrt the base frame transferred to current eef base position
+#            EEF: pose wrt the eef frame
+# goals: Goal poses for each group. We can only define one goal for one group.
+#        For multiple goals for one group, use ExecuteAllPlans.
+# stamps: Time interval for reaching each goals. One for each group.
+# is_cartesian: If true, the path to the goal is a Cartesian path.
+# allow_collision: If true, disable collision check during the movement.
+
+std_msgs/Header header
+string[] group_names
+uint8 BASE_ABS=0
+uint8 BASE_REL=1
+uint8 EEF=2
+uint8 goal_type
+geometry_msgs/PoseArray goals
+float64[] stamps
+bool is_cartesian
+bool allow_collision
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

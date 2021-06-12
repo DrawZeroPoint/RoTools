@@ -1,0 +1,61 @@
+solver_options:
+    regularization: 1e-3
+    back_end: "osqp"
+
+stack:
+    - ["LeftFoot", "RightFoot"]
+    - ["LeftArm", "RightArm"]
+    - ["Postural"]
+
+constraints: ["JointLimits", "VelocityLimits"]
+
+LeftFoot:
+    type: "Cartesian"
+    name: "left_foot"
+    distal_link: "l_sole"
+    base_link: "base_link"
+    lambda: 0.1
+
+RightFoot:
+    type: "Cartesian"
+    name: "right_foot"
+    distal_link: "r_sole"
+    base_link: "base_link"
+    lambda: 0.1
+
+LeftArm:
+    type: "Cartesian"
+    name: "left_hand"
+    distal_link: "left_tcp"
+    base_link: "base_link"
+    lambda: 0.1
+
+RightArm:
+    type: "Cartesian"
+    name: "right_hand"
+    distal_link: "right_tcp"
+    base_link: "base_link"
+    lambda: 0.1
+
+Postural:
+    type: "Postural"
+    lambda: 0.01
+    weight:
+        VIRTUALJOINT_1: 0.0
+        VIRTUALJOINT_2: 0.0
+        VIRTUALJOINT_3: 0.0
+        VIRTUALJOINT_4: 0.0
+        VIRTUALJOINT_5: 0.0
+        VIRTUALJOINT_6: 0.0
+
+ComXY:
+    type: "Com"
+    lambda: 0.1
+    indices: [0, 1]
+    weight: 10
+
+JointLimits:
+    type: "JointLimits"
+
+VelocityLimits:
+    type: "VelocityLimits"

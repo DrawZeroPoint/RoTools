@@ -1,0 +1,18 @@
+# Visualize a pose by publishing it to the given topic
+
+# Requests
+# frame: The reference frame the given poses subject to
+# poses: A PoseArray for visualization
+# pose: A pose for visualization
+
+# Responses
+# pose: Manipulation pose of the end-effector in device (i.e., camera) frame
+
+std_msgs/Header header
+string frame
+geometry_msgs/PoseArray poses
+geometry_msgs/Pose pose
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

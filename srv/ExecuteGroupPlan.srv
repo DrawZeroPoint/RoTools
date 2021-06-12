@@ -1,0 +1,21 @@
+# Execute the pose plan for given planning group
+
+# Requests
+# group_name: The group providing the reference frame
+# goal_type: BASE_ABS: pose wrt the global base frame (robot base)
+#            BASE_REL: pose wrt the base frame transferred to current eef base position
+#            EEF: pose wrt the eef frame
+# poses: Poses of the way points
+# stamps: Time interval for reaching each pose, in seconds
+# allow_collision: If true, disable collision check during the movement
+
+std_msgs/Header header
+string group_name
+bool goal_type
+geometry_msgs/PoseArray poses
+float64 stamp
+bool allow_collision
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

@@ -1,0 +1,21 @@
+# Add collision box into the MoveIt planning scene
+
+# Requests
+# group_name: The group providing the reference frame
+# box_name [opt]: Name of the collision box, default "box"
+# box_pose: Pose of the box in base_frame
+# box_size: Box x, y, z dimensions, in meter.
+# is_absolute: if true, the ref is the base_frame of group, otherwise the eef_frame
+# auto_suffix: if true, the box_name will have a id as auto generated suffix (int, start from 0)
+
+std_msgs/Header header
+string group_name
+string box_name
+geometry_msgs/Pose box_pose
+geometry_msgs/Point box_size
+bool is_absolute
+bool auto_suffix
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

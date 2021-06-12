@@ -1,0 +1,15 @@
+# Execute a binary action such as turn on/off a switch, open/close a gripper
+
+# Requests
+# device_id: ID of the device to be controlled
+# enable: If enable/activate/start the device. For grippers, enable means close the gripper
+# value [opt]: The value used when enabling the target
+
+std_msgs/Header header
+uint8 device_id
+bool enable
+float64 value
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<root main_tree_to_execute="BehaviorTree">
+    <!-- ////////// -->
+    <BehaviorTree ID="BehaviorTree">
+        <Sequence name="RoPort Demo">
+            <Action ID="ExecuteGroupAngularJointStates" goal="0 -30 0 -120 0 90 45" group_name="panda_arm" name="Go to prepare pose" service_name="execute_group_joint_states" tolerance="0.01"/>
+            <Action ID="ExecuteGroupLinearJointStates" goal="0.04 0.04" group_name="hand" name="Open gripper" service_name="execute_group_joint_states" tolerance="0.001"/>
+            <Action ID="ExecuteGroupPose" goal="0 0 0.1 0 0 0 1" group_name="panda_arm" is_absolute="0" name="Lower" service_name="execute_group_pose" tolerance="0.01"/>
+            <Action ID="ExecuteGroupPlan" allow_collision="0" group_name="panda_arm" is_absolute="0" name="Draw square" poses="0.1 0.1 0 0 0 0 1;0 0 -0.2 0 0 0 1;-0.2 -0.2 0 0 0 0 1;0 0 0.2 0 0 0 1;0.1 0.1 0 0 0 0 1;0 0 -0.1 0 0 0 1" service_name="execute_group_plan" stamp="30"/>
+            <Action ID="ExecuteGroupLinearJointStates" goal="0 0" group_name="hand" name="Close gripper" service_name="execute_group_joint_states" tolerance="0.001"/>
+        </Sequence>
+    </BehaviorTree>
+    <!-- ////////// -->
+    <TreeNodesModel>
+        <Action ID="ExecuteAllPlans">
+            <input_port default="0 0 0 0 0 0 1" name="all_poses">Poses for each group to visit, seperate with | for different groups</input_port>
+            <input_port default="0" name="allow_collision"/>
+            <input_port default="panda_arm" name="group_names"/>
+            <input_port default="0" name="is_absolute"/>
+            <input_port default="execute_all_plans" name="service_name"/>
+            <input_port default="1" name="stamps"/>
+        </Action>
+        <Action ID="ExecuteAllPoses">
+            <input_port default="0" name="allow_collision"/>
+            <input_port default="0 0 0 0 0 0 1" name="goals">Goals for each group to reach, seperate with ;</input_port>
+            <input_port default="panda_arm" name="group_names">Names of groups to control, seperate with space</input_port>
+            <input_port default="0" name="is_absolute"/>
+            <input_port default="execute_all_poses" name="service_name"/>
+            <input_port default="1" name="stamps">Time stamps for each group reaching the goal, seperate with space</input_port>
+        </Action>
+        <Action ID="ExecuteGroupAngularJointStates">
+            <input_port default="0 0 0 0 0 0 0" name="goal"/>
+            <input_port default="panda_arm" name="group_name"/>
+            <input_port default="execute_group_joint_states" name="service_name"/>
+            <input_port default="0.01" name="tolerance"/>
+        </Action>
+        <Action ID="ExecuteGroupLinearJointStates">
+            <input_port default="0.04 0.04" name="goal"/>
+            <input_port default="hand" name="group_name"/>
+            <input_port default="execute_group_joint_states" name="service_name"/>
+            <input_port default="0.001" name="tolerance"/>
+        </Action>
+        <Action ID="ExecuteGroupPlan">
+            <input_port default="0" name="allow_collision"/>
+            <input_port default="panda_arm" name="group_name"/>
+            <input_port default="0" name="is_absolute"/>
+            <input_port default="0 0 0.1 0 0 0 1;0 0 -0.1 0 0 0 1" name="poses">Trajectory poses in plan. Each pose is relevant to the last pose.</input_port>
+            <input_port default="execute_group_plan" name="service_name"/>
+            <input_port default="2" name="stamp">Time stamp of the last pose in plan</input_port>
+        </Action>
+        <Action ID="ExecuteGroupPose">
+            <input_port default="0 0 0 0 0 0 1" name="goal"/>
+            <input_port default="panda_arm" name="group_name"/>
+            <input_port default="0" name="is_absolute"/>
+            <input_port default="execute_group_pose" name="service_name"/>
+            <input_port default="0.01" name="tolerance"/>
+        </Action>
+    </TreeNodesModel>
+    <!-- ////////// -->
+</root>
+

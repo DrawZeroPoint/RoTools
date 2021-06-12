@@ -1,0 +1,20 @@
+# Given a target pose of the end-effector, get the prepare pose
+# for the robot to make the eef move to the target pose
+
+# Requests
+# pose: Target pose of the end-effector in base reference frame
+# is_absolute: If true, the shift vector is wrt the base frame, else wrt the target pose frame
+# shift: Shift vector pointing from the target pose to prepare pose, in meters
+
+# Responses
+# pre_pose: The prepare pose in base reference frame
+
+std_msgs/Header header
+geometry_msgs/Pose pose
+bool is_absolute
+geometry_msgs/Point shift
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status
+geometry_msgs/Pose pre_pose

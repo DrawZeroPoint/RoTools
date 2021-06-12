@@ -1,0 +1,19 @@
+# Sense the manipulation poses of the end-effector
+
+# Requests
+# device_names: The names of the sensing devices used for getting the pose
+# algorithm_id: the id of the algorithm used for getting the pose
+
+# Responses
+# poses: Manipulation pose candidates for the end-effector in the device (e.g., camera) frame
+# best_pose: The best pose in poses
+
+std_msgs/Header header
+string[] device_names
+uint8 algorithm_id
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status
+geometry_msgs/PoseArray poses
+geometry_msgs/Pose best_pose

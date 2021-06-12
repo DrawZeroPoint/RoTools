@@ -1,0 +1,41 @@
+<launch>
+
+  <arg name="show_rviz" default="false" />
+  <param name="/use_sim_time" value="true"/>
+
+  <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
+  <include file="$(find ocrtoc_moveit_config)/launch/planning_context.launch">
+    <arg name="load_robot_description" value="true"/>
+  </include>
+
+  <!-- Load joint controller configurations from YAML file to parameter server -->
+  <rosparam file="$(find ocrtoc_moveit_config)/config/ros_controllers.yaml" command="load"/>
+
+  <!-- Load the controllers -->
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+        output="screen" args="arm_controller"/>
+
+  <!-- Given the published joint states, publish tf for the robot links -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"
+        respawn="true" output="screen">
+  </node>
+
+  <node pkg="roport" type="roport_robot_interface" name="roport_robot_interface" output="screen">
+    <param name="joint_name_param_id" value="/hardware_interface/joints"/>
+    <param name="measured_joint_states_id" value="/arm_controller/state"/>
+    <param name="advertised_joint_states_id" value="/arm_controller/command"/>
+  </node>
+
+  <!-- Run the main MoveIt! -->
+  <include file="$(find ocrtoc_moveit_config)/launch/move_group.launch">
+    <arg name="info" value="true"/>
+    <arg name="pipeline" value="ompl"/>
+  </include>
+
+  <group if="$(arg show_rviz)">
+    <!-- Run Rviz and load the default config to see the state of the move_group node -->
+    <include file="$(find ocrtoc_moveit_config)/launch/moveit_rviz.launch">
+      <arg name="rviz_config" value="$(find ocrtoc_moveit_config)/launch/moveit.rviz"/>
+    </include>
+  </group>
+</launch>

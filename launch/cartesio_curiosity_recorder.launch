@@ -1,0 +1,12 @@
+<launch>
+
+    <node pkg="roport" type="roport_recorder.py" name="roport_recorder" output="screen">
+        <rosparam param="joint_names">
+            ['arm_L_joint1', 'arm_L_joint2', 'arm_L_joint3',
+            'arm_L_joint4', 'arm_L_joint5', 'arm_L_joint6', 'arm_L_joint7']
+        </rosparam>
+        <param name="js_topic" value="/cartesian/solution" />
+        <param name="img_topic" value="/simulation/left_hand_camera/rgb" />
+    </node>
+
+</launch>

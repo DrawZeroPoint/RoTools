@@ -1,0 +1,15 @@
+# Execute the joint states goal for the planning group
+
+# Requests
+# group_name: The group to be controlled
+# goal: Joint positions, in radians for revolute joints, and meter for linear joints
+# tolerance [opt]: Tolerance for considering the goal has been reached, default 0.01 m/rad
+
+std_msgs/Header header
+string group_name
+float64[] goal
+float64 tolerance
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

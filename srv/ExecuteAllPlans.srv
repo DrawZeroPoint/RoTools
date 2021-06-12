@@ -1,0 +1,23 @@
+# Given a target pose of the end-effector, get the prepare pose
+# for the robot to make the eef move to the target pose
+
+# Requests
+# group_names: Names of the groups to visit the given poses
+# is_absolute: if true, the poses are wrt the base frame, else wrt the current end-effector frames
+# all_poses: Poses for each group to visit
+# stamps: time interval for reaching each pose, in seconds
+# allow_collision: if true, disable collision check during the movement
+
+# Responses
+# pre_pose: the prepare pose in base reference frame
+
+std_msgs/Header header
+string[] group_names
+bool is_absolute
+geometry_msgs/PoseArray[] all_poses
+float64[] stamps
+bool allow_collision
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

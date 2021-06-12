@@ -1,0 +1,17 @@
+# Get image data from the given devices
+# The service should be implemented by the robot API,
+# and it should be internally called by the sensing server
+
+# Requests
+# device_names: Names of the cameras used to capture the images
+
+# Responses
+# images: The output images in the same order as device_names
+
+std_msgs/Header header
+string[] device_names
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status
+sensor_msgs/Image[] images

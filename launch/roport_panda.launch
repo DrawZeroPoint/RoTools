@@ -1,0 +1,12 @@
+<launch>
+    <param name="/use_sim_time" value="false" />
+
+    <node pkg="roport" type="roport_moveit_server.py" name="roport_moveit_server" output="screen">
+        <rosparam param="group_names">['panda_arm', 'hand']</rosparam>
+    </node>
+
+    <node pkg="roport" type="roport_task_scheduler" name="roport_task_scheduler" output="screen">
+        <param name="tree_file" value="$(find roport)/tree/roport_panda_demo.xml" />
+    </node>
+
+</launch>

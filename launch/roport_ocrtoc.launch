@@ -1,0 +1,13 @@
+<launch>
+    <param name="/use_sim_time" value="true" />
+
+    <node pkg="roport" type="roport_moveit_server.py" name="roport_moveit_server" output="screen">
+        <rosparam param="group_names">['arm']</rosparam>
+        <rosparam param="ee_links">['tool']</rosparam>
+    </node>
+
+    <node pkg="roport" type="roport_task_scheduler" name="roport_task_scheduler" output="screen">
+        <param name="tree_file" value="$(find roport)/tree/ocrtoc_demo.xml" />
+    </node>
+
+</launch>

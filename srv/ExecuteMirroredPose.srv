@@ -1,0 +1,33 @@
+# Given a reference group and its goal, execute the goal for this group and meanwhile,
+# calculate the corresponding trajectory for the mirror group, such that the trajectory
+# for both groups are mirrored for each other.
+
+# Requests
+# reference_group: The group that reference to.
+# mirror_group: The group being a mirror of the reference group
+# goal_type: BASE_ABS: Absolute pose wrt the base frame (robot base)
+#            BASE_REL: Relative pose wrt the base frame transferred to current eef base position
+#            EEF: pose wrt the eef frame
+# goal: Goal pose for the reference group. We can only define one goal for one group.
+# stamp: Time interval for reaching each goals. One for each group.
+# mirror_vector: A vector defining the symbol of the mirror,
+#                should have the same number of elements as the DOF of both reference group and mirror group
+# is_cartesian: If true, the path to the goal is a Cartesian path.
+# allow_collision: If true, disable collision check during the movement.
+
+std_msgs/Header header
+string reference_group
+string mirror_group
+uint8 BASE_ABS=0
+uint8 BASE_REL=1
+uint8 EEF=2
+uint8 goal_type
+geometry_msgs/Pose goal
+float64 stamp
+float64[] mirror_vector
+bool is_cartesian
+bool allow_collision
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

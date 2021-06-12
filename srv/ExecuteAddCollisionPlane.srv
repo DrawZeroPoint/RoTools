@@ -1,0 +1,19 @@
+# Add a collision plane into the MoveIt planning scene
+
+# Requests
+# group_name: the group providing the reference frame
+# plane_name [opt]: name of the collision plane, default "plane"
+# plane_pose: pose of the plane in base_frame
+# plane_normal: plane normal x, y, z directions
+# auto_suffix: if true, the plane_name will have a id as auto generated suffix (int, start from 0)
+
+std_msgs/Header header
+string group_name
+string plane_name
+geometry_msgs/Pose plane_pose
+geometry_msgs/Point plane_normal
+bool auto_suffix
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status
