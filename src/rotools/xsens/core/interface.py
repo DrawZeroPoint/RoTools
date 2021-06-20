@@ -68,30 +68,35 @@ class Payload:
         self._payload_len = len(self.payload)
         self._item_size = self._payload_len // self.item_num
 
-    def decode_to_pose_array_msg(self, ref_frame, ref_frame_id=None):
+    def decode_to_pose_array_msg(self, dst_frame, src_frame_id=None):
         """Decode the bytes in the streaming data to pose array message.
 
-        :param ref_frame: str Reference frame name.
-        :param ref_frame_id: If not None, all poses will be shifted subject to
-                             the reference frame with this ID.
+        :param dst_frame: str Reference frame name of the generated pose array message.
+        :param src_frame_id: If not None, all poses will be shifted subject to
+                             the frame with this ID. This frame should belong to the human.
         """
         pose_array_msg = GeometryMsg.PoseArray()
-        pose_array_msg.header.frame_id = ref_frame
+        pose_array_msg.header.frame_id = dst_frame
         for i in range(self.item_num):
             item = self.payload[i * self._item_size:(i + 1) * self._item_size]
             pose_msg = self._type_02_decode_to_pose_msg(item)
             pose_array_msg.poses.append(pose_msg)
 
-        if ref_frame_id is not None and ref_frame_id < len(pose_array_msg.poses):
+        if src_frame_id is not None and src_frame_id < len(pose_array_msg.poses):
             shifted_pose_array_msg = GeometryMsg.PoseArray()
-            shifted_pose_array_msg.header.frame_id = ref_frame
-            ref_pose = pose_array_msg.poses[ref_frame_id]
+            shifted_pose_array_msg.header.frame_id = dst_frame
+            ref_pose = pose_array_msg.poses[src_frame_id]
             for p in pose_array_msg.poses:
                 shifted_pose = GeometryMsg.Pose()
+                # The reference frame's position will be 0 0 0 after shifting
                 shifted_pose.position.x = p.position.x - ref_pose.position.x
                 shifted_pose.position.y = p.position.y - ref_pose.position.y
                 shifted_pose.position.z = p.position.z - ref_pose.position.z
-                shifted_pose.orientation = p.orientation
+                # The reference frame's orientation will be 0 0 0 1 after shifting
+                R_p_world = transform.quaternion_matrix(common.sd_orientation(p.orientation))
+                R_r_world = transform.quaternion_matrix(common.sd_orientation(ref_pose.orientation))
+                R_r_q = np.dot(np.linalg.inv(R_r_world), R_p_world)
+                shifted_pose.orientation = common.to_ros_orientation(transform.quaternion_from_matrix(R_r_q))
                 shifted_pose_array_msg.poses.append(shifted_pose)
             return shifted_pose_array_msg
         return pose_array_msg
@@ -125,7 +130,7 @@ class XsensInterface(object):
         self.sock.bind((udp_ip, udp_port))
         self.buffer_size = buffer_size
 
-        self._ref_frames = {'Pelvis': 0, 'T8': 12}
+        self._ref_frames = {'Pelvis': 0, 'T8': 4}
         if ref_frame in self._ref_frames:
             self.ref_frame = ref_frame
             self.ref_frame_id = self._ref_frames[ref_frame]
@@ -134,8 +139,7 @@ class XsensInterface(object):
             self.ref_frame = 'world'
             self.ref_frame_id = None
         else:
-            rospy.logwarn('Given reference frame {} not in known frames, using default (world)'.format(ref_frame))
-            self.ref_frame = 'world'
+            self.ref_frame = ref_frame
             self.ref_frame_id = None
 
         # The streamer should be launched before this program

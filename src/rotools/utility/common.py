@@ -167,6 +167,54 @@ def sd_position(position):
         raise NotImplementedError
 
 
+def sd_orientation(orientation):
+    """Standardize the input to a np array representation of orientation.
+    The order should be qx, qy, qz, qw.
+    """
+    if isinstance(orientation, np.ndarray):
+        if orientation.shape == (4,):
+            return orientation
+        else:
+            raise NotImplementedError
+    elif isinstance(orientation, list):
+        return sd_orientation(np.array(orientation))
+    elif isinstance(orientation, GeometryMsg.Quaternion):
+        return sd_orientation(np.array([orientation.x, orientation.y, orientation.z, orientation.w]))
+    else:
+        raise NotImplementedError
+
+
+def to_ros_orientation(orientation):
+    """Convert standard orientation as 4x4 matrix to ROS geometry msg quaternion
+
+    :param orientation: ndarray, standard pose matrix representing a single orientation
+    :return: geometry_msgs.Quaternion
+    """
+    if isinstance(orientation, np.ndarray):
+        msg = GeometryMsg.Quaternion()
+        if orientation.shape == (4, 4):
+            q = transform.quaternion_from_matrix(orientation)
+            msg.x = q[0]
+            msg.y = q[1]
+            msg.z = q[2]
+            msg.w = q[3]
+            return msg
+        elif orientation.shape == (3, 3):
+            i = transform.identity_matrix()
+            i[:3, :3] = orientation
+            return to_ros_orientation(i)
+        elif orientation.size == 4:
+            msg.x = orientation[0]
+            msg.y = orientation[1]
+            msg.z = orientation[2]
+            msg.w = orientation[3]
+            return msg
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
+
+
 def to_ros_plan(t, p, v=None, a=None):
     """Convert a series of time stamps and positions to ros MoveItMsg.RobotTrajectory msg.
     Note that the msg contains no joint name, which need to be added explicitly.

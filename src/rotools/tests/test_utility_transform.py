@@ -71,6 +71,10 @@ class Test(unittest.TestCase):
         Q2 = transform.quaternion_matrix([0.0, 0.0, 0.0573195181787, 0.998355925083])
         print(transform.euler_from_matrix(Q2))
 
+        Q3 = np.dot(transform.euler_matrix(0, -np.pi/2, 0), transform.euler_matrix(173*np.pi / 180.,0,0))
+        e = transform.euler_from_matrix(Q3)
+        print('e', e)
+
     def test_quaternion_multiply(self):
         """This example shows the usage of quaternion_multiply.
 
