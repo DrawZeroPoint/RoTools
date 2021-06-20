@@ -2,44 +2,48 @@
 
 RoTools is a all-in-one ROS package for high-level robotic task scheduling,
 visual perception, and robotic manipulation control. It leverages BehaviorTree to
-deliver fast task map construction and coordination, and uses MoveIt! 
+deliver fast task map construction and coordination, and uses MoveIt
 and hardware_interface to bridge the gap between real/simulated
 robot and the high level task scheduler.
 
-The packages is composed by 2 components: roport and rotools.
+## Contents
 
-## roport
+The packages compose of two components: roport and rotools.
+
+### roport
 
 This module provides the entrance ports of the RoTools package. It is a middleware that allows using 
 rotools python interface in ROS environment. It provides: 
 
-- A [Python MoveIt server](scripts/roport_moveit_server.py) for controlling the robot's single kinematic chain.
-- A [C++ control server](src/roport_control_server.cpp) simultaneously controlling multiple kinematic chains of the robot.
-- A [Sensing server](scripts/roport_sensing_server.py) that bridges the perception modules outside the ROS environment 
+- A [MoveIt server](scripts/roport_moveit_server.py) for controlling the robot's single kinematic chain.
+- A [control server](src/roport_control_server.cpp) simultaneously controlling multiple kinematic chains of the robot.
+- A [sensing server](scripts/roport_sensing_server.py) that bridges the perception modules outside the ROS environment 
   (like those run in Python3) to ROS via HTTP.
-- A BehaviorTree node written in C++ for task scheduling. A bunch of general purpose services are provided for building 
-  the task map fast.
+- A [task scheduler](src/roport_task_scheduler.cpp) using behavior tree for task scheduling. 
+  A bunch of general purpose services are provided for building the task map fast.
+- A [xsens server](scripts/roport_xsens_server.py) converting the live stream from Xsens's MVN Awinda motion capture
+  suit to ROS pose messages. 
 - Hardware/Simulation interfaces adapted for a variety types of robots.
 
-## rotools
+### rotools
 
 This Python package hosted under `src/` is a versatile robotic tool-box aimed for fast prototyping.
 It includes foundational modules for robotic problems including path & trajectory planning, kinematics
 & dynamics calculation, sensing, transformation calculation, and so forth.
 
-# Prerequisite
+## Prerequisite
 
-## System
+### System
 
-Well tested on Ubuntu 18.04, Python 2.7, and ROS Melodic. ROS Indigo on Ubuntu 14.04 is not supported.
+Well tested on Ubuntu 18.04 with Python 2.7 and ROS Melodic. ROS Indigo on Ubuntu 14.04 is not supported.
 May also work for other version combinations.
 
-## Officially supported robots
+### Officially supported robots
 
 - Walker from UBTech
-- Curiosity from ULTRA Lab CUHK
+- Curiosity from SMART Lab CUHK
 
-## Dependence
+### Dependence
 
 #### Noetic
 
@@ -61,9 +65,9 @@ ros-$ROS_DISTRO-eigen-conversions
 
 Not supported.
 
-# Usage
+## Usage
 
-## Use with MoveIt!
+### Use with MoveIt!
 
 The pipeline of using RoTools for a particular robot involves:
 
@@ -88,10 +92,11 @@ After finishing these preparations, you can run the demo by
 3. Launch the control servers (could be Python and/or C++ servers).
 4. Launch the task.
 
-## Use with CartesI/O
+### Use with CartesI/O
 
 1. Prepare the URDF file and SRDF file of the robot you use. 
-   [Certain rules](https://advrhumanoids.github.io/CartesianInterface/quickstart.html#setting-up-the-robot-description) should be followed.
+   [Certain rules](https://advrhumanoids.github.io/CartesianInterface/quickstart.html#setting-up-the-robot-description) 
+   should be followed.
    
 2. Create a launch file with the name <robot>_cartesio.launch.
    
@@ -105,10 +110,29 @@ After the preparations, you can
 
 2. In RViz, right click the interactive marker (IM) in scene, choose `continous control`, then you can control
    the robot by dragging the IM.
+   
+### Use with Xsens motion capture stream
 
-# API reference
+1. Configure the Awinda software, enable live streaming to the receiving machine's IP (the machine running this script)
+   The default port number is 9763.
+   
+2. Launch the xsens server:
+   ```shell
+    roslaunch roport roport_xsens.launch udp_ip:=192.168.13.224
+   ```
+   **Note that the server will be initialized after it receiving the first datagram from the stream,
+     so the server should be started after streaming.**
+   
+   By default, the server will publish on topics: `/xsens/all_poses`, `/xsens/body_poses`, `/xsens/left_tcp`,
+   and `/xsens/right_tcp`. The former two are in `PoseArray` format, the latter two are in `PoseStamped`.
+   `body_poses` are the poses of body segments without hand segments. `left_tcp` is the left palm pose;
+   `right_tcp` is the right palm pose.
+   These poses all reference to the reference_frame, which could be 'Pelvis' or 'T8'. You can set the 
+   reference frame in the launch file.
 
-## roport_robot_interface
+## API reference
+
+### roport_robot_interface
 
 This interface inherits the `hardware_interface` in `ros_control`. It gets measured joint 
 states via one or more topics from the real robot or the simulator. Meanwhile, it
@@ -155,11 +179,11 @@ should be set for each getter and setter topics. If it is not set, there should
 all names set in the parameter `joint_name_param_id`. 
 
 
-# Coding Guide
+## Coding Guide
 
-## The services
+### The services
 
-### Naming
+#### Naming
 
 - The name should obey the CamelCase convention. Each word in the name should avoid 
 meaningless abbreviation, for example, Object is better than Obj.
@@ -177,7 +201,7 @@ clear, such as a collision object could only be added to a group, the `Group` co
 - For the third and the following words, `Plan/Plans` means a , `Pose/Poses` means the 
 6-DoF Cartesian pose in workspace, `JointStates` means the joint values in C-space.
 
-### Content
+#### Content
 
 Add the following comment on top of each .srv file:
 Here `[opt]` stands for optional param, whose value 
@@ -213,7 +237,7 @@ uint8 result_status
 For these parameters the comment could be omitted.
 
 
-# Note
+## Note
 
 ### Simultaneously execution
 
