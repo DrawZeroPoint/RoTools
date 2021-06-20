@@ -126,9 +126,17 @@ After the preparations, you can
    By default, the server will publish on topics: `/xsens/all_poses`, `/xsens/body_poses`, `/xsens/left_tcp`,
    and `/xsens/right_tcp`. The former two are in `PoseArray` format, the latter two are in `PoseStamped`.
    `body_poses` are the poses of body segments without hand segments. `left_tcp` is the left palm pose;
-   `right_tcp` is the right palm pose.
+   `right_tcp` is the right palm pose. The `remap` in the launch file could remap some of these to other topics.
+   
    These poses all reference to the reference_frame, which could be 'Pelvis' or 'T8'. You can set the 
-   reference frame in the launch file.
+   reference frame in the launch file. If the frame name is not within these two, a given one will be used.
+   If empty string is given, the default one `world` will be used.
+   
+   For safety concern, you need to activate the conversion by:
+   ```shell script
+   rosservice call /xsens/enable "data: true"
+   ```
+   The initial state is deactivated, to disable conversion, set `data` as false.
 
 ## API reference
 

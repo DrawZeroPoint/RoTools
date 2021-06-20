@@ -323,6 +323,27 @@ def byte_to_uint8(data):
     return struct.unpack('!B', data)[0]
 
 
+def play_hint_sound(enable):
+    try:
+        # TODO check playsound could work on Python 3
+        from playsound import playsound
+        import os
+        import sys
+        if sys.version_info >= (3, 0):
+            from pathlib import Path
+        else:
+            from pathlib2 import Path
+        misc_dir = Path(__file__).absolute().parent.parent.parent.parent
+        if enable:
+            misc_path = os.path.join(str(misc_dir), 'misc/audio/Sophia_function_activated.mp3')
+        else:
+            misc_path = os.path.join(str(misc_dir), 'misc/audio/Sophia_function_deactivated.mp3')
+        playsound(misc_path)  # Not support block=True on Ubuntu
+    except ImportError as e:
+        rospy.logwarn('Sound not played due to missing dependence: {}'.format(e))
+        pass
+
+
 if __name__ == "__main__":
     bgr = cv2.imread("/media/dzp/datasets/graspnet/scenes/scene_0000/realsense/rgb/0000.png")
     bgr_encoded = encode_image_to_b64(bgr)
