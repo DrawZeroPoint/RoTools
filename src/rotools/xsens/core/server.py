@@ -42,8 +42,6 @@ class XsensServer(object):
             self.body_poses_publisher.publish(body_poses)
             self.left_tcp_publisher.publish(left_tcp)
             self.right_tcp_publisher.publish(right_tcp)
-        else:
-            rospy.logwarn('Get all poses msg failed')
 
     def pub_switch_handle(self, req):
         if req.data:

@@ -80,6 +80,8 @@ class Payload:
         for i in range(self.item_num):
             item = self.payload[i * self._item_size:(i + 1) * self._item_size]
             pose_msg = self._type_02_decode_to_pose_msg(item)
+            if pose_msg is None:
+                return None
             pose_array_msg.poses.append(pose_msg)
 
         if src_frame_id is not None and src_frame_id < len(pose_array_msg.poses):
@@ -103,7 +105,14 @@ class Payload:
 
     @staticmethod
     def _type_02_decode_to_pose_msg(item):
+        """Decode a type 02 stream to ROS pose message.
+
+        :param item: str String of bytes
+        """
         # segment_id = common.byte_to_uint32(item[:4])
+        if len(item) != 32:
+            # FIXME some of the received data only has length=2
+            return None
         x = common.byte_to_float(item[4:8])
         y = common.byte_to_float(item[8:12])
         z = common.byte_to_float(item[12:16])
@@ -122,7 +131,7 @@ class XsensInterface(object):
             udp_ip,
             udp_port,
             ref_frame,
-            buffer_size=2048,
+            buffer_size=4096,
     ):
         super(XsensInterface, self).__init__()
 
@@ -146,6 +155,7 @@ class XsensInterface(object):
         try:
             self.header = self._get_header()
         except IndexError:
+            rospy.logerr('Get header failed')
             pass
 
         # TF related handles
@@ -157,8 +167,12 @@ class XsensInterface(object):
         if self.header.is_valid:
             payload = Payload(data[24:], self.header)
             pose_array_msg = payload.decode_to_pose_array_msg(self.ref_frame, self.ref_frame_id)
-            return True, pose_array_msg
+            if pose_array_msg is None:
+                return False, None
+            else:
+                return True, pose_array_msg
         else:
+            rospy.logerr('Header is not valid')
             return False, None
 
     def get_body_pose_array_msg(self, all_poses):

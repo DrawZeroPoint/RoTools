@@ -1,8 +1,8 @@
 # RoTools
 
-RoTools is a all-in-one ROS package for high-level robotic task scheduling,
-visual perception, and robotic manipulation control. It leverages BehaviorTree to
-deliver fast task map construction and coordination, and uses MoveIt
+RoTools is an all-in-one ROS package for high-level robotic task scheduling,
+visual perception, direct and tele-manipulation control. It leverages BehaviorTree to
+deliver fast task construction and coordination, and uses MoveIt
 and hardware_interface to bridge the gap between real/simulated
 robot and the high level task scheduler.
 
@@ -15,13 +15,13 @@ The packages compose of two components: roport and rotools.
 This module provides the entrance ports of the RoTools package. It is a middleware that allows using 
 rotools python interface in ROS environment. It provides: 
 
-- A [MoveIt server](scripts/roport_moveit_server.py) for controlling the robot's single kinematic chain.
-- A [control server](src/roport_control_server.cpp) simultaneously controlling multiple kinematic chains of the robot.
-- A [sensing server](scripts/roport_sensing_server.py) that bridges the perception modules outside the ROS environment 
+- [MoveIt server](scripts/roport_moveit_server.py) for controlling the robot's single kinematic chain.
+- [control server](src/roport_control_server.cpp) simultaneously controlling multiple kinematic chains of the robot.
+- [sensing server](scripts/roport_sensing_server.py) that bridges the perception modules outside the ROS environment 
   (like those run in Python3) to ROS via HTTP.
-- A [task scheduler](src/roport_task_scheduler.cpp) using behavior tree for task scheduling. 
+- [task scheduler](src/roport_task_scheduler.cpp) using behavior tree for task scheduling. 
   A bunch of general purpose services are provided for building the task map fast.
-- A [xsens server](scripts/roport_xsens_server.py) converting the live stream from Xsens's MVN Awinda motion capture
+- [xsens server](scripts/roport_xsens_server.py) converting the live stream from Xsens's MVN Awinda motion capture
   suit to ROS pose messages. 
 - Hardware/Simulation interfaces adapted for a variety types of robots.
 
@@ -94,6 +94,9 @@ After finishing these preparations, you can run the demo by
 
 ### Use with CartesI/O
 
+CartesI/O is a whole-body motion planning software developed by IIT. It has not been added to the ROS distribution
+and hence [install](https://advrhumanoids.github.io/CartesianInterface/index.html) it is needed for proceeding the next steps.
+
 1. Prepare the URDF file and SRDF file of the robot you use. 
    [Certain rules](https://advrhumanoids.github.io/CartesianInterface/quickstart.html#setting-up-the-robot-description) 
    should be followed.
@@ -113,15 +116,34 @@ After the preparations, you can
    
 ### Use with Xsens motion capture stream
 
-1. Configure the Awinda software, enable live streaming to the receiving machine's IP (the machine running this script)
-   The default port number is 9763.
+1. Configure the Awinda software, enable live streaming to the receiving machine's IP (the machine running this script).
+   The default port number is 9763. You need to get a license for the MVN software to use the streaming function.
    
-2. Launch the xsens server:
+2. First, make sure the stream publisher and the receiver machines are in the same local network. From now on,
+   we assume the subscriber's network is set as:
+   
+   ```text
+   inet 192.168.13.234  netmask 255.255.255.0  broadcast 192.168.13.255
+   ```
+   While the publisher is:
+   ```
+   inet 192.168.13.102  netmask 255.255.255.0  broadcast 192.168.13.255
+   ```
+   
+   The `ufw` of the receiver should be configured to allow incoming access (note 13 is variable while 0/24 is fixed):
    ```shell
-    roslaunch roport roport_xsens.launch udp_ip:=192.168.13.224
+   sudo ufw allow from 192.168.13.0/24
+   ```
+   
+3. Launch the xsens server
+   ```shell
+    roslaunch roport roport_xsens.launch udp_ip:=192.168.13.234
    ```
    **Note that the server will be initialized after it receiving the first datagram from the stream,
      so the server should be started after streaming.**
+   
+   Here, `192.168.13.234` is the local IP address of the receiver machine running this file. 
+   Note that you cannot use an IP like `127.0.0.1`.
    
    By default, the server will publish on topics: `/xsens/all_poses`, `/xsens/body_poses`, `/xsens/left_tcp`,
    and `/xsens/right_tcp`. The former two are in `PoseArray` format, the latter two are in `PoseStamped`.
