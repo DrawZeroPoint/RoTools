@@ -5,6 +5,7 @@ import rospy
 
 from std_srvs.srv import SetBool, SetBoolResponse
 from geometry_msgs.msg import PoseStamped, PoseArray
+from sensor_msgs.msg import JointState
 
 import rotools.xsens.core.interface as interface
 from rotools.utility.common import get_param, play_hint_sound
@@ -20,11 +21,15 @@ class XsensServer(object):
         self.interface = interface.XsensInterface(**kwargs)
         self._enable = False
 
-        # State publisher
+        # Cartesian pose publishers
         self.all_poses_publisher = rospy.Publisher('/xsens/all_poses', PoseArray, queue_size=1)
         self.body_poses_publisher = rospy.Publisher('/xsens/body_poses', PoseArray, queue_size=1)
         self.left_tcp_publisher = rospy.Publisher('/xsens/left_tcp', PoseStamped, queue_size=1)
         self.right_tcp_publisher = rospy.Publisher('/xsens/right_tcp', PoseStamped, queue_size=1)
+
+        # Joint states publishers
+        self.left_hand_publisher = rospy.Publisher('/xsens/left_hand', JointState, queue_size=1)
+        self.right_hand_publisher = rospy.Publisher('/xsens/right_hand', JointState, queue_size=1)
 
         # Publisher switch
         self.srv_pub_switch = rospy.Service('/xsens/enable', SetBool, self.pub_switch_handle)
@@ -38,10 +43,15 @@ class XsensServer(object):
         ok, all_poses = self.interface.get_all_poses()
         if ok:
             self.all_poses_publisher.publish(all_poses)
-            body_poses, left_tcp, right_tcp = self.interface.get_body_pose_array_msg(all_poses)
+            body_poses, left_tcp, right_tcp, _, _ = self.interface.get_body_pose_array_msg(all_poses)
             self.body_poses_publisher.publish(body_poses)
             self.left_tcp_publisher.publish(left_tcp)
             self.right_tcp_publisher.publish(right_tcp)
+            left_hand_js, right_hand_js = self.interface.get_hand_joint_states(all_poses)
+            if left_hand_js is not None:
+                self.left_hand_publisher.publish(left_hand_js)
+            if right_hand_js is not None:
+                self.right_hand_publisher.publish(right_hand_js)
 
     def pub_switch_handle(self, req):
         if req.data:

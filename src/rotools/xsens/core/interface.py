@@ -95,10 +95,8 @@ class Payload:
                 shifted_pose.position.y = p.position.y - ref_pose.position.y
                 shifted_pose.position.z = p.position.z - ref_pose.position.z
                 # The reference frame's orientation will be 0 0 0 1 after shifting
-                R_p_world = transform.quaternion_matrix(common.sd_orientation(p.orientation))
-                R_r_world = transform.quaternion_matrix(common.sd_orientation(ref_pose.orientation))
-                R_r_q = np.dot(np.linalg.inv(R_r_world), R_p_world)
-                shifted_pose.orientation = common.to_ros_orientation(transform.quaternion_from_matrix(R_r_q))
+                R_ref_p, _ = common.get_relative_rotation(ref_pose.orientation, p.orientation)
+                shifted_pose.orientation = common.to_ros_orientation(transform.quaternion_from_matrix(R_ref_p))
                 shifted_pose_array_msg.poses.append(shifted_pose)
             return shifted_pose_array_msg
         return pose_array_msg
@@ -120,7 +118,9 @@ class Payload:
         qx = common.byte_to_float(item[20:24])
         qy = common.byte_to_float(item[24:28])
         qz = common.byte_to_float(item[28:32])
-        # Convert the pose from MVN frame (x forward, y up, z right) to ROS frame
+        # We do not need to convert the pose from MVN frame (x forward, y up, z right) to ROS frame,
+        # since the type 02 data is Z-up, see:
+        #
         return common.to_ros_pose(np.array([x, y, z, qx, qy, qz, qw]))
 
 
@@ -155,16 +155,12 @@ class XsensInterface(object):
         try:
             self.header = self._get_header()
         except IndexError:
+            self.header = None
             rospy.logerr('Get header failed')
-            pass
-
-        # TF related handles
-        self._tf_buffer = tf2_ros.Buffer()
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
 
     def get_all_poses(self):
         data, _ = self.sock.recvfrom(self.buffer_size)
-        if self.header.is_valid:
+        if self.header is not None and self.header.is_valid:
             payload = Payload(data[24:], self.header)
             pose_array_msg = payload.decode_to_pose_array_msg(self.ref_frame, self.ref_frame_id)
             if pose_array_msg is None:
@@ -176,26 +172,72 @@ class XsensInterface(object):
             return False, None
 
     def get_body_pose_array_msg(self, all_poses):
+        """Given all segment poses, extract the body segment poses and TCP poses from that.
+        The body poses are simply all poses without hand segment poses and property poses.
+
+        :param all_poses: PoseArray A pose array composed of all segment poses.
+        :return:
+        """
         assert isinstance(all_poses, GeometryMsg.PoseArray)
         body_pose_array_msg = GeometryMsg.PoseArray()
         body_pose_array_msg.header = all_poses.header
-        cnt = self.header.body_segments_num
         left_tcp_msg = GeometryMsg.PoseStamped()
         right_tcp_msg = GeometryMsg.PoseStamped()
+        left_sole_msg = GeometryMsg.PoseStamped()
+        right_sole_msg = GeometryMsg.PoseStamped()
         left_tcp_msg.header.stamp = rospy.Time.now()
         left_tcp_msg.header.frame_id = self.ref_frame
         right_tcp_msg.header = left_tcp_msg.header
+        left_sole_msg.header = left_tcp_msg.header
+        right_sole_msg.header = left_tcp_msg.header
+        # all_poses should at least contain body segment poses
+        segment_id = 0
         for p in all_poses.poses:
             body_pose_array_msg.poses.append(p)
-            if cnt == 9:
-                left_tcp_msg.pose = p
-            if cnt == 13:
+            if segment_id == 10:
                 right_tcp_msg.pose = p
-            cnt -= 1
-            if cnt == 0:
+            if segment_id == 14:
+                left_tcp_msg.pose = p
+            if segment_id == 18:
+                right_sole_msg.pose = p
+            if segment_id == 22:
+                left_sole_msg.pose = p
+            segment_id += 1
+            if segment_id == self.header.body_segments_num:
                 break
         assert len(body_pose_array_msg.poses) == self.header.body_segments_num
-        return body_pose_array_msg, left_tcp_msg, right_tcp_msg
+        return body_pose_array_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg
+
+    def get_hand_joint_states(self, all_poses):
+        if self.header is None or not self.header.is_valid:
+            return None, None
+        if self.header.finger_segments_num != 40:
+            rospy.logwarn("Finger segment number is not 40: {}".format(self.header.finger_segments_num))
+            return None, None
+        left_hand_js = SensorMsg.JointState()
+        right_hand_js = SensorMsg.JointState()
+        # Here the hand joint states are defined as j1 and j2 for thumb to pinky
+        # j1 is the angle between metacarpals (parent) and proximal phalanges (child)
+        # j2 is the angle between proximal phalanges and intermediate/distal phalanges (distal is only for thumb)
+        base_num = self.header.body_segments_num + self.header.props_num
+        for i in [1, 4, 8, 12, 16]:
+            meta_id = base_num + i
+            left_hand_js.position.extend(self._get_finger_j1_j2(all_poses.poses, meta_id))
+        for i in [1, 4, 8, 12, 16]:
+            meta_id = base_num + 20 + i
+            right_hand_js.position.extend(self._get_finger_j1_j2(all_poses.poses, meta_id))
+        return left_hand_js, right_hand_js
+
+    @staticmethod
+    def _get_finger_j1_j2(poses, start_id):
+        m_pose = poses[start_id]
+        pp_pose = poses[start_id + 1]
+        dp_pose = poses[start_id + 2]
+        _, euler_angles = common.get_relative_rotation(m_pose.orientation, pp_pose.orientation)
+        j1 = euler_angles[np.argmax(np.abs(euler_angles))]
+        _, euler_angles = common.get_relative_rotation(pp_pose.orientation, dp_pose.orientation)
+        j2 = euler_angles[np.argmax(np.abs(euler_angles))]
+        return [j1, j2]
 
     def _get_header(self):
         data, _ = self.sock.recvfrom(self.buffer_size)

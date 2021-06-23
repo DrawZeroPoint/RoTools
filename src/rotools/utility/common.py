@@ -244,6 +244,18 @@ def to_ros_plan(t, p, v=None, a=None):
     return msg
 
 
+def get_relative_rotation(rot_1, rot_2):
+    """Given a rotation from base to 1: rot_1 and a rotation rot_2,
+    get the rotation matrix from 1 to 2 with Euler angles (sxyz)
+
+    """
+    R_1 = transform.quaternion_matrix(sd_orientation(rot_1))
+    R_2 = transform.quaternion_matrix(sd_orientation(rot_2))
+    R = np.dot(np.linalg.inv(R_1), R_2)
+    ax, ay, az = transform.euler_from_matrix(R)
+    return R, np.array([ax, ay, az])
+
+
 def get_param(name, value=None):
     """Get ros param from param server
 
