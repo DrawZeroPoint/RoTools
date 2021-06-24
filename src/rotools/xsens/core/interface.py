@@ -235,8 +235,12 @@ class XsensInterface(object):
         dp_pose = poses[start_id + 2]
         _, euler_angles = common.get_relative_rotation(m_pose.orientation, pp_pose.orientation)
         j1 = euler_angles[np.argmax(np.abs(euler_angles))]
+        if j1 < 0:
+            j1 *= -1.
         _, euler_angles = common.get_relative_rotation(pp_pose.orientation, dp_pose.orientation)
         j2 = euler_angles[np.argmax(np.abs(euler_angles))]
+        if j2 < 0:
+            j2 *= -1.
         return [j1, j2]
 
     def _get_header(self):
@@ -245,12 +249,13 @@ class XsensInterface(object):
         sample_counter = common.byte_to_uint32(data[6:10])
         datagram_counter = struct.unpack('!B', data[10])
         item_number = common.byte_to_uint8(data[11])
-        rospy.loginfo('Number of item: {}'.format(item_number))
         time_code = common.byte_to_uint32(data[12:16])
         character_ID = common.byte_to_uint8(data[16])
         body_segments_num = common.byte_to_uint8(data[17])
         props_num = common.byte_to_uint8(data[18])
         finger_segments_num = common.byte_to_uint8(data[19])
+        rospy.loginfo('Stream received: body segment #{}, property #{}, finger segment #{}'.format(
+            body_segments_num, props_num, finger_segments_num))
         # 20 21 are reserved for future use
         payload_size = common.byte_to_uint16(data[22:24])
         return Header([ID_str, sample_counter, datagram_counter, item_number, time_code, character_ID,

@@ -28,8 +28,8 @@ class XsensServer(object):
         self.right_tcp_publisher = rospy.Publisher('/xsens/right_tcp', PoseStamped, queue_size=1)
 
         # Joint states publishers
-        self.left_hand_publisher = rospy.Publisher('/xsens/left_hand', JointState, queue_size=1)
-        self.right_hand_publisher = rospy.Publisher('/xsens/right_hand', JointState, queue_size=1)
+        self.left_hand_publisher = rospy.Publisher('/xsens/left_hand_js', JointState, queue_size=1)
+        self.right_hand_publisher = rospy.Publisher('/xsens/right_hand_js', JointState, queue_size=1)
 
         # Publisher switch
         self.srv_pub_switch = rospy.Service('/xsens/enable', SetBool, self.pub_switch_handle)
