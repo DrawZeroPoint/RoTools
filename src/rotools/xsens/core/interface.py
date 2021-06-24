@@ -68,12 +68,14 @@ class Payload:
         self._payload_len = len(self.payload)
         self._item_size = self._payload_len // self.item_num
 
-    def decode_to_pose_array_msg(self, dst_frame, src_frame_id=None):
+    def decode_to_pose_array_msg(self, dst_frame, src_frame_id=None, scaling_factor=1.0):
         """Decode the bytes in the streaming data to pose array message.
 
         :param dst_frame: str Reference frame name of the generated pose array message.
-        :param src_frame_id: If not None, all poses will be shifted subject to
+        :param src_frame_id: None/int If not None, all poses will be shifted subject to
                              the frame with this ID. This frame should belong to the human.
+        :param scaling_factor: float Scale the position of the pose if src_frame_id is not None.
+                               Its value equals to the robot/human body dimension ratio
         """
         pose_array_msg = GeometryMsg.PoseArray()
         pose_array_msg.header.frame_id = dst_frame
@@ -91,9 +93,9 @@ class Payload:
             for p in pose_array_msg.poses:
                 shifted_pose = GeometryMsg.Pose()
                 # The reference frame's position will be 0 0 0 after shifting
-                shifted_pose.position.x = p.position.x - ref_pose.position.x
-                shifted_pose.position.y = p.position.y - ref_pose.position.y
-                shifted_pose.position.z = p.position.z - ref_pose.position.z
+                shifted_pose.position.x = (p.position.x - ref_pose.position.x) * scaling_factor
+                shifted_pose.position.y = (p.position.y - ref_pose.position.y) * scaling_factor
+                shifted_pose.position.z = (p.position.z - ref_pose.position.z) * scaling_factor
                 # The reference frame's orientation will be 0 0 0 1 after shifting
                 R_ref_p, _ = common.get_relative_rotation(ref_pose.orientation, p.orientation)
                 shifted_pose.orientation = common.to_ros_orientation(transform.quaternion_from_matrix(R_ref_p))
@@ -132,12 +134,14 @@ class XsensInterface(object):
             udp_port,
             ref_frame,
             buffer_size=4096,
+            scaling_factor=1.0
     ):
         super(XsensInterface, self).__init__()
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
         self.sock.bind((udp_ip, udp_port))
         self.buffer_size = buffer_size
+        self.scaling_factor = scaling_factor
 
         self._ref_frames = {'Pelvis': 0, 'T8': 4}
         if ref_frame in self._ref_frames:
@@ -229,19 +233,23 @@ class XsensInterface(object):
         return left_hand_js, right_hand_js
 
     @staticmethod
-    def _get_finger_j1_j2(poses, start_id):
-        m_pose = poses[start_id]
-        pp_pose = poses[start_id + 1]
-        dp_pose = poses[start_id + 2]
+    def _get_finger_j1_j2(poses, meta_id):
+        """Get joint values between metacarpals and proximal phalanges (j1),
+        and j2 between proximal phalanges and intermediate phalanges.
+        j1 and j2 will always be non-negative.
+
+        :param poses: Pose[] Finger segment poses
+        :param meta_id: int Id of the metacarpals in the poses
+        """
+        m_pose = poses[meta_id]
+        pp_pose = poses[meta_id + 1]
+        dp_pose = poses[meta_id + 2]
         _, euler_angles = common.get_relative_rotation(m_pose.orientation, pp_pose.orientation)
+        # * -1 is to convert to walker conversion
         j1 = euler_angles[np.argmax(np.abs(euler_angles))]
-        if j1 < 0:
-            j1 *= -1.
         _, euler_angles = common.get_relative_rotation(pp_pose.orientation, dp_pose.orientation)
         j2 = euler_angles[np.argmax(np.abs(euler_angles))]
-        if j2 < 0:
-            j2 *= -1.
-        return [j1, j2]
+        return [np.abs(j1), np.abs(j2)]
 
     def _get_header(self):
         data, _ = self.sock.recvfrom(self.buffer_size)

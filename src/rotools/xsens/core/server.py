@@ -18,8 +18,12 @@ class XsensServer(object):
 
     def __init__(self, kwargs):
         super(XsensServer, self).__init__()
-        self.interface = interface.XsensInterface(**kwargs)
+
+        # Publisher switch
         self._enable = False
+        self.srv_pub_switch = rospy.Service('/xsens/enable', SetBool, self.pub_switch_handle)
+
+        self.interface = interface.XsensInterface(**kwargs)
 
         # Cartesian pose publishers
         self.all_poses_publisher = rospy.Publisher('/xsens/all_poses', PoseArray, queue_size=1)
@@ -30,9 +34,6 @@ class XsensServer(object):
         # Joint states publishers
         self.left_hand_publisher = rospy.Publisher('/xsens/left_hand_js', JointState, queue_size=1)
         self.right_hand_publisher = rospy.Publisher('/xsens/right_hand_js', JointState, queue_size=1)
-
-        # Publisher switch
-        self.srv_pub_switch = rospy.Service('/xsens/enable', SetBool, self.pub_switch_handle)
 
         rate = get_param("publish_rate")
         self.all_poses_msg_timer = rospy.Timer(rospy.Duration(1.0 / rate), self.all_poses_msg_handle)
