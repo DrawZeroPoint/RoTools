@@ -240,10 +240,10 @@ class XsensInterface(object):
         return left_hand_js, right_hand_js
 
     @staticmethod
-    def _get_finger_j1_j2(poses, meta_id, upper=1.5):
+    def _get_finger_j1_j2(poses, meta_id, upper=1.57):
         """Get joint values between metacarpals and proximal phalanges (j1),
         and j2 between proximal phalanges and intermediate phalanges.
-        j1 and j2 will always be non-negative and be clamped in the range [0, upper].
+        j1 and j2 will always be non-negative and be normalized to the range [0, 1].
 
         :param poses: Pose[] Finger segment poses
         :param meta_id: int Id of the metacarpals in the poses
@@ -257,7 +257,7 @@ class XsensInterface(object):
         j1 = np.fabs(euler_angles[np.argmax(np.abs(euler_angles))])
         _, euler_angles = common.get_relative_rotation(pp_pose.orientation, dp_pose.orientation)
         j2 = np.fabs(euler_angles[np.argmax(np.abs(euler_angles))])
-        return [np.minimum(j1, upper), np.minimum(j2, upper)]
+        return [np.minimum(j1, upper) / upper, np.minimum(j2, upper) / upper]
 
     def _get_header(self):
         """Get the header data from the received MVN Awinda datagram.
