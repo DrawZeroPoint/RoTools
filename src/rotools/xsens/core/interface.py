@@ -97,8 +97,8 @@ class Payload:
                 shifted_pose.position.y = (p.position.y - ref_pose.position.y) * scaling_factor
                 shifted_pose.position.z = (p.position.z - ref_pose.position.z) * scaling_factor
                 # The reference frame's orientation will be 0 0 0 1 after shifting
-                R_ref_p, _ = common.get_relative_rotation(ref_pose.orientation, p.orientation)
-                shifted_pose.orientation = common.to_ros_orientation(transform.quaternion_from_matrix(R_ref_p))
+                r_ref_p, _ = common.get_relative_rotation(ref_pose.orientation, p.orientation)
+                shifted_pose.orientation = common.to_ros_orientation(transform.quaternion_from_matrix(r_ref_p))
                 shifted_pose_array_msg.poses.append(shifted_pose)
             return shifted_pose_array_msg
         return pose_array_msg
@@ -122,7 +122,7 @@ class Payload:
         qz = common.byte_to_float(item[28:32])
         # We do not need to convert the pose from MVN frame (x forward, y up, z right) to ROS frame,
         # since the type 02 data is Z-up, see:
-        #
+        # https://www.xsens.com/hubfs/Downloads/Manuals/MVN_real-time_network_streaming_protocol_specification.pdf
         return common.to_ros_pose(np.array([x, y, z, qx, qy, qz, qw]))
 
 
@@ -180,7 +180,8 @@ class XsensInterface(object):
         The body poses are simply all poses without hand segment poses and property poses.
 
         :param all_poses: PoseArray A pose array composed of all segment poses.
-        :return:
+        :return: PoseArray PoseStamped PoseStamped PoseStamped PoseStamped
+                 Body segment poses, left hand pose, right hand pose, left sole pose, right sole pose.
         """
         assert isinstance(all_poses, GeometryMsg.PoseArray)
         body_pose_array_msg = GeometryMsg.PoseArray()
@@ -213,6 +214,12 @@ class XsensInterface(object):
         return body_pose_array_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg
 
     def get_hand_joint_states(self, all_poses):
+        """Get joint states for both hand.
+
+        :param all_poses: PoseArray Poses of all segment. Derived from @get_all_poses
+        :return: JointState/None JointState/None.
+                 Left hand joint states (10), right hand joint states (10)
+        """
         if self.header is None or not self.header.is_valid:
             return None, None
         if self.header.finger_segments_num != 40:
@@ -233,32 +240,36 @@ class XsensInterface(object):
         return left_hand_js, right_hand_js
 
     @staticmethod
-    def _get_finger_j1_j2(poses, meta_id):
+    def _get_finger_j1_j2(poses, meta_id, upper=1.5):
         """Get joint values between metacarpals and proximal phalanges (j1),
         and j2 between proximal phalanges and intermediate phalanges.
-        j1 and j2 will always be non-negative.
+        j1 and j2 will always be non-negative and be clamped in the range [0, upper].
 
         :param poses: Pose[] Finger segment poses
         :param meta_id: int Id of the metacarpals in the poses
+        :return: float float. J1 and J2
         """
         m_pose = poses[meta_id]
         pp_pose = poses[meta_id + 1]
         dp_pose = poses[meta_id + 2]
         _, euler_angles = common.get_relative_rotation(m_pose.orientation, pp_pose.orientation)
         # * -1 is to convert to walker conversion
-        j1 = euler_angles[np.argmax(np.abs(euler_angles))]
+        j1 = np.fabs(euler_angles[np.argmax(np.abs(euler_angles))])
         _, euler_angles = common.get_relative_rotation(pp_pose.orientation, dp_pose.orientation)
-        j2 = euler_angles[np.argmax(np.abs(euler_angles))]
-        return [np.abs(j1), np.abs(j2)]
+        j2 = np.fabs(euler_angles[np.argmax(np.abs(euler_angles))])
+        return [np.minimum(j1, upper), np.minimum(j2, upper)]
 
     def _get_header(self):
+        """Get the header data from the received MVN Awinda datagram.
+
+        """
         data, _ = self.sock.recvfrom(self.buffer_size)
-        ID_str = common.byte_to_str(data[0:6], 6)  # ID
+        id_str = common.byte_to_str(data[0:6], 6)  # ID
         sample_counter = common.byte_to_uint32(data[6:10])
         datagram_counter = struct.unpack('!B', data[10])
         item_number = common.byte_to_uint8(data[11])
         time_code = common.byte_to_uint32(data[12:16])
-        character_ID = common.byte_to_uint8(data[16])
+        character_id = common.byte_to_uint8(data[16])
         body_segments_num = common.byte_to_uint8(data[17])
         props_num = common.byte_to_uint8(data[18])
         finger_segments_num = common.byte_to_uint8(data[19])
@@ -266,5 +277,5 @@ class XsensInterface(object):
             body_segments_num, props_num, finger_segments_num))
         # 20 21 are reserved for future use
         payload_size = common.byte_to_uint16(data[22:24])
-        return Header([ID_str, sample_counter, datagram_counter, item_number, time_code, character_ID,
+        return Header([id_str, sample_counter, datagram_counter, item_number, time_code, character_id,
                        body_segments_num, props_num, finger_segments_num, payload_size])

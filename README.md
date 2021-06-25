@@ -75,22 +75,25 @@ Create a description package for the robot you want to use, you can refer to
 [curiosity](https://github.com/DrawZeroPoint/curiosity) or walker repo. 
 This may involve:
 
-   1. Create a launch file named `<robot>_moveit.launch`
-   for bringing up the MoveIt interfaces. 
+   1. Create a launch file named `<robot>_moveit.launch` for bringing up the MoveIt interfaces,
+   hardware interfaces, and optionally a converter for remapping standard measure/control topics
+   to those used by the real/simulated robot. 
    
-   2. Create a launch file named `<robot>_roport.launch` for bridging RoPort
-   with the MoveIt interface. 
+   2. Create a launch file named `<robot>_roport.launch` for bridging RoPort MoveIt server,
+   which essentially is a middleware between the MoveIt interface and the task scheduler.
+   It could disassemble various type of movements for MoveIt to plan and execute.
    
    3. Arrange the tasks with BT using [Groot](https://github.com/BehaviorTree/Groot). 
    Note that a predefined BT node package (palette.xml) has been provided,
-   you can load that into Groot for a quick start.
+   you can load that into Groot for a quick start. After generating the xml file describing the task,
+   feed it as a parameter of the `<robot>_task.launch`.
    
 After finishing these preparations, you can run the demo by
 
-1. Start the simulator or connect to the real robot. Do not forget starting `roscore`.
-2. Launch MoveIt interface and hardware interface.
-3. Launch the control servers (could be Python and/or C++ servers).
-4. Launch the task.
+1. Start the simulator or connect to the real robot. Do not forget starting `roscore` when using the simulator.
+2. Launch `<robot>_moveit.launch`.
+3. Launch `<robot>_roport.launch`.
+4. Launch `<robot>_task.launch`.
 
 ### Use with CartesI/O
 
@@ -111,7 +114,7 @@ After the preparations, you can
    ```
    This will show a RViz window if you did not set gui:=false
 
-2. In RViz, right click the interactive marker (IM) in scene, choose `continous control`, then you can control
+2. In RViz, right-click the interactive marker (IM) in scene, choose `continous control`, then you can control
    the robot by dragging the IM.
    
 ### Use with Xsens motion capture stream
@@ -158,7 +161,7 @@ After the preparations, you can
    ```shell script
    rosservice call /xsens/enable "data: true"
    ```
-   The initial state is deactivated, to disable conversion, set `data` as false.
+   The initial state is in deactivate state, to disable conversion, set `data` as false.
 
 ## API reference
 
@@ -221,7 +224,7 @@ meaningless abbreviation, for example, Object is better than Obj.
 - The first word should only be `Get`, `Sense`, or `Execute`, where `Get` means
 retrieve some information from within the software, such as all names of planning
 groups, or robot joint states; `Sense` means get information from outside environment,
-such as get the pose of a object; and `Execute` means interact with the environment,
+such as get the pose of an object; and `Execute` means interact with the environment,
 such as open a switch, move the robot arm, or add a collision object into the planning scene.
 
 - If the second word is `Group`, it means the service operates on a planning group in MoveIt.
