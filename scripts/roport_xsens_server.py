@@ -13,17 +13,18 @@ if __name__ == "__main__":
         udp_ip = get_param('~udp_ip')
         udp_port = get_param('~udp_port')
         ref_frame = get_param('~ref_frame')
-        scaling_factor = get_param('~scaling_factor')
+        scaling = get_param('~scaling')
+        rate = get_param('~rate')
 
-        config = {
+        configs = {
             'udp_ip': udp_ip,
             'udp_port': udp_port,
             'ref_frame': ref_frame,
-            'scaling_factor': scaling_factor,
+            'scaling': scaling,
         }
-        rospy.loginfo("RoPort: Configs: \n{}".format(config))
-        rospy.loginfo("RoPort: Xsens server ready to receive streaming.")
-        server = XsensServer(config)
+        rospy.loginfo("RoPort: Configs: \n{}".format(configs))
+        rospy.loginfo("RoPort: Xsens server ready to receive and convert stream at {} Hz.".format(rate))
+        server = XsensServer(configs, rate)
         rospy.spin()
     except rospy.ROSInterruptException as e:
         print(e)

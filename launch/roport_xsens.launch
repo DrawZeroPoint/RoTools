@@ -3,8 +3,11 @@
 
     <arg name="udp_ip" default="127.0.0.1"/>
     <arg name="udp_port" default="9763"/>
+    <!-- The reference frame in the stream will have no translation or rotation, could be 'Pelvis' or 'T8' -->
     <arg name="ref_frame" default="T8"/>
-    <arg name="scaling_factor" default="0.82"/>
+    <arg name="scaling" default="0.82"/>
+    <!-- The publish rate is for publish the converted messages, it should not be larger than source rate -->
+    <arg name="rate" default="60"/>
 
     <!--  These remapping will convert the inner published topics from this server to outside needed ones -->
     <!--    <remap from="/xsens/left_tcp" to="/cartesian/left_hand/reference"/>-->
@@ -13,11 +16,9 @@
     <node pkg="roport" type="roport_xsens_server.py" name="roport_xsens_server" output="screen">
         <param name="udp_ip" value="$(arg udp_ip)"/>
         <param name="udp_port" value="$(arg udp_port)"/>
-        <!-- The reference frame in the stream will have no translation or rotation, could be 'Pelvis' or 'T8' -->
         <param name="ref_frame" value="$(arg ref_frame)"/>
-        <param name="scaling_factor" value="$(arg scaling_factor)"/>
-        <!-- The publish rate is for publish the converted messages, it should not be larger than source rate -->
-        <rosparam param="publish_rate">24</rosparam>
+        <param name="scaling" value="$(arg scaling)"/>
+        <param name="rate" value="$(arg rate)"/>
     </node>
 
 </launch>

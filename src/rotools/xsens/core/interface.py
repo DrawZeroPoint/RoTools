@@ -133,15 +133,15 @@ class XsensInterface(object):
             udp_ip,
             udp_port,
             ref_frame,
+            scaling=1.0,
             buffer_size=4096,
-            scaling_factor=1.0
     ):
         super(XsensInterface, self).__init__()
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
         self.sock.bind((udp_ip, udp_port))
         self.buffer_size = buffer_size
-        self.scaling_factor = scaling_factor
+        self.scaling_factor = scaling
 
         self._ref_frames = {'Pelvis': 0, 'T8': 4}
         if ref_frame in self._ref_frames:

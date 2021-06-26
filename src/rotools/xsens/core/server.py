@@ -8,19 +8,20 @@ from geometry_msgs.msg import PoseStamped, PoseArray
 from sensor_msgs.msg import JointState
 
 import rotools.xsens.core.interface as interface
-from rotools.utility.common import get_param, play_hint_sound
+
+from rotools.utility.emergency_stop import EStop
+from rotools.utility.common import play_hint_sound
 
 
-class XsensServer(object):
+class XsensServer(EStop):
     """The RoPort server using the RoTools Xsens interface to provide some
     handy services for communicating with the Xsens motion capture devices.
     """
 
-    def __init__(self, kwargs):
+    def __init__(self, kwargs, rate):
         super(XsensServer, self).__init__()
 
         # Publisher switch
-        self._enable = False
         self.srv_pub_switch = rospy.Service('/xsens/enable', SetBool, self.pub_switch_handle)
 
         self.interface = interface.XsensInterface(**kwargs)
@@ -35,11 +36,10 @@ class XsensServer(object):
         self.left_hand_publisher = rospy.Publisher('/xsens/left_hand_js', JointState, queue_size=1)
         self.right_hand_publisher = rospy.Publisher('/xsens/right_hand_js', JointState, queue_size=1)
 
-        rate = get_param("publish_rate")
         self.all_poses_msg_timer = rospy.Timer(rospy.Duration(1.0 / rate), self.all_poses_msg_handle)
 
     def all_poses_msg_handle(self, event):
-        if not self._enable:
+        if not self.enable:
             return
         ok, all_poses = self.interface.get_all_poses()
         if ok:
@@ -56,10 +56,10 @@ class XsensServer(object):
 
     def pub_switch_handle(self, req):
         if req.data:
-            self._enable = True
+            self.enable = True
             msg = 'Xsens stream receiving enabled'
         else:
-            self._enable = False
+            self.enable = False
             msg = 'Xsens stream receiving disabled'
         play_hint_sound(req.data)
         return SetBoolResponse(True, msg)

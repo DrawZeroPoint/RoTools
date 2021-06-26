@@ -148,7 +148,7 @@ After the preparations, you can
    Here, `192.168.13.234` is the local IP address of the receiver machine running this file. 
    Note that you cannot use an IP like `127.0.0.1`.
    
-   By default, the server will publish on topics: `/xsens/all_poses`, `/xsens/body_poses`, `/xsens/left_tcp`,
+   By default, the server will publish poses on topics: `/xsens/all_poses`, `/xsens/body_poses`, `/xsens/left_tcp`,
    and `/xsens/right_tcp`. The former two are in `PoseArray` format, the latter two are in `PoseStamped`.
    `body_poses` are the poses of body segments without hand segments. `left_tcp` is the left palm pose;
    `right_tcp` is the right palm pose. The `remap` in the launch file could remap some of these to other topics.
@@ -158,6 +158,12 @@ After the preparations, you can
    If empty string is given, the default one `world` will be used.
    
    For safety concern, you need to activate the conversion by:
+   
+   Press the `space` key on the keyboard. This will switch the status from `deactive` to `active`.
+   To change back, press `space` again. You can press any other keys to check the current status, but not change it.
+   
+   Alternatively, you can use:
+
    ```shell script
    rosservice call /xsens/enable "data: true"
    ```

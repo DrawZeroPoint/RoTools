@@ -1,0 +1,5 @@
+attrs~=17.4.0
+numpy~=1.13.3
+enum34~=1.1.6
+matplotlib~=2.1.1
+pynput~=1.7.3
