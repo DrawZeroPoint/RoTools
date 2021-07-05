@@ -97,8 +97,9 @@ After finishing these preparations, you can run the demo by
 
 ### Use with CartesI/O
 
-CartesI/O is a whole-body motion planning software developed by IIT. It has not been added to the ROS distribution
-and hence [install](https://advrhumanoids.github.io/CartesianInterface/index.html) it is needed for proceeding the next steps.
+CartesI/O is a whole-body motion planning software developed in [ADVR, Istituto Italiano di Tecnologia](https://advr.iit.it/). 
+It has not been added to the ROS distribution and hence [install](https://advrhumanoids.github.io/CartesianInterface/index.html) 
+it is needed for proceeding the next steps.
 
 1. Prepare the URDF file and SRDF file of the robot you use. 
    [Certain rules](https://advrhumanoids.github.io/CartesianInterface/quickstart.html#setting-up-the-robot-description) 
@@ -106,24 +107,32 @@ and hence [install](https://advrhumanoids.github.io/CartesianInterface/index.htm
    
 2. Create a launch file with the name <robot>_cartesio.launch.
    
-After the preparations, you can 
+After the preparations, you can
 
 1. launch the file by:
-   ```
+   ```shell
    roslaunch roport <robot>_cartesio.launch
    ```
-   This will show a RViz window if you did not set gui:=false
+   This will show a RViz window if you did not set gui:=false. See the explanation of the arguments by launch with 
+   `--ros-args`.
 
 2. In RViz, right-click the interactive marker (IM) in scene, choose `continous control`, then you can control
    the robot by dragging the IM.
    
 ### Use with Xsens motion capture stream
 
-1. Configure the Awinda software, enable live streaming to the receiving machine's IP (the machine running this script).
-   The default port number is 9763. You need to get a license for the MVN software to use the streaming function.
+#### Launch process
+
+The IMU based motion capture suit provided by [Xsens](https://www.xsens.com/) could be used as a direct tele-operation
+input source for controlling the robot. RoTools enables converting the motion capture stream sent via UDP to ROS messages.
+To establish the conversion:
+
+1. Configure the MVN Animate/Analyze software, enable transmitting the live stream to the receiving machine's IP 
+   (the machine running RoTools). The default port number is 9763. You need to get a license for the MVN software to use 
+   the streaming function.
    
-2. First, make sure the stream publisher and the receiver machines are in the same local network. From now on,
-   we assume the subscriber's network is set as:
+2. Make sure the publisher and receiver machines are in the same local network. From now on,
+   we assume the subscriber's network as:
    
    ```text
    inet 192.168.13.234  netmask 255.255.255.0  broadcast 192.168.13.255
@@ -148,26 +157,46 @@ After the preparations, you can
    Here, `192.168.13.234` is the local IP address of the receiver machine running this file. 
    Note that you cannot use an IP like `127.0.0.1`.
    
-   By default, the server will publish poses on topics: `/xsens/all_poses`, `/xsens/body_poses`, `/xsens/left_tcp`,
-   and `/xsens/right_tcp`. The former two are in `PoseArray` format, the latter two are in `PoseStamped`.
-   `body_poses` are the poses of body segments without hand segments. `left_tcp` is the left palm pose;
-   `right_tcp` is the right palm pose. The `remap` in the launch file could remap some of these to other topics.
-   
-   These poses all reference to the reference_frame, which could be 'Pelvis' or 'T8'. You can set the 
-   reference frame in the launch file. If the frame name is not within these two, a given one will be used.
-   If empty string is given, the default one `world` will be used.
-   
-   For safety concern, you need to activate the conversion by:
-   
-   Press the `space` key on the keyboard. This will switch the status from `deactive` to `active`.
-   To change back, press `space` again. You can press any other keys to check the current status, but not change it.
-   
-   Alternatively, you can use:
+#### Converted topics
 
-   ```shell script
-   rosservice call /xsens/enable "data: true"
-   ```
-   The initial state is in deactivate state, to disable conversion, set `data` as false.
+By default, the server will publish poses on topics: `/xsens/all_poses`, `/xsens/body_poses`, `/xsens/left_tcp`,
+`/xsens/right_tcp`, `/xsens/left_sole`, `/xsens/right_sole`. 
+The former two are in `PoseArray` format, the latter ones are in `PoseStamped`.
+`body_poses` are the poses of body segments without hand segments; `left_tcp` is the left palm pose; 
+`right_tcp` is the right palm pose. `left_sole` is the left palm pose; `right_sole` is the right palm pose.
+When standing in N pose, the TCP poses and sole poses is illustrated as:
+
+
+
+You can use `remap` in the launch file to remap some of these to other topic names.
+
+The server will also publish hand joint states on topics: `/xsens/left_hand_js`, and `/xsens/right_hand_js`.
+The joint states for each hand compose of 10 values ranging from 0 to 1, where 0 is fully stretch, 1 is fully bend.
+
+| 1        | 2        | 3        | 4        | 5         | 6         | 7       | 8       | 9        | 10       |
+|----------|----------|----------|----------|-----------|-----------|---------|---------|----------|----------|
+| thumb_j1 | thumb_j2 | index_j1 | index_j2 | middle_j1 | middle_j2 | ring_j1 | ring_j2 | pinky_j1 | pinky_j2 |
+
+*Note: j1 is the joint between metacarpals (parent) and proximal phalanges (child); j2 is the angle between proximal 
+phalanges and intermediate/distal phalanges (distal is used only for the thumb)*
+
+These poses all reference to the reference_frame, which could be 'Pelvis' or 'T8'. You can set the 
+reference frame in the launch file. If the frame name is not within these two, a given one will be used.
+If empty string is given, the default one `world` will be used.
+
+#### State switch
+
+For safety concern, you need to activate the conversion by:
+
+Press the `space` key on the keyboard. This will switch the status from `deactive` to `active`.
+To change back, press `space` again. You can press any other keys to check the current status, but not change it.
+
+Alternatively, you can use:
+
+```shell script
+rosservice call /xsens/enable "data: true"
+```
+The initial state is in deactivate state, to disable conversion, set `data` as false.
 
 ## API reference
 

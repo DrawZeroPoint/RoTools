@@ -31,6 +31,8 @@ class XsensServer(EStop):
         self.body_poses_publisher = rospy.Publisher('/xsens/body_poses', PoseArray, queue_size=1)
         self.left_tcp_publisher = rospy.Publisher('/xsens/left_tcp', PoseStamped, queue_size=1)
         self.right_tcp_publisher = rospy.Publisher('/xsens/right_tcp', PoseStamped, queue_size=1)
+        self.left_sole_publisher = rospy.Publisher('/xsens/left_sole', PoseStamped, queue_size=1)
+        self.right_sole_publisher = rospy.Publisher('/xsens/right_sole', PoseStamped, queue_size=1)
 
         # Joint states publishers
         self.left_hand_publisher = rospy.Publisher('/xsens/left_hand_js', JointState, queue_size=1)
@@ -44,10 +46,12 @@ class XsensServer(EStop):
         ok, all_poses = self.interface.get_all_poses()
         if ok:
             self.all_poses_publisher.publish(all_poses)
-            body_poses, left_tcp, right_tcp, _, _ = self.interface.get_body_pose_array_msg(all_poses)
+            body_poses, left_tcp, right_tcp, left_sole, right_sole = self.interface.get_body_pose_array_msg(all_poses)
             self.body_poses_publisher.publish(body_poses)
             self.left_tcp_publisher.publish(left_tcp)
             self.right_tcp_publisher.publish(right_tcp)
+            self.left_sole_publisher.publish(left_sole)
+            self.right_sole_publisher.publish(right_sole)
             left_hand_js, right_hand_js = self.interface.get_hand_joint_states(all_poses)
             if left_hand_js is not None:
                 self.left_hand_publisher.publish(left_hand_js)
