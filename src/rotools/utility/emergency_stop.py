@@ -10,20 +10,18 @@ class EStop(object):
         super(EStop, self).__init__()
         self.enable = False
 
-        # Collect events until released
-        with Listener(on_press=self._on_press) as listener:
-
-            listener.join()
+        self.listener = Listener(on_press=self._on_press)
+        self.listener.start()  # start the thread and run subsequent codes
 
     def _on_press(self, key):
         if key == Key.space:
             self.enable = ~self.enable
             if self.enable:
-                print_debug('\nActivated')
+                print_warn('\nActivated')
             else:
-                print_warn('\nEmergency stopped')
+                print_debug('\nStopped')
         else:
             if self.enable:
                 print('\nCurrent state: Activated')
             else:
-                print('\nCurrent state: Emergency stopped')
+                print('\nCurrent state: Stopped')

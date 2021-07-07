@@ -161,6 +161,7 @@ class XsensInterface(object):
         except IndexError:
             self.header = None
             rospy.logerr('Get header failed')
+        print('interface initialized')
 
     def get_all_poses(self):
         data, _ = self.sock.recvfrom(self.buffer_size)
@@ -262,6 +263,7 @@ class XsensInterface(object):
     def _get_header(self):
         """Get the header data from the received MVN Awinda datagram.
 
+        :return: Header
         """
         data, _ = self.sock.recvfrom(self.buffer_size)
         id_str = common.byte_to_str(data[0:6], 6)  # ID

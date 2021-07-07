@@ -23,8 +23,8 @@ if __name__ == "__main__":
             'scaling': scaling,
         }
         rospy.loginfo("RoPort: Configs: \n{}".format(configs))
-        rospy.loginfo("RoPort: Xsens server ready to receive and convert stream at {} Hz.".format(rate))
         server = XsensServer(configs, rate)
+        rospy.loginfo("RoPort: Xsens server ready to receive and convert stream at {} Hz.".format(rate))
         rospy.spin()
     except rospy.ROSInterruptException as e:
         print(e)

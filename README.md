@@ -61,6 +61,12 @@ ros-$ROS_DISTRO-webots-ros ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs ros-$
 ros-$ROS_DISTRO-eigen-conversions
 ```
 
+Optionally you can install the following Python packages to use some utilities.
+
+```shell
+sudo pip install playsound pynput
+```
+
 #### Indigo
 
 Not supported.
