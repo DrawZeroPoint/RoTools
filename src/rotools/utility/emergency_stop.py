@@ -10,18 +10,14 @@ class EStop(object):
         super(EStop, self).__init__()
         self.enable = False
 
+        print('Use Esc key to activate/deactivate, default is deactivate')
         self.listener = Listener(on_press=self._on_press)
         self.listener.start()  # start the thread and run subsequent codes
 
     def _on_press(self, key):
-        if key == Key.space:
+        if key == Key.esc:
             self.enable = ~self.enable
             if self.enable:
                 print_warn('\nActivated')
             else:
                 print_debug('\nStopped')
-        else:
-            if self.enable:
-                print('\nCurrent state: Activated')
-            else:
-                print('\nCurrent state: Stopped')

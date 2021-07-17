@@ -162,7 +162,6 @@ class XsensInterface(object):
         except IndexError:
             self.header = None
             rospy.logerr('Get header failed')
-        print('interface initialized')
 
     def get_all_poses(self):
         data, _ = self.sock.recvfrom(self.buffer_size)
@@ -239,16 +238,20 @@ class XsensInterface(object):
             if segment_id == self.header.body_segments_num:
                 break
         assert len(body_pose_array_msg.poses) == self.header.body_segments_num
-        return body_pose_array_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg, \
-               left_shoulder_msg, left_upper_arm_msg, left_forearm_msg, \
-               right_shoulder_msg, right_upper_arm_msg, right_forearm_msg
+        return [body_pose_array_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg,
+                left_shoulder_msg, left_upper_arm_msg, left_forearm_msg,
+                right_shoulder_msg, right_upper_arm_msg, right_forearm_msg]
 
     def get_prop_msgs(self, all_poses):
         if self.header.props_num == 1:
-            prop_1_msg = GeometryMsg.PoseStamped()
-            prop_1_msg.header = all_poses.header
-            prop_1_msg.pose = all_poses.poses[24]
-            return prop_1_msg
+            try:
+                prop_1_msg = GeometryMsg.PoseStamped()
+                prop_1_msg.header = all_poses.header
+                prop_1_msg.pose = all_poses.poses[24]
+                return prop_1_msg
+            except IndexError:
+                rospy.logwarn_throttle(3, 'Prop number is not 0 but failed to get its pose')
+                return None
         else:
             return None
 
@@ -262,7 +265,7 @@ class XsensInterface(object):
         if self.header is None or not self.header.is_valid:
             return None, None
         if self.header.finger_segments_num != 40:
-            rospy.logwarn("Finger segment number is not 40: {}".format(self.header.finger_segments_num))
+            rospy.logwarn_throttle(3, "Finger segment number is not 40: {}".format(self.header.finger_segments_num))
             return None, None
 
         left_hand_js = SensorMsg.JointState()
