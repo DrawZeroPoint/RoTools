@@ -78,6 +78,7 @@ class Payload:
                                Its value equals to the robot/human body dimension ratio
         """
         pose_array_msg = GeometryMsg.PoseArray()
+        pose_array_msg.header.stamp = rospy.Time.now()
         pose_array_msg.header.frame_id = dst_frame
         for i in range(self.item_num):
             item = self.payload[i * self._item_size:(i + 1) * self._item_size]
@@ -191,17 +192,43 @@ class XsensInterface(object):
         right_tcp_msg = GeometryMsg.PoseStamped()
         left_sole_msg = GeometryMsg.PoseStamped()
         right_sole_msg = GeometryMsg.PoseStamped()
-        left_tcp_msg.header.stamp = rospy.Time.now()
-        left_tcp_msg.header.frame_id = self.ref_frame
+        left_shoulder_msg = GeometryMsg.PoseStamped()
+        right_shoulder_msg = GeometryMsg.PoseStamped()
+        left_upper_arm_msg = GeometryMsg.PoseStamped()
+        right_upper_arm_msg = GeometryMsg.PoseStamped()
+        left_forearm_msg = GeometryMsg.PoseStamped()
+        right_forearm_msg = GeometryMsg.PoseStamped()
+
+        # Initialize header
+        left_tcp_msg.header = all_poses.header
         right_tcp_msg.header = left_tcp_msg.header
         left_sole_msg.header = left_tcp_msg.header
         right_sole_msg.header = left_tcp_msg.header
+        left_shoulder_msg.header = left_tcp_msg.header
+        right_shoulder_msg.header = left_tcp_msg.header
+        left_upper_arm_msg.header = left_tcp_msg.header
+        right_upper_arm_msg.header = left_tcp_msg.header
+        left_forearm_msg.header = left_tcp_msg.header
+        right_forearm_msg.header = left_tcp_msg.header
+
         # all_poses should at least contain body segment poses
         segment_id = 0
         for p in all_poses.poses:
             body_pose_array_msg.poses.append(p)
+            if segment_id == 7:
+                right_shoulder_msg.pose = p
+            if segment_id == 8:
+                right_upper_arm_msg.pose = p
+            if segment_id == 9:
+                right_forearm_msg.pose = p
             if segment_id == 10:
                 right_tcp_msg.pose = p
+            if segment_id == 11:
+                left_shoulder_msg.pose = p
+            if segment_id == 12:
+                left_upper_arm_msg.pose = p
+            if segment_id == 13:
+                left_forearm_msg.pose = p
             if segment_id == 14:
                 left_tcp_msg.pose = p
             if segment_id == 18:
@@ -212,7 +239,18 @@ class XsensInterface(object):
             if segment_id == self.header.body_segments_num:
                 break
         assert len(body_pose_array_msg.poses) == self.header.body_segments_num
-        return body_pose_array_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg
+        return body_pose_array_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg, \
+               left_shoulder_msg, left_upper_arm_msg, left_forearm_msg, \
+               right_shoulder_msg, right_upper_arm_msg, right_forearm_msg
+
+    def get_prop_msgs(self, all_poses):
+        if self.header.props_num == 1:
+            prop_1_msg = GeometryMsg.PoseStamped()
+            prop_1_msg.header = all_poses.header
+            prop_1_msg.pose = all_poses.poses[24]
+            return prop_1_msg
+        else:
+            return None
 
     def get_hand_joint_states(self, all_poses):
         """Get joint states for both hand.
@@ -226,8 +264,11 @@ class XsensInterface(object):
         if self.header.finger_segments_num != 40:
             rospy.logwarn("Finger segment number is not 40: {}".format(self.header.finger_segments_num))
             return None, None
+
         left_hand_js = SensorMsg.JointState()
         right_hand_js = SensorMsg.JointState()
+        left_hand_js.header = all_poses.header
+        right_hand_js.header = all_poses.header
         # Here the hand joint states are defined as j1 and j2 for thumb to pinky
         # j1 is the angle between metacarpals (parent) and proximal phalanges (child)
         # j2 is the angle between proximal phalanges and intermediate/distal phalanges (distal is only for thumb)

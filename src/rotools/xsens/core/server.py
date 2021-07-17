@@ -34,6 +34,15 @@ class XsensServer(EStop):
         self.left_sole_publisher = rospy.Publisher('/xsens/left_sole', PoseStamped, queue_size=1)
         self.right_sole_publisher = rospy.Publisher('/xsens/right_sole', PoseStamped, queue_size=1)
 
+        self.prop_1_publisher = rospy.Publisher('/xsens/prop_1', PoseStamped, queue_size=1)
+
+        self.left_shoulder_publisher = rospy.Publisher('/xsens/left_shoulder', PoseStamped, queue_size=1)
+        self.right_shoulder_publisher = rospy.Publisher('/xsens/right_shoulder', PoseStamped, queue_size=1)
+        self.left_upper_arm_publisher = rospy.Publisher('/xsens/left_upper_arm', PoseStamped, queue_size=1)
+        self.right_upper_arm_publisher = rospy.Publisher('/xsens/right_upper_arm', PoseStamped, queue_size=1)
+        self.left_forearm_publisher = rospy.Publisher('/xsens/left_forearm', PoseStamped, queue_size=1)
+        self.right_forearm_publisher = rospy.Publisher('/xsens/right_forearm', PoseStamped, queue_size=1)
+
         # Joint states publishers
         self.left_hand_publisher = rospy.Publisher('/xsens/left_hand_js', JointState, queue_size=1)
         self.right_hand_publisher = rospy.Publisher('/xsens/right_hand_js', JointState, queue_size=1)
@@ -46,12 +55,25 @@ class XsensServer(EStop):
         ok, all_poses = self.interface.get_all_poses()
         if ok:
             self.all_poses_publisher.publish(all_poses)
-            body_poses, left_tcp, right_tcp, left_sole, right_sole = self.interface.get_body_pose_array_msg(all_poses)
+            body_poses, left_tcp, right_tcp, left_sole, right_sole, left_shoulder, left_upper_arm, left_forearm,\
+                right_shoulder, right_upper_arm, right_forearm = self.interface.get_body_pose_array_msg(all_poses)
+
             self.body_poses_publisher.publish(body_poses)
             self.left_tcp_publisher.publish(left_tcp)
             self.right_tcp_publisher.publish(right_tcp)
             self.left_sole_publisher.publish(left_sole)
             self.right_sole_publisher.publish(right_sole)
+            self.left_shoulder_publisher.publish(left_shoulder)
+            self.right_shoulder_publisher.publish(right_shoulder)
+            self.left_upper_arm_publisher.publish(left_upper_arm)
+            self.right_upper_arm_publisher.publish(right_upper_arm)
+            self.left_forearm_publisher.publish(left_forearm)
+            self.right_forearm_publisher.publish(right_forearm)
+
+            prop_1 = self.interface.get_prop_msgs(all_poses)
+            if prop_1 is not None:
+                self.prop_1_publisher.publish(prop_1)
+
             left_hand_js, right_hand_js = self.interface.get_hand_joint_states(all_poses)
             if left_hand_js is not None:
                 self.left_hand_publisher.publish(left_hand_js)
