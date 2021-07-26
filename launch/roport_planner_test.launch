@@ -1,0 +1,23 @@
+<launch>
+    <param name="/use_sim_time" value="false" />
+
+    <arg name="mode" default="0"/>
+    <arg name="rate" default="30"/>
+    <arg name="algorithm_port" default="127.0.0.1:6060/process"/>
+
+    <node pkg="roport" type="roport_planner_server.py" name="roport_planner_server" output="screen">
+        <param name="mode" value="$(arg mode)"/>
+        <param name="rate" value="$(arg rate)"/>
+        <param name="algorithm_port" value="$(arg algorithm_port)"/>
+        <rosparam param="control_topics">
+            ["/cartesian/left_hand/reference"]
+        </rosparam>
+        <rosparam param="robot_initial_poses">
+            [[0, 0, 0, 0, 0, 0, 1]]
+        </rosparam>
+        <rosparam param="planning_initial_poses">
+            [[0, 0, 0, 0, 0, 0, 1]]
+        </rosparam>
+    </node>
+
+</launch>

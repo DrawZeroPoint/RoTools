@@ -153,6 +153,9 @@ target_link_libraries(roport_control_server
 
 catkin_install_python(PROGRAMS
   scripts/roport_moveit_server.py
+  scripts/roport_planner_server.py
+  scripts/roport_sensing_server.py
+  scripts/roport_xsens_server.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 install(DIRECTORY

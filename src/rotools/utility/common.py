@@ -1,6 +1,8 @@
 import cv2
+import json
 import base64
 import struct
+import requests
 import numpy as np
 
 try:
@@ -160,6 +162,14 @@ def to_ros_pose(pose):
             raise NotImplementedError
     else:
         raise NotImplementedError
+
+
+def to_ros_pose_stamped(pose, frame_id=''):
+    pose_stamped = GeometryMsg.PoseStamped()
+    ros_pose = to_ros_pose(pose)
+    pose_stamped.pose = ros_pose
+    pose_stamped.header.frame_id = frame_id
+    return pose_stamped
 
 
 def to_ros_poses(poses):
@@ -327,6 +337,30 @@ def decode_b64_to_image(b64_str, is_bgr=True):
             return True, cv2.imdecode(np.frombuffer(img, dtype=np.uint8), cv2.IMREAD_ANYDEPTH)
     except cv2.error:
         return False, None
+
+
+def post_http_requests(url, payload, headers=None, params=None):
+    """Send HTTP request and get back the results as a dict of string.
+
+    :param url: str URL for sending request
+    :param payload: dict, corresponding to json.loads(Flask.request.data)
+    :param headers: dict, corresponding to Flask.request.headers
+    :param params: dict, corresponding to Flask.request.args
+    :return: feedback
+    """
+    json_data = json.dumps(payload)
+    if params is None and headers is None:
+        try:
+            return requests.post(url, data=json_data)
+        except requests.exceptions.RequestException as e:
+            rospy.logerr(e)
+            return None
+    else:
+        try:
+            return requests.post(url, headers=headers, params=params, data=json_data)
+        except requests.exceptions.RequestException as e:
+            rospy.logerr(e)
+            return None
 
 
 def byte_to_str(data, n):

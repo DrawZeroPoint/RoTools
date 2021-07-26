@@ -158,7 +158,7 @@ class SensingInterface(object):
 
         body = {'data': json.dumps(data_list), 'data_types': json.dumps(data_types)}
         payload = {'header': header, 'body': body}
-        feedback = self._post_http_requests('http://{}'.format(port), payload=payload)
+        feedback = common.post_http_requests('http://{}'.format(port), payload=payload)
         results = feedback.json()
         # The keys 'status' and 'results' should be coincide with the definition in the Flask server
         ok = results['response']['status']
@@ -167,22 +167,6 @@ class SensingInterface(object):
         else:
             rospy.logerr('Post data failed to load results')
             return False, None
-
-    @staticmethod
-    def _post_http_requests(url, payload, headers=None, params=None):
-        """Send HTTP request and get back the results as a dict of string
-
-        :param url: str URL for sending request
-        :param payload: dict, corresponding to json.loads(Flask.request.data)
-        :param headers: dict, corresponding to Flask.request.headers
-        :param params: dict, corresponding to Flask.request.args
-        :return: feedback
-        """
-        json_data = json.dumps(payload)
-        if params is None and headers is None:
-            return requests.post(url, data=json_data)
-        else:
-            return requests.post(url, headers=headers, params=params, data=json_data)
 
     def visualize_pose(self, pose, frame):
         pose_msg = GeometryMsg.PoseStamped()
