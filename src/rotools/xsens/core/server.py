@@ -18,7 +18,7 @@ class XsensServer(EStop):
     handy services for communicating with the Xsens motion capture devices.
     """
 
-    def __init__(self, kwargs, rate):
+    def __init__(self, kwargs):
         super(XsensServer, self).__init__()
 
         # Publisher switch
@@ -47,10 +47,11 @@ class XsensServer(EStop):
         self.left_hand_publisher = rospy.Publisher('/xsens/left_hand_js', JointState, queue_size=1)
         self.right_hand_publisher = rospy.Publisher('/xsens/right_hand_js', JointState, queue_size=1)
 
-        self.all_poses_msg_timer = rospy.Timer(rospy.Duration(1.0 / rate), self.all_poses_msg_handle)
+        rate = kwargs['rate']
+        self.all_poses_msg_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.all_poses_msg_handle)
 
     def all_poses_msg_handle(self, event):
-        if not self.enable:
+        if not self.enabled:
             return
         ok, all_poses = self.interface.get_all_poses()
         if ok:
@@ -82,10 +83,10 @@ class XsensServer(EStop):
 
     def pub_switch_handle(self, req):
         if req.data:
-            self.enable = True
+            self.set_status(True)
             msg = 'Xsens stream receiving enabled'
         else:
-            self.enable = False
+            self.set_status(False)
             msg = 'Xsens stream receiving disabled'
         play_hint_sound(req.data)
         return SetBoolResponse(True, msg)

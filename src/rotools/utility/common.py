@@ -302,6 +302,38 @@ def get_param(name, value=None):
         return value
 
 
+def pretty_print_configs(configs):
+    max_key_len = 0
+    max_value_len = 0
+    for key, value in configs.items():
+        key_str = '{}'.format(key)
+        if len(key_str) > max_key_len:
+            max_key_len = len(key_str)
+        if isinstance(value, list) or isinstance(value, tuple):
+            for i in value:
+                i_str = '{}'.format(i)
+                if len(i_str) > max_value_len:
+                    max_value_len = len(i_str)
+        else:
+            value_str = '{}'.format(value)
+            if len(value_str) > max_value_len:
+                max_value_len = len(value_str)
+
+    print_info("\n {}{}{}".format('=' * (max_key_len + 1), " ROPORT CONFIGS ", '=' * (max_value_len - 15)))
+    for key, value in configs.items():
+        key_msg = '{message: <{width}}'.format(message=key, width=max_key_len)
+        empty_key_msg = '{message: <{width}}'.format(message='', width=max_key_len)
+        if isinstance(value, list) or isinstance(value, tuple):
+            for i, i_v in enumerate(value):
+                if i == 0:
+                    print_info('{}: {}'.format(key_msg, i_v))
+                else:
+                    print_info('{}: {}'.format(empty_key_msg, i_v))
+        else:
+            print_info('{}: {}'.format(key_msg, value))
+    print_info("{}{}{}\n".format('=' * (max_key_len + 1), " END OF CONFIGS ", '=' * (max_value_len - 15)))
+
+
 def encode_image_to_b64(image):
     """Use Base64 to encode the OpenCV image to a string
 

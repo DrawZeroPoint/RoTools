@@ -19,6 +19,10 @@ rotools python interface in ROS environment. It provides:
 - [control server](src/roport_control_server.cpp) simultaneously controlling multiple kinematic chains of the robot.
 - [sensing server](scripts/roport_sensing_server.py) that bridges the perception modules outside the ROS environment 
   (like those run in Python3) to ROS via HTTP.
+- [planner server](scripts/roport_planner_server.py) bridges ROS modules with the planning algorithm outside the ROS
+  environment (running in Python3 or on another server on the local network) via HTTP. This server is designed for 
+  online control, that given the current state, it will query the algorithm for the next state. For now, the states
+  are Cartesian poses.
 - [task scheduler](src/roport_task_scheduler.cpp) using behavior tree for task scheduling. 
   A bunch of general purpose services are provided for building the task map fast.
 - [xsens server](scripts/roport_xsens_server.py) converting the live stream from Xsens's MVN Awinda motion capture
@@ -64,7 +68,7 @@ ros-$ROS_DISTRO-eigen-conversions
 Optionally you can install the following Python packages to use some utilities.
 
 ```shell
-sudo pip install playsound pynput
+sudo pip install playsound pynput requests
 ```
 
 #### Indigo
@@ -169,7 +173,7 @@ By default, the server will publish poses on topics: `/xsens/all_poses`, `/xsens
 `/xsens/right_tcp`, `/xsens/left_sole`, `/xsens/right_sole`. 
 The former two are in `PoseArray` format, the latter ones are in `PoseStamped`.
 `body_poses` are the poses of body segments without hand segments; `left_tcp` is the left palm pose; 
-`right_tcp` is the right palm pose. `left_sole` is the left palm pose; `right_sole` is the right palm pose.
+`right_tcp` is the right palm pose. `left_sole` is the left sole pose; `right_sole` is the right sole pose.
 When standing in N pose, the TCP poses and sole poses is illustrated as:
 
 
@@ -194,8 +198,8 @@ If empty string is given, the default one `world` will be used.
 
 For safety concern, you need to activate the conversion by:
 
-Press the `space` key on the keyboard. This will switch the status from `deactive` to `active`.
-To change back, press `space` again. You can press any other keys to check the current status, but not change it.
+Press the `Caps_Lock` key on the keyboard. This will switch the status from `deactive` to `active`.
+To change back, press `Caps_Lock` again. The last output in the console will indicate the current status.
 
 Alternatively, you can use:
 

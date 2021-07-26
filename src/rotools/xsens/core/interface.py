@@ -136,6 +136,7 @@ class XsensInterface(object):
             ref_frame,
             scaling=1.0,
             buffer_size=4096,
+            **kwargs
     ):
         super(XsensInterface, self).__init__()
 

@@ -4,7 +4,7 @@ from __future__ import print_function
 import rospy
 
 from rotools.planner.core.server import PlannerServer
-from rotools.utility.common import get_param
+from rotools.utility.common import get_param, pretty_print_configs
 
 
 if __name__ == "__main__":
@@ -18,7 +18,8 @@ if __name__ == "__main__":
             'robot_initial_poses': get_param('~robot_initial_poses'),
             'planning_initial_poses': get_param('~planning_initial_poses'),
         }
-        rospy.loginfo("RoPort: Configs: \n{}".format(configs))
+        pretty_print_configs(configs)
+
         server = PlannerServer(configs)
         rospy.loginfo("RoPort: Planner server ready.")
         rospy.spin()
