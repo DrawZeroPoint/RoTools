@@ -5,13 +5,11 @@
     <arg name="udp_port" default="9763"/>
     <!-- The reference frame in the stream will have no translation or rotation, could be 'Pelvis' or 'T8' -->
     <arg name="ref_frame" default="T8"/>
-    <arg name="scaling" default="0.82"/>
+    <!--  Scale the position of the pose if src_frame_id is not None.
+          Its value equals to the robot/human body dimension ratio  -->
+    <arg name="scaling" default="1"/>
     <!-- The publish rate is for publish the converted messages, it should not be larger than source rate -->
     <arg name="rate" default="60"/>
-
-    <!--  These remapping will convert the inner published topics from this server to outside needed ones -->
-    <!--    <remap from="/xsens/left_tcp" to="/cartesian/left_hand/reference"/>-->
-    <!--    <remap from="/xsens/right_tcp" to="/cartesian/right_hand/reference"/>-->
 
     <node pkg="roport" type="roport_xsens_server.py" name="roport_xsens_server" output="screen">
         <param name="udp_ip" value="$(arg udp_ip)"/>
