@@ -68,18 +68,18 @@ class Payload:
         self._payload_len = len(self.payload)
         self._item_size = self._payload_len // self.item_num
 
-    def decode_to_pose_array_msg(self, dst_frame, src_frame_id=None, scaling_factor=1.0):
+    def decode_to_pose_array_msg(self, ref_frame, ref_frame_id=None, scaling_factor=1.0):
         """Decode the bytes in the streaming data to pose array message.
 
-        :param dst_frame: str Reference frame name of the generated pose array message.
-        :param src_frame_id: None/int If not None, all poses will be shifted subject to
+        :param ref_frame: str Reference frame name of the generated pose array message.
+        :param ref_frame_id: None/int If not None, all poses will be shifted subject to
                              the frame with this ID. This frame should belong to the human.
         :param scaling_factor: float Scale the position of the pose if src_frame_id is not None.
                                Its value equals to the robot/human body dimension ratio
         """
         pose_array_msg = GeometryMsg.PoseArray()
         pose_array_msg.header.stamp = rospy.Time.now()
-        pose_array_msg.header.frame_id = dst_frame
+        pose_array_msg.header.frame_id = ref_frame
         for i in range(self.item_num):
             item = self.payload[i * self._item_size:(i + 1) * self._item_size]
             pose_msg = self._type_02_decode_to_pose_msg(item)
@@ -87,21 +87,15 @@ class Payload:
                 return None
             pose_array_msg.poses.append(pose_msg)
 
-        if src_frame_id is not None and src_frame_id < len(pose_array_msg.poses):
-            shifted_pose_array_msg = GeometryMsg.PoseArray()
-            shifted_pose_array_msg.header.frame_id = dst_frame
-            ref_pose = pose_array_msg.poses[src_frame_id]
+        if ref_frame_id is not None and ref_frame_id < len(pose_array_msg.poses):
+            relative_pose_array_msg = GeometryMsg.PoseArray()
+            relative_pose_array_msg.header.frame_id = ref_frame
+            reference_pose = pose_array_msg.poses[ref_frame_id]
             for p in pose_array_msg.poses:
-                shifted_pose = GeometryMsg.Pose()
-                # The reference frame's position will be 0 0 0 after shifting
-                shifted_pose.position.x = (p.position.x - ref_pose.position.x) * scaling_factor
-                shifted_pose.position.y = (p.position.y - ref_pose.position.y) * scaling_factor
-                shifted_pose.position.z = (p.position.z - ref_pose.position.z) * scaling_factor
-                # The reference frame's orientation will be 0 0 0 1 after shifting
-                r_ref_p, _ = common.get_relative_rotation(ref_pose.orientation, p.orientation)
-                shifted_pose.orientation = common.to_ros_orientation(transform.quaternion_from_matrix(r_ref_p))
-                shifted_pose_array_msg.poses.append(shifted_pose)
-            return shifted_pose_array_msg
+                std_relative_pose = common.get_transform_same_origin(reference_pose, p)
+                relative_pose = common.to_ros_pose(std_relative_pose)
+                relative_pose_array_msg.poses.append(relative_pose)
+            return relative_pose_array_msg
         return pose_array_msg
 
     @staticmethod
@@ -154,6 +148,7 @@ class XsensInterface(object):
             self.ref_frame = 'world'
             self.ref_frame_id = None
         else:
+            rospy.logwarn('Using customized reference frame {}'.format(ref_frame))
             self.ref_frame = ref_frame
             self.ref_frame_id = None
 

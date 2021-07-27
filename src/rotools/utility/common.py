@@ -286,6 +286,34 @@ def get_relative_rotation(rot_1, rot_2):
     return R, np.array([ax, ay, az])
 
 
+def get_transform_same_origin(start, end):
+    """Given 4x4 transform matrices t_wa from frame w to frame a,
+    and t_wb from frame w to frame b, get the transform t_ab from
+    frame a to frame b.
+
+    :param start: array (4, 4) Transform from the origin frame to the start frame.
+    :param end: array (4, 4) Transform from the origin frame to the end frame.
+    :return: array (4, 4) Transform from the start frame to the end frame.
+    """
+    sd_start = sd_pose(start)
+    sd_end = sd_pose(end)
+    return np.dot(np.linalg.inv(sd_start), sd_end)
+
+
+def get_transform_same_target(start, end):
+    """Given 4x4 transform matrices t_aw from frame a to frame w,
+    and t_bw from frame b to frame w, get the transform t_ab from
+    frame a to frame b.
+
+    :param start: array (4, 4) Transform from the start frame to the target frame.
+    :param end: array (4, 4) Transform from the end frame to the target frame.
+    :return: array (4, 4) Transform from the start frame to the end frame.
+    """
+    sd_start = sd_pose(start)
+    sd_end = sd_pose(end)
+    return np.dot(sd_start, np.linalg.inv(sd_end))
+
+
 def get_param(name, value=None):
     """Get ros param from param server
 

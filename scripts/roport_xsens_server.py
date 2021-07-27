@@ -15,7 +15,9 @@ if __name__ == "__main__":
             'udp_port': get_param('~udp_port'),
             'ref_frame': get_param('~ref_frame'),
             'scaling': get_param('~scaling'),
-            'rate': get_param('~rate')
+            'rate': get_param('~rate'),
+            'detail': get_param('~detail', False),
+            'prop': get_param('~prop', False)
         }
         pretty_print_configs(configs)
         server = XsensServer(configs)

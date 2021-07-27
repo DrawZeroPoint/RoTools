@@ -58,10 +58,7 @@ class PlannerInterface(object):
         """
         translations = []
         for r_pose, p_pose in zip(self._robot_initial_poses, self._planning_initial_poses):
-            T_rs = common.sd_pose(r_pose)
-            T_ps = common.sd_pose(p_pose)
-            T_rp = np.dot(T_rs, np.linalg.inv(T_ps))
-            translations.append(T_rp)
+            translations.append(common.get_transform_same_target(r_pose, p_pose))
         return translations
 
     def get_plan(self):
