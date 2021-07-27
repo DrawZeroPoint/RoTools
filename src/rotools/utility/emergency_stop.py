@@ -12,12 +12,13 @@ class EStop(object):
         super(EStop, self).__init__()
         self._enable = False
 
-        hot_key = 'CapsLock'
-        if function_name:
-            print_warn('{} is deactivated, press {} to activate/deactivate'.format(function_name, hot_key))
-        else:
-            print_warn('Function is deactivated, press {} to activate/deactivate'.format(hot_key))
         if Listener is not None:
+            hot_key = 'CapsLock'
+            if function_name:
+                print_warn('{} is deactivated, press {} to activate/deactivate'.format(function_name, hot_key))
+            else:
+                print_warn('Function is deactivated, press {} to activate/deactivate'.format(hot_key))
+
             self.listener = Listener(on_press=self._on_press)
             self.listener.start()  # start the thread and run subsequent codes
         else:
