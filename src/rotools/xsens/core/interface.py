@@ -315,9 +315,12 @@ class XsensInterface(object):
         body_segments_num = common.byte_to_uint8(data[17])
         props_num = common.byte_to_uint8(data[18])
         finger_segments_num = common.byte_to_uint8(data[19])
-        rospy.loginfo('Stream received: body segment #{}, property #{}, finger segment #{}'.format(
-            body_segments_num, props_num, finger_segments_num))
         # 20 21 are reserved for future use
         payload_size = common.byte_to_uint16(data[22:24])
+        rospy.loginfo('Stream received: \n'
+                      'id {}, sample_counter {}, datagram_counter {},\n'
+                      'item #{}, body segment #{}, prop #{}, finger segment #{}\n'
+                      'payload_size {}'.format(id_str, sample_counter, datagram_counter, item_number,
+                                               body_segments_num, props_num, finger_segments_num, payload_size))
         return Header([id_str, sample_counter, datagram_counter, item_number, time_code, character_id,
                        body_segments_num, props_num, finger_segments_num, payload_size])
