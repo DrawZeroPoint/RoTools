@@ -51,6 +51,9 @@ class XsensServer(EStop):
         self.left_hand_publisher = rospy.Publisher('/xsens/left_hand_js', JointState, queue_size=1)
         self.right_hand_publisher = rospy.Publisher('/xsens/right_hand_js', JointState, queue_size=1)
 
+        # Tracked object publishers
+        self.object_pose_publisher = rospy.Publisher('/xsens/object', PoseStamped, queue_size=1)
+
         rate = kwargs['rate']
         self.all_poses_msg_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.all_poses_msg_handle)
 
@@ -61,6 +64,10 @@ class XsensServer(EStop):
         if ok:
             body_poses, left_tcp, right_tcp, left_sole, right_sole, left_shoulder, left_upper_arm, left_forearm,\
                 right_shoulder, right_upper_arm, right_forearm = self.interface.get_body_pose_array_msg(all_poses)
+
+            if self.interface.object_poses is not None:
+                # TODO dzp: for now we only publish the first object pose
+                self.object_pose_publisher.publish(self.interface.first_object_pose)
 
             self.all_poses_publisher.publish(all_poses)
             self.body_poses_publisher.publish(body_poses)

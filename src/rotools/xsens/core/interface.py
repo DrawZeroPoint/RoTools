@@ -51,6 +51,11 @@ class Header:
         return True
 
     @property
+    def is_object(self):
+        """External tracked object's datagram have less segments than body datagram."""
+        return self.item_counter < 23
+
+    @property
     def item_num(self):
         return self.item_counter
 
@@ -122,7 +127,6 @@ class Payload:
 
 
 class XsensInterface(object):
-
     def __init__(
             self,
             udp_ip,
@@ -130,7 +134,7 @@ class XsensInterface(object):
             ref_frame,
             scaling=1.0,
             buffer_size=4096,
-            **kwargs
+            **kwargs  # DO NOT REMOVE
     ):
         super(XsensInterface, self).__init__()
 
@@ -152,19 +156,32 @@ class XsensInterface(object):
             self.ref_frame = ref_frame
             self.ref_frame_id = None
 
-        # The streamer should be launched before this program
-        try:
-            self.header = self._get_header()
-        except IndexError:
-            self.header = None
-            rospy.logerr('Get header failed')
+        self.header = None
+        self.object_poses = None
+
+    @property
+    def first_object_pose(self):
+        if self.object_poses is None:
+            return None
+        else:
+            pose = GeometryMsg.PoseStamped()
+            pose.header = self.object_poses.header
+            pose.pose = self.object_poses.poses[0]
+            return pose
 
     def get_all_poses(self):
+        """[Main entrance function] Get poses from the datagram.
+
+        """
         data, _ = self.sock.recvfrom(self.buffer_size)
+        self.header = self._get_header()
         if self.header is not None and self.header.is_valid:
             payload = Payload(data[24:], self.header)
             pose_array_msg = payload.decode_to_pose_array_msg(self.ref_frame, self.ref_frame_id)
             if pose_array_msg is None:
+                return False, None
+            if self.header.is_object:
+                self.object_poses = pose_array_msg  # Only body poses are returned
                 return False, None
             else:
                 return True, pose_array_msg
@@ -194,7 +211,7 @@ class XsensInterface(object):
         left_forearm_msg = GeometryMsg.PoseStamped()
         right_forearm_msg = GeometryMsg.PoseStamped()
 
-        # Initialize header
+        # Initialize message headers
         left_tcp_msg.header = all_poses.header
         right_tcp_msg.header = left_tcp_msg.header
         left_sole_msg.header = left_tcp_msg.header
@@ -317,10 +334,10 @@ class XsensInterface(object):
         finger_segments_num = common.byte_to_uint8(data[19])
         # 20 21 are reserved for future use
         payload_size = common.byte_to_uint16(data[22:24])
-        rospy.loginfo('Stream received: \n'
-                      'id {}, sample_counter {}, datagram_counter {},\n'
-                      'item #{}, body segment #{}, prop #{}, finger segment #{}\n'
-                      'payload_size {}'.format(id_str, sample_counter, datagram_counter, item_number,
-                                               body_segments_num, props_num, finger_segments_num, payload_size))
+        rospy.logdebug('Stream received: \n'
+                       'id {}, sample_counter {}, datagram_counter {},\n'
+                       'item #{}, body segment #{}, prop #{}, finger segment #{}\n'
+                       'payload_size {}'.format(id_str, sample_counter, datagram_counter, item_number,
+                                                body_segments_num, props_num, finger_segments_num, payload_size))
         return Header([id_str, sample_counter, datagram_counter, item_number, time_code, character_id,
                        body_segments_num, props_num, finger_segments_num, payload_size])
