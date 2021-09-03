@@ -3,8 +3,11 @@
 RoTools is an all-in-one ROS package for high-level robotic task scheduling,
 visual perception, direct and tele-manipulation control. It leverages BehaviorTree to
 deliver fast task construction and coordination, and uses MoveIt
-and hardware_interface to bridge the gap between real/simulated
+and *fake hardware_interface* to bridge the gap between real/simulated
 robot and the high level task scheduler.
+
+*Here the hardware interface is called fake since it does not actually connect with the real hardware.
+Instead, the communication is via ROS topics.*
 
 ## Contents
 
@@ -16,7 +19,8 @@ This module provides the entrance ports of the RoTools package. It is a middlewa
 rotools python interface in ROS environment. It provides: 
 
 - [MoveIt server](scripts/roport_moveit_server.py) for controlling the robot's single kinematic chain.
-- [control server](src/roport_control_server.cpp) simultaneously controlling multiple kinematic chains of the robot.
+- [control server](src/roport_control_server.cpp) simultaneously controlling multiple kinematic chains of a robot.
+  To do so, MoveIt configuration is needed.
 - [sensing server](scripts/roport_sensing_server.py) that bridges the perception modules outside the ROS environment 
   (like those run in Python3) to ROS via HTTP.
 - [planner server](scripts/roport_planner_server.py) bridges ROS modules with the planning algorithm outside the ROS
