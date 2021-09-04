@@ -29,6 +29,15 @@ find_package(catkin REQUIRED COMPONENTS
   behaviortree_cpp_v3
 )
 
+find_package(franka_core_msgs)
+
+if (${franka_core_msgs_FOUND})
+  add_definitions(-DFRANKA_CORE_MSGS)
+  MESSAGE(STATUS "FOUND franka_core_msgs")
+else (${franka_core_msgs_FOUND})
+  MESSAGE(STATUS "NOT FOUND franka_core_msgs")
+endif (${franka_core_msgs_FOUND})
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -147,6 +156,13 @@ target_link_libraries(roport_robot_interface
 add_executable(roport_control_server src/roport_control_server.cpp)
 add_dependencies(roport_control_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_control_server
+  ${catkin_LIBRARIES}
+  ${PROJECT_NAME}
+)
+
+add_executable(roport_msg_converter src/roport_msg_converter.cpp)
+add_dependencies(roport_msg_converter ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(roport_msg_converter
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
 )

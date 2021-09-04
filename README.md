@@ -221,7 +221,7 @@ states via one or more topics from the real robot or the simulator. Meanwhile, i
 sets the joint states commands down to the robot or the simulator via one or
 more topics.
 
-To properly use this, you need to set the joint states getter/setter topics 
+To properly use this, you need to set the joint states' getter/setter topics 
 in the launch file like this:
 
 ```
