@@ -145,7 +145,7 @@ void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const ros::Publi
  *
  * An example launch file should look like this:
  *
-  <node pkg="roport_msg_converter" type="roport_msg_converter" name="curiosity_converter" output="screen">
+  <node pkg="roport" type="roport_msg_converter" name="curiosity_converter" output="screen">
     <rosparam param="source_joint_names">
       [
         ["arm_L_joint1", "arm_L_joint2", "arm_L_joint3", "arm_L_joint4", "arm_L_joint5", "arm_L_joint6", "arm_L_joint7"],
