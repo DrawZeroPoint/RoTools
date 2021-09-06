@@ -4,6 +4,8 @@
 
 #include <sensor_msgs/JointState.h>
 
+#include "roport/online_trajectory_optimizer.h"
+
 #ifdef FRANKA_CORE_MSGS
 #include <franka_core_msgs/JointCommand.h>
 #endif
@@ -14,6 +16,7 @@
 
 std::vector<ros::Publisher> publishers_;
 std::vector<ros::Subscriber> subscribers_;
+std::vector<rotools::OnlineTrajectoryOptimizer*> optimizers_;
 
 /**
  * Generic function to find an element in vector and also its position. It returns a pair of bool & int.
@@ -39,30 +42,30 @@ std::pair<bool, int> findInVector(const std::vector<T>& vecOfElements, const T& 
   return result;
 }
 
-void publishJointState(const sensor_msgs::JointState::ConstPtr& msg, const ros::Publisher &pub,
+void publishJointState(const sensor_msgs::JointState& msg, const ros::Publisher &pub,
                        const std::vector<std::string> &source_names, const std::vector<std::string> &target_names) {
   sensor_msgs::JointState new_msg;
-  new_msg.header = msg->header;
+  new_msg.header = msg.header;
 
-  if (msg->name.empty()) {
+  if (msg.name.empty()) {
     ROS_ERROR_ONCE_NAMED("RoPort Converter", "Source JointState topic have empty name field");
     return;
   }
   // It is possible to convert only a part of the joint values in the given message.
-  if (msg->name.size() < source_names.size()) {
+  if (msg.name.size() < source_names.size()) {
     ROS_ERROR_NAMED("RoPort Converter", "Message name field has fewer names than source names");
     return;
   }
   for (size_t i = 0; i < source_names.size(); ++i) {
-    auto result = findInVector<std::string>(msg->name, source_names[i]);
+    auto result = findInVector<std::string>(msg.name, source_names[i]);
     if (result.first) {
       new_msg.name.push_back(target_names[i]);
-      new_msg.position.push_back(msg->position[result.second]);
-      if (msg->velocity.size() == msg->position.size()) {
-        new_msg.velocity.push_back(msg->velocity[result.second]);
+      new_msg.position.push_back(msg.position[result.second]);
+      if (msg.velocity.size() == msg.position.size()) {
+        new_msg.velocity.push_back(msg.velocity[result.second]);
       }
-      if (msg->effort.size() == msg->effort.size()) {
-        new_msg.effort.push_back(msg->effort[result.second]);
+      if (msg.effort.size() == msg.effort.size()) {
+        new_msg.effort.push_back(msg.effort[result.second]);
       }
     } else {
       ROS_ERROR_STREAM_NAMED("RoPort Converter", "Source joint name "
@@ -72,13 +75,13 @@ void publishJointState(const sensor_msgs::JointState::ConstPtr& msg, const ros::
   pub.publish(new_msg);
 }
 
-void publishJointCommand(const sensor_msgs::JointState::ConstPtr& msg, const ros::Publisher &pub, const int& arg,
+void publishJointCommand(const sensor_msgs::JointState& msg, const ros::Publisher &pub, const int& arg,
                          const std::vector<std::string> &source_names, const std::vector<std::string> &target_names) {
 #ifdef FRANKA_CORE_MSGS
   franka_core_msgs::JointCommand new_msg;
-  new_msg.header = msg->header;
+  new_msg.header = msg.header;
   std::set<int> supported_modes{
-    new_msg.IMPEDANCE_MODE, new_msg.POSITION_MODE, new_msg.TORQUE_MODE, new_msg.VELOCITY_MODE
+      new_msg.IMPEDANCE_MODE, new_msg.POSITION_MODE, new_msg.TORQUE_MODE, new_msg.VELOCITY_MODE
   };
   if (supported_modes.find(arg) == supported_modes.end()) {
     ROS_ERROR_STREAM_ONCE_NAMED("RoPort Converter", "Mode " << arg << " is not supported");
@@ -86,25 +89,25 @@ void publishJointCommand(const sensor_msgs::JointState::ConstPtr& msg, const ros
   } else {
     new_msg.mode = arg;
   }
-  if (msg->name.empty()) {
+  if (msg.name.empty()) {
     ROS_ERROR_ONCE_NAMED("RoPort Converter", "Source JointState topic have empty name field");
     return;
   }
   // It is possible to convert only a part of the joint values in the given message.
-  if (msg->name.size() < source_names.size()) {
+  if (msg.name.size() < source_names.size()) {
     ROS_ERROR_NAMED("RoPort Converter", "Message name field has fewer names than source names");
     return;
   }
   for (size_t i = 0; i < source_names.size(); ++i) {
-    auto result = findInVector<std::string>(msg->name, source_names[i]);
+    auto result = findInVector<std::string>(msg.name, source_names[i]);
     if (result.first) {
       new_msg.names.push_back(target_names[i]);
-      new_msg.position.push_back(msg->position[result.second]);
-      if (msg->velocity.size() == msg->position.size()) {
-        new_msg.velocity.push_back(msg->velocity[result.second]);
+      new_msg.position.push_back(msg.position[result.second]);
+      if (msg.velocity.size() == msg.position.size()) {
+        new_msg.velocity.push_back(msg.velocity[result.second]);
       }
-      if (msg->effort.size() == msg->effort.size()) {
-        new_msg.effort.push_back(msg->effort[result.second]);
+      if (msg.effort.size() == msg.position.size()) {
+        new_msg.effort.push_back(msg.effort[result.second]);
       }
     } else {
       ROS_ERROR_STREAM_NAMED("RoPort Converter", "Source joint name "
@@ -115,17 +118,103 @@ void publishJointCommand(const sensor_msgs::JointState::ConstPtr& msg, const ros
 #endif
 }
 
-void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const ros::Publisher &pub,
-                  const std::string& type, const int& arg,
+void smoothJointState(const sensor_msgs::JointState& msg, rotools::OnlineTrajectoryOptimizer *oto,
+                      sensor_msgs::JointState& smoothed_msg)
+{
+  smoothed_msg.header = msg.header;
+  smoothed_msg.name = msg.name;
+  bool smoothed = false;
+  try {
+    if (oto->enabled_) {
+      std::vector<double> q, dq;
+      for (size_t j = 0; j < msg.position.size(); j++) {
+        q.push_back(msg.position[j]);
+        dq.push_back(msg.velocity[j]);
+      }
+      if (!oto->initialized_) {
+        oto->update(q, dq);
+      }
+      std::vector<double> q_out, dq_out, ddq_out;
+      if (oto->output(q, dq, q_out, dq_out, ddq_out)) {
+        for (size_t j = 0; j < msg.position.size(); ++j) {
+          smoothed_msg.position.push_back(q_out[j]);
+          smoothed_msg.velocity.push_back(dq_out[j]);
+        }
+        smoothed = true;
+      }
+    }
+  } catch (const std::out_of_range& oor) {
+    ROS_ERROR_STREAM("Out of Range error: " << oor.what());
+  }
+  if (!smoothed) {
+    smoothed_msg.position = msg.position;
+    smoothed_msg.velocity = msg.velocity;
+    smoothed_msg.effort = msg.effort;
+  }
+}
+
+void filterJointState(const sensor_msgs::JointState::ConstPtr& msg, sensor_msgs::JointState &msg_out,
+                      const std::vector<std::string> &source_names) {
+  msg_out.header = msg->header;
+  msg_out.name = source_names;
+  for (auto &name : source_names) {
+    auto result = findInVector(msg->name, name);
+    if (result.first) {
+      msg_out.position.push_back(msg->position[result.second]);
+      try {
+        msg_out.velocity.push_back(msg->velocity[result.second]);
+      } catch (const std::out_of_range& oor) {
+        ROS_WARN_STREAM("Query velocity field out of range");
+      }
+      try {
+        msg_out.effort.push_back(msg->effort[result.second]);
+      } catch (const std::out_of_range& oor) {
+        ROS_WARN_STREAM("Query effort field out of range");
+      }
+    } else {
+      ROS_ERROR_STREAM("Source JointState msg defines no " << name);
+    }
+  }
+}
+
+void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const size_t& oto_id,
+                  const ros::Publisher &pub, const std::string& type, const int& arg,
                   const std::vector<std::string> &source_names, const std::vector<std::string> &target_names) {
+  sensor_msgs::JointState filtered_msg;
+  filterJointState(msg, filtered_msg, source_names);
+  sensor_msgs::JointState smoothed_msg;
+  smoothJointState(filtered_msg, optimizers_[oto_id], smoothed_msg);
   if (type == "sensor_msgs/JointState") {
-    publishJointState(msg, pub, source_names, target_names);
+    publishJointState(smoothed_msg, pub, source_names, target_names);
   } else if (type == "franka_core_msgs/JointCommand") {
-    publishJointCommand(msg, pub, arg, source_names, target_names);
+    publishJointCommand(smoothed_msg, pub, arg, source_names, target_names);
   } else {
     ROS_ERROR_STREAM_ONCE_NAMED("RoPort Converter", "Unknown target topic type: "
         << type << " Known are: sensor_msgs/JointState, franka_core_msgs/JointCommand");
   }
+}
+
+template <class T>
+bool phaseJointParameterMap(ros::NodeHandle nh, const std::string& param_name,
+                            const std::vector<std::string>& source_names,
+                            const std::vector<std::string>& target_names, std::vector<T>& param_out) {
+  std::map<std::string, T> param_map;
+  if (!nh.getParam(param_name, param_map) ) {
+    ROS_ERROR("Get %s failed", param_name.c_str());
+    return false;
+  }
+  for (size_t n = 0; n < source_names.size(); ++n) {
+    if (param_map.find(source_names[n]) != param_map.end()) {
+      param_out.push_back(param_map[source_names[n]]);
+    } else if (param_map.find(target_names[n]) != param_map.end()) {
+      param_out.push_back(param_map[target_names[n]]);
+    } else {
+      ROS_ERROR("Unable to find %s param for %s(%s)", param_name.c_str(),
+                source_names[n].c_str(), target_names[n].c_str());
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -137,36 +226,21 @@ void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const ros::Publi
  *                       values will be under the new names defined by target_joint_names.
  *   source_js_topics: list[str] Joint state topics that should be converted to the target_js_topics.
  *   target_js_topics: list[str] Topics converted from source_js_topics.
- *   target_types: optional list[str] Target topic types. By default, the target topics will have the type JointState,
+ *   target_types: list[str] Target topic types. By default, the target topics will have the type JointState,
  *                 other types are also supported but need modifying the code. Here we support sensor_msgs/JointState
  *                 and franka_core_msgs/JointCommand. If given, its size must be equal to target_js_topics.
- *   target_args: optional list[int] Give one argument for each target topic publishing. This argument often
+ *   target_args: list[int] Give one argument for each target topic publishing. This argument often
  *                defines the control type. If given, its size must be equal to target_js_topics.
+ *   enable_reflex: list[int] If the value>0, Reflexxes will be used to smooth the source js before conversion.
  *
- * An example launch file should look like this:
+ *   If enable_reflex is set, the following params need to be set:
  *
-  <node pkg="roport" type="roport_msg_converter" name="curiosity_converter" output="screen">
-    <rosparam param="source_joint_names">
-      [
-        ["arm_L_joint1", "arm_L_joint2", "arm_L_joint3", "arm_L_joint4", "arm_L_joint5", "arm_L_joint6", "arm_L_joint7"],
-        ["arm_R_joint1", "arm_R_joint2", "arm_R_joint3", "arm_R_joint4", "arm_R_joint5", "arm_R_joint6", "arm_R_joint7"],
-      ]
-    </rosparam>
-    <rosparam param="target_joint_names">
-      [
-        ["panda_left_joint1", "panda_left_joint2", "panda_left_joint3", "panda_left_joint4", "panda_left_joint5", "panda_left_joint6", "panda_left_joint7"],
-        ["panda_right_joint1", "panda_right_joint2", "panda_right_joint3", "panda_right_joint4", "panda_right_joint5", "panda_right_joint6", "panda_right_joint7"],
-      ]
-    </rosparam>
-    <rosparam param="source_js_topics">
-      ["/cartesian/solution", "/cartesian/solution"]
-    </rosparam>
-    <rosparam param="target_js_topics">
-      ["/curiosity/left_arm/joint_command", "/curiosity/right_arm/joint_command"]
-    </rosparam>
-  </node>
- *
- * This example shows converting 2 topics to another 2 topics, wherein the name fields are changed respectively.
+ *   max_vel: map[str, double] For each joint_name, define its maximum velocity. The name could either be source name
+ *            or target name (the same for max_acc and max_jerk).
+ *   max_acc: map[str, double] For each joint_name, define its maximum acceleration.
+ *   max_jerk: map[str, double] For each joint_name, define its maximum jerk.
+ *   scales: map[str, double] The keys should be vel, acc, and jerk; the values are the scale factor to be multiplied
+ *           to max_vel, max_acc, and max_jerk, respectively.
  *
  * @param argc
  * @param argv
@@ -195,23 +269,25 @@ int main(int argc, char** argv) {
 
   XmlRpc::XmlRpcValue target_types;
   pnh.getParam("target_types", target_types);
-  if (target_types.getType() == XmlRpc::XmlRpcValue::TypeArray) {
-    ROS_ASSERT(target_js_topics.size() == target_types.size());
-    ROS_INFO_NAMED("RoPort Converter", "Custom types defined for the target");
-  }
+  ROS_ASSERT(target_types.getType() == XmlRpc::XmlRpcValue::TypeArray &&
+             target_js_topics.size() == target_types.size());
 
   XmlRpc::XmlRpcValue target_args;
   pnh.getParam("target_args", target_args);
-  if (target_args.getType() == XmlRpc::XmlRpcValue::TypeArray) {
-    ROS_ASSERT(target_js_topics.size() == target_args.size());
-    ROS_INFO_NAMED("RoPort Converter", "Defined args for publishing to the target topics");
-  }
+  ROS_ASSERT(target_args.getType() == XmlRpc::XmlRpcValue::TypeArray &&
+             target_js_topics.size() == target_args.size());
+
+  XmlRpc::XmlRpcValue enable_reflex;
+  pnh.getParam("enable_reflex", enable_reflex);
+  ROS_ASSERT(enable_reflex.getType() == XmlRpc::XmlRpcValue::TypeArray &&
+             target_js_topics.size() == enable_reflex.size());
 
   ROS_ASSERT(source_joint_names.size() > 0 && source_joint_names.size() == target_joint_names.size());
   ROS_ASSERT(source_js_topics.size() > 0 && source_js_topics.size() == target_js_topics.size());
   ROS_ASSERT(source_joint_names.size() == source_js_topics.size());
 
   // Subscribe source JointState topics and publish them to target topics.
+  // If enable_reflex is set, the values to be published will first be smoothed.
   for (int i = 0; i < source_js_topics.size(); i++) {
     ROS_ASSERT(source_js_topics[i].getType() == XmlRpc::XmlRpcValue::TypeString);
     ROS_ASSERT(target_js_topics[i].getType() == XmlRpc::XmlRpcValue::TypeString);
@@ -236,6 +312,10 @@ int main(int argc, char** argv) {
     if (target_args.size() > 0) {
       target_arg = int(target_args[i]);
     }
+    int reflex_flag = 0;
+    if (enable_reflex.size() > 0) {
+      reflex_flag = int(enable_reflex[i]);
+    }
 
     ros::Publisher publisher;
     if (target_type == "sensor_msgs/JointState") {
@@ -253,18 +333,45 @@ int main(int argc, char** argv) {
           << target_type << " Known are: sensor_msgs/JointState, franka_core_msgs/JointCommand");
       continue;
     }
+    // Create reflex object for this topic
+    auto *oto = new rotools::OnlineTrajectoryOptimizer(target_names.size(), 500);
+    if (reflex_flag > 0) {
+      std::vector<double> max_vel, max_acc, max_jerk, scales;
+      if (!phaseJointParameterMap<double>(pnh,"max_vel", source_names, target_names, max_vel)) {
+        ROS_ERROR("Get joint max velocity failed");
+        return -1;
+      }
+      if (!phaseJointParameterMap<double>(pnh,"max_acc", source_names, target_names, max_acc)) {
+        ROS_ERROR("Get joint max acceleration failed");
+        return -1;
+      }
+      if (!phaseJointParameterMap<double>(pnh,"max_jerk", source_names, target_names, max_jerk)) {
+        ROS_ERROR("Get joint max jerk failed");
+        return -1;
+      }
+      std::vector<std::string> query_names{"vel", "acc", "jerk"};
+      if (!phaseJointParameterMap<double>(pnh,"scales", query_names, query_names, scales)) {
+        ROS_ERROR("Get vel_scale, acc_scale, and jerk_scale failed");
+        return -1;
+      }
+      ROS_ASSERT(!max_vel.empty() && !max_acc.empty() && !max_jerk.empty() && scales.size() == 3);
+      oto->setParameters(max_vel, max_acc, max_jerk, scales[0], scales[1], scales[2]);
+    }
+    optimizers_.push_back(oto);
 
+    const size_t oto_id = i;
     ros::Subscriber subscriber = nh.subscribe<sensor_msgs::JointState>(
         source_js_topics[i], 1,
-        [publisher, target_type, target_arg, source_names, target_names](auto && PH1) {
+        [oto_id, publisher, target_type, target_arg, source_names, target_names](auto && PH1) {
           return jointStateCb(
-              std::forward<decltype(PH1)>(PH1), publisher, target_type, target_arg, source_names, target_names);}
+              std::forward<decltype(PH1)>(PH1), oto_id, publisher, target_type, target_arg,
+              source_names, target_names);}
     );
     publishers_.push_back(publisher);
     subscribers_.push_back(subscriber);
   }
 
-  ros::AsyncSpinner spinner(2);
+  ros::AsyncSpinner spinner(source_js_topics.size());
   spinner.start();
   ros::waitForShutdown();
 

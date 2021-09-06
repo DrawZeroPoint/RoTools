@@ -127,13 +127,23 @@ catkin_package(
   CATKIN_DEPENDS ${ROS_DEPENDENCIES}
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(
+  include
+  include/Reflexxes
+  ${catkin_INCLUDE_DIRS}
+)
+
+file(GLOB ReflexxesLib
+  "src/lib/Reflexxes/*.cpp"
+)
 
 # Declare a C++ library
 add_library(${PROJECT_NAME}
   src/lib/rosout_logger.cpp
   src/lib/robot_interface.cpp
   src/lib/control_server.cpp
+  src/lib/online_trajectory_optimizer.cpp
+  ${ReflexxesLib}
 )
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
