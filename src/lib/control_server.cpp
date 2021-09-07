@@ -56,10 +56,7 @@ namespace roport {
     );
   }
 
-  ControlServer::~ControlServer()
-  {
-
-  }
+  ControlServer::~ControlServer() = default;
 
   bool ControlServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
                                            roport::ExecuteAllPoses::Response& resp)

@@ -64,7 +64,7 @@ void publishJointState(const sensor_msgs::JointState& msg, const ros::Publisher 
       if (msg.velocity.size() == msg.position.size()) {
         new_msg.velocity.push_back(msg.velocity[result.second]);
       }
-      if (msg.effort.size() == msg.effort.size()) {
+      if (msg.effort.size() == msg.position.size()) {
         new_msg.effort.push_back(msg.effort[result.second]);
       }
     } else {
