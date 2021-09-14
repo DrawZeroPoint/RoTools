@@ -133,10 +133,14 @@ class Datagram(object):
         qx = common.byte_to_float(item[20:24])
         qy = common.byte_to_float(item[24:28])
         qz = common.byte_to_float(item[28:32])
+        pose = np.array([x, y, z, qx, qy, qz, qw])
+        if not np.any(pose):
+            rospy.logerr('Pose array contains only zeros')
+            return None
         # We do not need to convert the pose from MVN frame (x forward, y up, z right) to ROS frame,
         # since the type 02 data is Z-up, see:
         # https://www.xsens.com/hubfs/Downloads/Manuals/MVN_real-time_network_streaming_protocol_specification.pdf
-        return common.to_ros_pose(np.array([x, y, z, qx, qy, qz, qw]))
+        return common.to_ros_pose(pose)
 
 
 class XsensInterface(object):

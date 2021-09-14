@@ -60,8 +60,7 @@ class XsensServer(EStop):
     def all_poses_msg_handle(self, event):
         if not self.enabled:
             return
-        ok = self.interface.get_datagram()
-        if ok:
+        if self.interface.get_datagram():
             all_poses, body_poses, left_tcp, right_tcp, left_sole, right_sole = \
                 self.interface.get_body_poses(self.pub_detail)
 
