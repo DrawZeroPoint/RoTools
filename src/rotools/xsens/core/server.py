@@ -60,13 +60,13 @@ class XsensServer(EStop):
     def all_poses_msg_handle(self, event):
         if not self.enabled:
             return
-        if self.interface.get_datagram():
+        if not self.interface.get_datagram():
+            return
+        if self.interface.header.is_object:
+            self.object_pose_publisher.publish(self.interface.first_object_pose)
+        else:
             all_poses, body_poses, left_tcp, right_tcp, left_sole, right_sole = \
                 self.interface.get_body_poses(self.pub_detail)
-
-            if self.interface.object_poses is not None:
-                # TODO dzp: for now we only publish the first object pose
-                self.object_pose_publisher.publish(self.interface.first_object_pose)
 
             self.all_poses_publisher.publish(all_poses)
             self.body_poses_publisher.publish(body_poses)
@@ -92,5 +92,4 @@ class XsensServer(EStop):
         else:
             self.set_status(False)
             msg = 'Xsens stream receiving disabled'
-        play_hint_sound(req.data)
         return SetBoolResponse(True, msg)

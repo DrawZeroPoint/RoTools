@@ -134,9 +134,6 @@ class Datagram(object):
         qy = common.byte_to_float(item[24:28])
         qz = common.byte_to_float(item[28:32])
         pose = np.array([x, y, z, qx, qy, qz, qw])
-        if not np.any(pose):
-            rospy.logerr('Pose array contains only zeros')
-            return None
         # We do not need to convert the pose from MVN frame (x forward, y up, z right) to ROS frame,
         # since the type 02 data is Z-up, see:
         # https://www.xsens.com/hubfs/Downloads/Manuals/MVN_real-time_network_streaming_protocol_specification.pdf
@@ -240,6 +237,7 @@ class XsensInterface(object):
 
         # all_poses should at least contain body segment poses
         segment_id = 0
+        assert len(self.all_body_poses.poses) >= 23
         for p in self.all_body_poses.poses:
             main_body_msg.poses.append(p)
             # if segment_id == 7:
@@ -276,7 +274,7 @@ class XsensInterface(object):
                 prop_1_msg.pose = self.all_body_poses.poses[24]
                 return prop_1_msg
             except IndexError:
-                rospy.logwarn_throttle(3, 'Prop number is not 0 but failed to get its pose')
+                rospy.logwarn_once('Prop number is not 0 but failed to get its pose')
                 return None
         else:
             return None
@@ -289,8 +287,11 @@ class XsensInterface(object):
         """
         if self.header is None or not self.header.is_valid:
             return None, None
-        if self.header.finger_segments_num != 40:
-            rospy.logwarn_throttle(3, "Finger segment number is not 40: {}".format(self.header.finger_segments_num))
+        if self.header.finger_segments_num == 0:
+            rospy.loginfo_once("Finger data is not used")
+            return None, None
+        elif self.header.finger_segments_num != 40:
+            rospy.logwarn_once("Finger segment number is not 40: {}".format(self.header.finger_segments_num))
             return None, None
 
         left_hand_js = SensorMsg.JointState()

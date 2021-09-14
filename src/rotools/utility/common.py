@@ -20,22 +20,22 @@ from rotools.utility import transform
 
 def print_debug(content):
     """Print information with green."""
-    print(''.join(['\033[1m\033[92m ', content, '\033[0m']))
+    print(''.join(['\033[1m\033[92m', content, '\033[0m']))
 
 
 def print_info(content):
     """Print information with sky blue."""
-    print(''.join(['\033[1m\033[94m ', content, '\033[0m']))
+    print(''.join(['\033[1m\033[94m', content, '\033[0m']))
 
 
 def print_warn(content):
     """Print warning with yellow."""
-    print(''.join(['\033[1m\033[93m ', content, '\033[0m']))
+    print(''.join(['\033[1m\033[93m', content, '\033[0m']))
 
 
 def print_error(content):
     """Print error with red."""
-    print(''.join(['\033[1m\033[91m ', content, '\033[0m']))
+    print(''.join(['\033[1m\033[91m', content, '\033[0m']))
 
 
 def all_close(goal, actual, tolerance):
