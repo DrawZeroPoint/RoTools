@@ -20,7 +20,7 @@ try:
 except ImportError:
     pass
 
-from rotools.utility import common, transform
+from rotools.utility import common
 
 
 class Header:
@@ -37,6 +37,13 @@ class Header:
         self.finger_segments_num = header[8]  # Number of finger data segments
         self.payload_size = header[9]  # Size of the measurement excluding the header
 
+    def __repr__(self):
+        s = 'Header {}: \nsample_counter {}, datagram_counter {},\n' \
+            'item #{}, body segment #{}, prop #{}, finger segment #{}\n'.format(
+                self.ID_str, self.sample_counter, self.datagram_counter, self.item_counter,
+                self.body_segments_num, self.props_num, self.finger_segments_num)
+        return s
+
     @property
     def is_valid(self):
         if self.ID_str != 'MXTP02':
@@ -46,7 +53,7 @@ class Header:
             rospy.logwarn('Segments number in total does not match item counter')
             return False
         if self.payload_size % self.item_counter != 0:
-            rospy.logwarn('Payload of size {} is incomplete'.format(self.payload_size))
+            rospy.logwarn('Payload size {} is not dividable by item number {}'.format(self.payload_size, self.item_num))
             return False
         return True
 
@@ -65,13 +72,18 @@ class Header:
         return self.payload_size // self.item_num
 
 
-class Payload:
-    def __init__(self, payload, header):
-        self.payload = payload
+class Datagram(object):
+    def __init__(
+            self,
+            header,
+            payload
+    ):
         self.header = header
-        self.item_num = header.item_num
-        self._payload_len = len(self.payload)
-        self._item_size = self._payload_len // self.item_num
+        self.payload = payload
+
+    @property
+    def is_object(self):
+        return self.header.is_object
 
     def decode_to_pose_array_msg(self, ref_frame, ref_frame_id=None, scaling_factor=1.0):
         """Decode the bytes in the streaming data to pose array message.
@@ -85,9 +97,10 @@ class Payload:
         pose_array_msg = GeometryMsg.PoseArray()
         pose_array_msg.header.stamp = rospy.Time.now()
         pose_array_msg.header.frame_id = ref_frame
-        for i in range(self.item_num):
-            item = self.payload[i * self._item_size:(i + 1) * self._item_size]
-            pose_msg = self._type_02_decode_to_pose_msg(item)
+
+        for i in range(self.header.item_num):
+            item = self.payload[i * self.header.item_size:(i + 1) * self.header.item_size]
+            pose_msg = self._decode_to_pose_msg(item)
             if pose_msg is None:
                 return None
             pose_array_msg.poses.append(pose_msg)
@@ -104,15 +117,15 @@ class Payload:
         return pose_array_msg
 
     @staticmethod
-    def _type_02_decode_to_pose_msg(item):
+    def _decode_to_pose_msg(item):
         """Decode a type 02 stream to ROS pose message.
 
         :param item: str String of bytes
         """
-        # segment_id = common.byte_to_uint32(item[:4])
         if len(item) != 32:
-            # FIXME some of the received data only has length=2
+            rospy.logerr('Payload pose data size is not 32: {}'.format(len(item)))
             return None
+        # segment_id = common.byte_to_uint32(item[:4])
         x = common.byte_to_float(item[4:8])
         y = common.byte_to_float(item[8:12])
         z = common.byte_to_float(item[12:16])
@@ -138,17 +151,17 @@ class XsensInterface(object):
     ):
         super(XsensInterface, self).__init__()
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
-        self.sock.bind((udp_ip, udp_port))
-        self.buffer_size = buffer_size
-        self.scaling_factor = scaling
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
+        self._sock.bind((udp_ip, udp_port))
+        self._buffer_size = buffer_size
 
         self._ref_frames = {'Pelvis': 0, 'T8': 4}
+
         if ref_frame in self._ref_frames:
             self.ref_frame = ref_frame
             self.ref_frame_id = self._ref_frames[ref_frame]
-        elif ref_frame == '':
-            rospy.logwarn('Reference frame is empty, using default (world)')
+        elif ref_frame == '' or ref_frame == 'world':
+            rospy.logwarn('Reference frame is the world frame')
             self.ref_frame = 'world'
             self.ref_frame_id = None
         else:
@@ -156,8 +169,10 @@ class XsensInterface(object):
             self.ref_frame = ref_frame
             self.ref_frame_id = None
 
+        self.scaling_factor = scaling
         self.header = None
         self.object_poses = None
+        self.all_body_poses = None
 
     @property
     def first_object_pose(self):
@@ -169,78 +184,74 @@ class XsensInterface(object):
             pose.pose = self.object_poses.poses[0]
             return pose
 
-    def get_all_poses(self):
+    def get_datagram(self):
         """[Main entrance function] Get poses from the datagram.
 
         """
-        data, _ = self.sock.recvfrom(self.buffer_size)
-        self.header = self._get_header()
-        if self.header is not None and self.header.is_valid:
-            payload = Payload(data[24:], self.header)
-            pose_array_msg = payload.decode_to_pose_array_msg(self.ref_frame, self.ref_frame_id)
+        data, _ = self._sock.recvfrom(self._buffer_size)
+        datagram = self._get_datagram(data)
+        if datagram is not None:
+            pose_array_msg = datagram.decode_to_pose_array_msg(self.ref_frame, self.ref_frame_id)
             if pose_array_msg is None:
-                return False, None
-            if self.header.is_object:
+                return False
+            if datagram.is_object:
                 self.object_poses = pose_array_msg  # Only body poses are returned
-                return False, None
             else:
-                return True, pose_array_msg
+                self.all_body_poses = pose_array_msg
+            return True
         else:
-            rospy.logerr('Header is not valid')
-            return False, None
+            return False
 
-    def get_body_pose_array_msg(self, all_poses):
+    def get_body_poses(self, pub_details=False):
         """Given all segment poses, extract the body segment poses and TCP poses from that.
         The body poses are simply all poses without hand segment poses and property poses.
 
-        :param all_poses: PoseArray A pose array composed of all segment poses.
         :return: PoseArray PoseStamped PoseStamped PoseStamped PoseStamped
                  Body segment poses, left hand pose, right hand pose, left sole pose, right sole pose.
         """
-        assert isinstance(all_poses, GeometryMsg.PoseArray)
-        body_pose_array_msg = GeometryMsg.PoseArray()
-        body_pose_array_msg.header = all_poses.header
+        main_body_msg = GeometryMsg.PoseArray()
+        main_body_msg.header = self.all_body_poses.header
         left_tcp_msg = GeometryMsg.PoseStamped()
         right_tcp_msg = GeometryMsg.PoseStamped()
         left_sole_msg = GeometryMsg.PoseStamped()
         right_sole_msg = GeometryMsg.PoseStamped()
-        left_shoulder_msg = GeometryMsg.PoseStamped()
-        right_shoulder_msg = GeometryMsg.PoseStamped()
-        left_upper_arm_msg = GeometryMsg.PoseStamped()
-        right_upper_arm_msg = GeometryMsg.PoseStamped()
-        left_forearm_msg = GeometryMsg.PoseStamped()
-        right_forearm_msg = GeometryMsg.PoseStamped()
+        # left_shoulder_msg = GeometryMsg.PoseStamped()
+        # right_shoulder_msg = GeometryMsg.PoseStamped()
+        # left_upper_arm_msg = GeometryMsg.PoseStamped()
+        # right_upper_arm_msg = GeometryMsg.PoseStamped()
+        # left_forearm_msg = GeometryMsg.PoseStamped()
+        # right_forearm_msg = GeometryMsg.PoseStamped()
 
         # Initialize message headers
-        left_tcp_msg.header = all_poses.header
+        left_tcp_msg.header = self.all_body_poses.header
         right_tcp_msg.header = left_tcp_msg.header
         left_sole_msg.header = left_tcp_msg.header
         right_sole_msg.header = left_tcp_msg.header
-        left_shoulder_msg.header = left_tcp_msg.header
-        right_shoulder_msg.header = left_tcp_msg.header
-        left_upper_arm_msg.header = left_tcp_msg.header
-        right_upper_arm_msg.header = left_tcp_msg.header
-        left_forearm_msg.header = left_tcp_msg.header
-        right_forearm_msg.header = left_tcp_msg.header
+        # left_shoulder_msg.header = left_tcp_msg.header
+        # right_shoulder_msg.header = left_tcp_msg.header
+        # left_upper_arm_msg.header = left_tcp_msg.header
+        # right_upper_arm_msg.header = left_tcp_msg.header
+        # left_forearm_msg.header = left_tcp_msg.header
+        # right_forearm_msg.header = left_tcp_msg.header
 
         # all_poses should at least contain body segment poses
         segment_id = 0
-        for p in all_poses.poses:
-            body_pose_array_msg.poses.append(p)
-            if segment_id == 7:
-                right_shoulder_msg.pose = p
-            if segment_id == 8:
-                right_upper_arm_msg.pose = p
-            if segment_id == 9:
-                right_forearm_msg.pose = p
+        for p in self.all_body_poses.poses:
+            main_body_msg.poses.append(p)
+            # if segment_id == 7:
+            #     right_shoulder_msg.pose = p
+            # if segment_id == 8:
+            #     right_upper_arm_msg.pose = p
+            # if segment_id == 9:
+            #     right_forearm_msg.pose = p
             if segment_id == 10:
                 right_tcp_msg.pose = p
-            if segment_id == 11:
-                left_shoulder_msg.pose = p
-            if segment_id == 12:
-                left_upper_arm_msg.pose = p
-            if segment_id == 13:
-                left_forearm_msg.pose = p
+            # if segment_id == 11:
+            #     left_shoulder_msg.pose = p
+            # if segment_id == 12:
+            #     left_upper_arm_msg.pose = p
+            # if segment_id == 13:
+            #     left_forearm_msg.pose = p
             if segment_id == 14:
                 left_tcp_msg.pose = p
             if segment_id == 18:
@@ -250,17 +261,15 @@ class XsensInterface(object):
             segment_id += 1
             if segment_id == self.header.body_segments_num:
                 break
-        assert len(body_pose_array_msg.poses) == self.header.body_segments_num
-        return [body_pose_array_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg,
-                left_shoulder_msg, left_upper_arm_msg, left_forearm_msg,
-                right_shoulder_msg, right_upper_arm_msg, right_forearm_msg]
+        assert len(main_body_msg.poses) == self.header.body_segments_num
+        return [self.all_body_poses, main_body_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg]
 
-    def get_prop_msgs(self, all_poses):
+    def get_prop_msgs(self):
         if self.header.props_num == 1:
             try:
                 prop_1_msg = GeometryMsg.PoseStamped()
-                prop_1_msg.header = all_poses.header
-                prop_1_msg.pose = all_poses.poses[24]
+                prop_1_msg.header = self.all_body_poses.header
+                prop_1_msg.pose = self.all_body_poses.poses[24]
                 return prop_1_msg
             except IndexError:
                 rospy.logwarn_throttle(3, 'Prop number is not 0 but failed to get its pose')
@@ -268,10 +277,9 @@ class XsensInterface(object):
         else:
             return None
 
-    def get_hand_joint_states(self, all_poses):
+    def get_hand_joint_states(self):
         """Get joint states for both hand.
 
-        :param all_poses: PoseArray Poses of all segment. Derived from @get_all_poses
         :return: JointState/None JointState/None.
                  Left hand joint states (10), right hand joint states (10)
         """
@@ -283,18 +291,18 @@ class XsensInterface(object):
 
         left_hand_js = SensorMsg.JointState()
         right_hand_js = SensorMsg.JointState()
-        left_hand_js.header = all_poses.header
-        right_hand_js.header = all_poses.header
+        left_hand_js.header = self.all_body_poses.header
+        right_hand_js.header = self.all_body_poses.header
         # Here the hand joint states are defined as j1 and j2 for thumb to pinky
         # j1 is the angle between metacarpals (parent) and proximal phalanges (child)
         # j2 is the angle between proximal phalanges and intermediate/distal phalanges (distal is only for thumb)
         base_num = self.header.body_segments_num + self.header.props_num
         for i in [1, 4, 8, 12, 16]:
             meta_id = base_num + i
-            left_hand_js.position.extend(self._get_finger_j1_j2(all_poses.poses, meta_id))
+            left_hand_js.position.extend(self._get_finger_j1_j2(self.all_body_poses.poses, meta_id))
         for i in [1, 4, 8, 12, 16]:
             meta_id = base_num + 20 + i
-            right_hand_js.position.extend(self._get_finger_j1_j2(all_poses.poses, meta_id))
+            right_hand_js.position.extend(self._get_finger_j1_j2(self.all_body_poses.poses, meta_id))
         return left_hand_js, right_hand_js
 
     @staticmethod
@@ -317,13 +325,17 @@ class XsensInterface(object):
         j2 = np.fabs(euler_angles[np.argmax(np.abs(euler_angles))])
         return [np.minimum(j1, upper) / upper, np.minimum(j2, upper) / upper]
 
-    def _get_header(self):
+    @staticmethod
+    def _get_header(data):
         """Get the header data from the received MVN Awinda datagram.
 
+        :param data: Tuple From self._sock.recvfrom(self._buffer_size)
         :return: Header
         """
-        data, _ = self.sock.recvfrom(self.buffer_size)
-        id_str = common.byte_to_str(data[0:6], 6)  # ID
+        if len(data) < 24:
+            rospy.logwarn('Data length {} is less than 24'.format(len(data)))
+            return None
+        id_str = common.byte_to_str(data[0:6], 6)
         sample_counter = common.byte_to_uint32(data[6:10])
         datagram_counter = struct.unpack('!B', data[10])
         item_number = common.byte_to_uint8(data[11])
@@ -334,10 +346,15 @@ class XsensInterface(object):
         finger_segments_num = common.byte_to_uint8(data[19])
         # 20 21 are reserved for future use
         payload_size = common.byte_to_uint16(data[22:24])
-        rospy.logdebug('Stream received: \n'
-                       'id {}, sample_counter {}, datagram_counter {},\n'
-                       'item #{}, body segment #{}, prop #{}, finger segment #{}\n'
-                       'payload_size {}'.format(id_str, sample_counter, datagram_counter, item_number,
-                                                body_segments_num, props_num, finger_segments_num, payload_size))
-        return Header([id_str, sample_counter, datagram_counter, item_number, time_code, character_id,
-                       body_segments_num, props_num, finger_segments_num, payload_size])
+        header = Header([id_str, sample_counter, datagram_counter, item_number, time_code, character_id,
+                         body_segments_num, props_num, finger_segments_num, payload_size])
+        rospy.logdebug(header.__repr__())
+        return header
+
+    def _get_datagram(self, data):
+        header = self._get_header(data)
+        if header is not None and header.is_valid:
+            self.header = header
+            return Datagram(header, data[24:])
+        else:
+            return None

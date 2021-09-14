@@ -260,6 +260,45 @@ should be set for each getter and setter topics. If it is not set, there should
  be only one getter and one setter topic, in this case, the algorithm will use
 all names set in the parameter `joint_name_param_id`. 
 
+### roport_msg_converter
+
+This converter will convert `sensor_msgs::JointState` type message from one topic to another. Be different with `remap`,
+the name field could change during the convention. More importantly, it could also convert the message to other
+message types---even customized types.
+
+To use this function, in the launch file, we need define the following parameters:
+
+`source_joint_names` list[list] The outer list is for all joint groups, each joint group is composed by several
+                    joints that should be measured together and be controlled by a control topic.
+
+`target_joint_names` list[list] This field has one-on-one correspondence with source_joint_names, the given joint
+                    values will be under the new names defined by target_joint_names.
+
+`source_js_topics` list[str] Joint state topics that should be converted to the target_js_topics.
+
+`target_js_topics` list[str] Topics converted from source_js_topics.
+
+`target_types` list[str] Target topic types. By default, the target topics will have the type JointState,
+              other types are also supported but need modifying the code. Here we support sensor_msgs/JointState
+              and franka_core_msgs/JointCommand. If given, its size must be equal to target_js_topics.
+
+`target_args` list[int] Give one argument for each target topic publishing. This argument often
+             defines the control type. If given, its size must be equal to target_js_topics.
+
+`enable_reflex` list[int] If the value>0, Reflexxes will be used to smooth the source js before conversion.
+
+If enable_reflex is set, the following params need to be set:
+
+`max_vel` map[str, double] For each joint_name, define its maximum velocity. The name could either be source name
+         or target name (the same for max_acc and max_jerk).
+
+`max_acc` map[str, double] For each joint_name, define its maximum acceleration.
+
+`max_jerk` map[str, double] For each joint_name, define its maximum jerk.
+
+`scales` map[str, double] The keys should be vel, acc, and jerk; the values are the scale factor to be multiplied
+        to max_vel, max_acc, and max_jerk, respectively.
+
 
 ## Coding Guide
 

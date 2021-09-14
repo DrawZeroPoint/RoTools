@@ -23,6 +23,7 @@ class EStop(object):
             self.listener.start()  # start the thread and run subsequent codes
         else:
             print_warn('Keyboard emergency stop control is not supported on the current platform')
+            print_warn('Consider install pynput (sudo pip install pynput) and restart!')
 
     def _on_press(self, key):
         if key == Key.caps_lock:
