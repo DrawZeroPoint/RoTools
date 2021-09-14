@@ -163,13 +163,8 @@ To establish the conversion:
    
 3. Launch the xsens server
    ```shell
-    roslaunch roport roport_xsens.launch udp_ip:=192.168.13.234
+    roslaunch roport roport_xsens.launch
    ```
-   **Note that the server will be initialized after it receiving the first datagram from the stream,
-     so the server should be started after streaming.**
-   
-   Here, `192.168.13.234` is the local IP address of the receiver machine running this file. 
-   Note that you cannot use an IP like `127.0.0.1`.
    
 #### Converted topics
 
