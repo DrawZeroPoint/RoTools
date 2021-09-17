@@ -29,6 +29,7 @@ class XsensServer(EStop):
         # Cartesian pose publishers
         self.all_poses_publisher = rospy.Publisher('/xsens/all_poses', PoseArray, queue_size=1)
         self.body_poses_publisher = rospy.Publisher('/xsens/body_poses', PoseArray, queue_size=1)
+        self.base_pose_publisher = rospy.Publisher('/xsens/base', PoseStamped, queue_size=1)
         self.left_tcp_publisher = rospy.Publisher('/xsens/left_tcp', PoseStamped, queue_size=1)
         self.right_tcp_publisher = rospy.Publisher('/xsens/right_tcp', PoseStamped, queue_size=1)
         self.left_sole_publisher = rospy.Publisher('/xsens/left_sole', PoseStamped, queue_size=1)
@@ -65,11 +66,12 @@ class XsensServer(EStop):
         if self.interface.header.is_object:
             self.object_pose_publisher.publish(self.interface.first_object_pose)
         else:
-            all_poses, body_poses, left_tcp, right_tcp, left_sole, right_sole = \
+            all_poses, body_poses, base_pose, left_tcp, right_tcp, left_sole, right_sole = \
                 self.interface.get_body_poses(self.pub_detail)
 
             self.all_poses_publisher.publish(all_poses)
             self.body_poses_publisher.publish(body_poses)
+            self.base_pose_publisher.publish(base_pose)
             self.left_tcp_publisher.publish(left_tcp)
             self.right_tcp_publisher.publish(right_tcp)
             self.left_sole_publisher.publish(left_sole)

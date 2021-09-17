@@ -212,6 +212,7 @@ class XsensInterface(object):
         """
         main_body_msg = GeometryMsg.PoseArray()
         main_body_msg.header = self.all_body_poses.header
+        base_pose_msg = GeometryMsg.PoseStamped()
         left_tcp_msg = GeometryMsg.PoseStamped()
         right_tcp_msg = GeometryMsg.PoseStamped()
         left_sole_msg = GeometryMsg.PoseStamped()
@@ -224,6 +225,7 @@ class XsensInterface(object):
         # right_forearm_msg = GeometryMsg.PoseStamped()
 
         # Initialize message headers
+        base_pose_msg.header = self.all_body_poses.header
         left_tcp_msg.header = self.all_body_poses.header
         right_tcp_msg.header = left_tcp_msg.header
         left_sole_msg.header = left_tcp_msg.header
@@ -240,6 +242,8 @@ class XsensInterface(object):
         assert len(self.all_body_poses.poses) >= 23
         for p in self.all_body_poses.poses:
             main_body_msg.poses.append(p)
+            if segment_id == 4:  # T8
+                base_pose_msg.pose = p
             # if segment_id == 7:
             #     right_shoulder_msg.pose = p
             # if segment_id == 8:
@@ -264,7 +268,8 @@ class XsensInterface(object):
             if segment_id == self.header.body_segments_num:
                 break
         assert len(main_body_msg.poses) == self.header.body_segments_num
-        return [self.all_body_poses, main_body_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg]
+        return [self.all_body_poses, main_body_msg, base_pose_msg, left_tcp_msg,
+                right_tcp_msg, left_sole_msg, right_sole_msg]
 
     def get_prop_msgs(self):
         if self.header.props_num == 1:
