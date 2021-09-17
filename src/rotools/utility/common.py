@@ -347,7 +347,7 @@ def pretty_print_configs(configs):
             if len(value_str) > max_value_len:
                 max_value_len = len(value_str)
 
-    print_info("\n {}{}{}".format('=' * (max_key_len + 1), " ROPORT CONFIGS ", '=' * (max_value_len - 15)))
+    print_info("\n{}{}{}".format('=' * (max_key_len + 1), " ROPORT CONFIGS ", '=' * (max_value_len - 15)))
     for key, value in configs.items():
         key_msg = '{message: <{width}}'.format(message=key, width=max_key_len)
         empty_key_msg = '{message: <{width}}'.format(message='', width=max_key_len)
