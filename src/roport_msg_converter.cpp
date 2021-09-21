@@ -153,35 +153,37 @@ void smoothJointState(const sensor_msgs::JointState& msg, rotools::OnlineTraject
   }
 }
 
-void filterJointState(const sensor_msgs::JointState::ConstPtr& msg, sensor_msgs::JointState &msg_out,
+bool filterJointState(const sensor_msgs::JointState::ConstPtr& msg, sensor_msgs::JointState &msg_out,
                       const std::vector<std::string> &source_names) {
   msg_out.header = msg->header;
   msg_out.name = source_names;
   for (auto &name : source_names) {
     auto result = findInVector(msg->name, name);
     if (result.first) {
-      msg_out.position.push_back(msg->position[result.second]);
-      try {
-        msg_out.velocity.push_back(msg->velocity[result.second]);
-      } catch (const std::out_of_range& oor) {
-        ROS_WARN_STREAM("Query velocity field out of range");
+      if (msg->position.empty() || msg->position.size() != source_names.size()) {
+        ROS_ERROR_STREAM("Source JointState msg defines no position");
+        return false;
       }
-      try {
+      msg_out.position.push_back(msg->position[result.second]);
+      if (!msg->velocity.empty() && msg->velocity.size() == msg->position.size()) {
+        msg_out.velocity.push_back(msg->velocity[result.second]);
+      }
+      if (!msg->effort.empty() && msg->effort.size() == msg->position.size()) {
         msg_out.effort.push_back(msg->effort[result.second]);
-      } catch (const std::out_of_range& oor) {
-        ROS_WARN_STREAM("Query effort field out of range");
       }
     } else {
       ROS_ERROR_STREAM("Source JointState msg defines no " << name);
+      return false;
     }
   }
+  return true;
 }
 
 void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const size_t& oto_id,
                   const ros::Publisher &pub, const std::string& type, const int& arg,
                   const std::vector<std::string> &source_names, const std::vector<std::string> &target_names) {
   sensor_msgs::JointState filtered_msg;
-  filterJointState(msg, filtered_msg, source_names);
+  if (!filterJointState(msg, filtered_msg, source_names)) return;
   sensor_msgs::JointState smoothed_msg;
   smoothJointState(filtered_msg, optimizers_[oto_id], smoothed_msg);
   if (type == "sensor_msgs/JointState") {
