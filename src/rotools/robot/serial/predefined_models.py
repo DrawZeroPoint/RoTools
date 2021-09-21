@@ -206,7 +206,7 @@ def panda_poe_model():
     return M, screw_axes
 
 
-def franka_panda():
+def panda_mdh_model():
     """MDH parameters in alpha, a, theta, d order, with units be meter or radius
 
     note:
