@@ -160,7 +160,7 @@ bool filterJointState(const sensor_msgs::JointState::ConstPtr& msg, sensor_msgs:
   for (auto &name : source_names) {
     auto result = findInVector(msg->name, name);
     if (result.first) {
-      if (msg->position.empty() || msg->position.size() != source_names.size()) {
+      if (msg->position.empty() || msg->position.size() < source_names.size()) {
         ROS_ERROR_STREAM("Source JointState msg defines no position");
         return false;
       }
@@ -191,7 +191,7 @@ void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const size_t& ot
   } else if (type == "franka_core_msgs/JointCommand") {
     publishJointCommand(smoothed_msg, pub, arg, source_names, target_names);
   } else {
-    ROS_ERROR_STREAM_ONCE_NAMED("RoPort Converter", "Unknown target topic type: "
+    ROS_ERROR_STREAM_ONCE("RoPort Msg Converter: Unknown target topic type: "
         << type << " Known are: sensor_msgs/JointState, franka_core_msgs/JointCommand");
   }
 }
@@ -202,7 +202,7 @@ bool phaseJointParameterMap(ros::NodeHandle nh, const std::string& param_name,
                             const std::vector<std::string>& target_names, std::vector<T>& param_out) {
   std::map<std::string, T> param_map;
   if (!nh.getParam(param_name, param_map) ) {
-    ROS_ERROR("Get %s failed", param_name.c_str());
+    ROS_ERROR("RoPort Msg Converter: Get %s failed", param_name.c_str());
     return false;
   }
   for (size_t n = 0; n < source_names.size(); ++n) {
@@ -211,7 +211,7 @@ bool phaseJointParameterMap(ros::NodeHandle nh, const std::string& param_name,
     } else if (param_map.find(target_names[n]) != param_map.end()) {
       param_out.push_back(param_map[target_names[n]]);
     } else {
-      ROS_ERROR("Unable to find %s param for %s(%s)", param_name.c_str(),
+      ROS_ERROR("RoPort Msg Converter: Unable to find %s param for %s(%s)", param_name.c_str(),
                 source_names[n].c_str(), target_names[n].c_str());
       return false;
     }
