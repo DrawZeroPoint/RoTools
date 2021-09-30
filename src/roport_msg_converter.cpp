@@ -10,6 +10,10 @@
 #include <franka_core_msgs/JointCommand.h>
 #endif
 
+#ifdef UBT_CORE_MSGS
+#include <ubt_core_msgs/JointCommand.h>
+#endif
+
 #ifdef YOUR_CUSTOM_MSGS
 // Include your message headers
 #endif
