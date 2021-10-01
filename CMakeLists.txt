@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.10)
 project(roport)
 
 #Comment this if don't want debug
@@ -38,14 +38,14 @@ else (${franka_core_msgs_FOUND})
   MESSAGE(STATUS "NOT FOUND franka_core_msgs")
 endif (${franka_core_msgs_FOUND})
 
-#find_package(ubt_core_msgs)
-#
-#if (${ubt_core_msgs_FOUND})
-#  add_definitions(-DUBT_CORE_MSGS)
-#  MESSAGE(STATUS "FOUND ubt_core_msgs")
-#else (${ubt_core_msgs_FOUND})
-#  MESSAGE(STATUS "NOT FOUND ubt_core_msgs")
-#endif (${ubt_core_msgs_FOUND})
+find_package(ubt_core_msgs)
+
+if (${ubt_core_msgs_FOUND})
+  add_definitions(-DUBT_CORE_MSGS)
+  MESSAGE(STATUS "FOUND ubt_core_msgs")
+else (${ubt_core_msgs_FOUND})
+  MESSAGE(STATUS "NOT FOUND ubt_core_msgs")
+endif (${ubt_core_msgs_FOUND})
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
