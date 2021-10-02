@@ -35,6 +35,8 @@ std::map<MSG_TYPES, std::string> msg_type_map_ = {
     {FRANKA_CORE_MSGS_JOINT_COMMAND, "franka_core_msgs/JointCommand"},
 };
 
+const std::string MODULE_ = "RoPort Converter: ";
+
 /**
  * Generic function to find an element in vector and also its position. It returns a pair of bool & int.
  * @tparam T
@@ -65,12 +67,12 @@ void publishJointState(const sensor_msgs::JointState& src_msg, const ros::Publis
   tgt_msg.header = src_msg.header;
 
   if (src_msg.name.empty()) {
-    ROS_ERROR_ONCE_NAMED("RoPort Converter", "Source JointState topic have empty name field");
+    ROS_ERROR_STREAM_ONCE_NAMED("RoPort Converter", MODULE_ << "Source JointState topic have empty name field");
     return;
   }
   // It is possible to convert only a part of the joint values in the given source message to target message.
   if (src_msg.name.size() < source_names.size()) {
-    ROS_ERROR_NAMED("RoPort Converter", "Message name field has fewer names than source names");
+    ROS_ERROR_STREAM_NAMED("RoPort Converter", MODULE_ << "Source message has fewer names than expected");
     return;
   }
   for (size_t i = 0; i < source_names.size(); ++i) {
@@ -85,7 +87,7 @@ void publishJointState(const sensor_msgs::JointState& src_msg, const ros::Publis
         tgt_msg.effort.push_back(src_msg.effort[result.second]);
       }
     } else {
-      ROS_ERROR_STREAM_NAMED("RoPort Converter", "Source joint name "
+      ROS_ERROR_STREAM_NAMED("RoPort Converter", MODULE_ << "Source joint name "
           << source_names[i] << "does not match any name in the given JointState message");
     }
   }
@@ -143,18 +145,18 @@ void publishUBTJointCommand(const sensor_msgs::JointState& src_msg, const ros::P
   ubt_core_msgs::JointCommand tgt_msg;
   std::set<int> supported_modes{5, 8};
   if (supported_modes.find(arg) == supported_modes.end()) {
-    ROS_ERROR_STREAM_ONCE_NAMED("RoPort Converter", "Mode " << arg << " is not supported");
+    ROS_ERROR_STREAM_ONCE_NAMED("RoPort Converter", MODULE_ << "Mode " << arg << " is not supported");
     return;
   } else {
     tgt_msg.mode = arg;
   }
   if (src_msg.name.empty()) {
-    ROS_ERROR_ONCE_NAMED("RoPort Converter", "Source JointState topic have empty name field");
+    ROS_ERROR_STREAM_ONCE_NAMED("RoPort Converter", MODULE_ << "Source JointState topic have empty name field");
     return;
   }
   // It is possible to convert only a part of the joint values in the given message.
   if (src_msg.name.size() < source_names.size()) {
-    ROS_ERROR_NAMED("RoPort Converter", "Message name field has fewer names than source names");
+    ROS_ERROR_STREAM_NAMED("RoPort Converter", MODULE_ << "Message name field has fewer names than source names");
     return;
   }
   for (size_t i = 0; i < source_names.size(); ++i) {
@@ -163,7 +165,7 @@ void publishUBTJointCommand(const sensor_msgs::JointState& src_msg, const ros::P
       tgt_msg.names.push_back(target_names[i]);
       tgt_msg.command.push_back(src_msg.position[result.second]);
     } else {
-      ROS_ERROR_STREAM_NAMED("RoPort Converter", "Source joint name "
+      ROS_ERROR_STREAM_NAMED("RoPort Converter", MODULE_ << "Source joint name "
           << source_names[i] << "does not match any name in the given JointState message");
     }
   }
@@ -197,7 +199,7 @@ void smoothJointState(const sensor_msgs::JointState& msg, rotools::OnlineTraject
       }
     }
   } catch (const std::out_of_range& oor) {
-    ROS_ERROR_STREAM("Out of Range error: " << oor.what());
+    ROS_ERROR_STREAM("RoPort Converter: Out of Range error: " << oor.what());
   }
   if (!smoothed) {
     smoothed_msg.position = msg.position;
@@ -206,28 +208,40 @@ void smoothJointState(const sensor_msgs::JointState& msg, rotools::OnlineTraject
   }
 }
 
-bool filterJointState(const sensor_msgs::JointState::ConstPtr& msg, sensor_msgs::JointState &msg_out,
+bool filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg, sensor_msgs::JointState &tgt_msg,
                       const std::vector<std::string> &source_names) {
-  msg_out.header = msg->header;
-  msg_out.name = source_names;
+  tgt_msg.header = src_msg->header;
+  tgt_msg.name = source_names;
+  size_t i = 0;
   for (auto &name : source_names) {
-    auto result = findInVector(msg->name, name);
+    auto result = findInVector(src_msg->name, name);
     if (result.first) {
-      if (msg->position.empty() || msg->position.size() < source_names.size()) {
-        ROS_ERROR_STREAM("Source JointState msg defines no position");
+      if (src_msg->position.empty() || src_msg->position.size() < source_names.size()) {
+        ROS_ERROR_STREAM(MODULE_ << "Source JointState src_msg defines no position");
         return false;
       }
-      msg_out.position.push_back(msg->position[result.second]);
-      if (!msg->velocity.empty() && msg->velocity.size() == msg->position.size()) {
-        msg_out.velocity.push_back(msg->velocity[result.second]);
+      tgt_msg.position.push_back(src_msg->position[result.second]);
+      if (!src_msg->velocity.empty() && src_msg->velocity.size() == src_msg->position.size()) {
+        tgt_msg.velocity.push_back(src_msg->velocity[result.second]);
       }
-      if (!msg->effort.empty() && msg->effort.size() == msg->position.size()) {
-        msg_out.effort.push_back(msg->effort[result.second]);
+      if (!src_msg->effort.empty() && src_msg->effort.size() == src_msg->position.size()) {
+        tgt_msg.effort.push_back(src_msg->effort[result.second]);
       }
     } else {
-      ROS_ERROR_STREAM("Source JointState msg defines no " << name);
-      return false;
+      if (src_msg->position.size() == source_names.size()) {
+        tgt_msg.position.push_back(src_msg->position[i]);
+        if (src_msg->velocity.size() == source_names.size()) {
+          tgt_msg.velocity.push_back(src_msg->velocity[i]);
+        }
+        if (src_msg->effort.size() == source_names.size()) {
+          tgt_msg.effort.push_back(src_msg->effort[i]);
+        }
+      } else {
+        ROS_ERROR_STREAM("RoPort Converter: Source JointState src_msg defines no " << name);
+        return false;
+      }
     }
+    i++;
   }
   return true;
 }
