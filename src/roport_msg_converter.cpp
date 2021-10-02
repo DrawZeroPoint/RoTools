@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 #include <boost/bind.hpp>
+#include <map>
 
 #include <sensor_msgs/JointState.h>
 
@@ -21,6 +22,18 @@
 std::vector<ros::Publisher> publishers_;
 std::vector<ros::Subscriber> subscribers_;
 std::vector<rotools::OnlineTrajectoryOptimizer*> optimizers_;
+
+enum MSG_TYPES {
+  SENSOR_MSGS_JOINT_STATE,
+  UBT_CORE_MSGS_JOINT_COMMAND,
+  FRANKA_CORE_MSGS_JOINT_COMMAND,
+};
+
+std::map<MSG_TYPES, std::string> msg_type_map_ = {
+    {SENSOR_MSGS_JOINT_STATE, "sensor_msgs/JointState"},
+    {UBT_CORE_MSGS_JOINT_COMMAND, "ubt_core_msgs/JointCommand"},
+    {FRANKA_CORE_MSGS_JOINT_COMMAND, "franka_core_msgs/JointCommand"},
+};
 
 /**
  * Generic function to find an element in vector and also its position. It returns a pair of bool & int.
@@ -46,79 +59,115 @@ std::pair<bool, int> findInVector(const std::vector<T>& vecOfElements, const T& 
   return result;
 }
 
-void publishJointState(const sensor_msgs::JointState& msg, const ros::Publisher &pub,
+void publishJointState(const sensor_msgs::JointState& src_msg, const ros::Publisher &pub,
                        const std::vector<std::string> &source_names, const std::vector<std::string> &target_names) {
-  sensor_msgs::JointState new_msg;
-  new_msg.header = msg.header;
+  sensor_msgs::JointState tgt_msg;
+  tgt_msg.header = src_msg.header;
 
-  if (msg.name.empty()) {
+  if (src_msg.name.empty()) {
     ROS_ERROR_ONCE_NAMED("RoPort Converter", "Source JointState topic have empty name field");
     return;
   }
-  // It is possible to convert only a part of the joint values in the given message.
-  if (msg.name.size() < source_names.size()) {
+  // It is possible to convert only a part of the joint values in the given source message to target message.
+  if (src_msg.name.size() < source_names.size()) {
     ROS_ERROR_NAMED("RoPort Converter", "Message name field has fewer names than source names");
     return;
   }
   for (size_t i = 0; i < source_names.size(); ++i) {
-    auto result = findInVector<std::string>(msg.name, source_names[i]);
+    auto result = findInVector<std::string>(src_msg.name, source_names[i]);
     if (result.first) {
-      new_msg.name.push_back(target_names[i]);
-      new_msg.position.push_back(msg.position[result.second]);
-      if (msg.velocity.size() == msg.position.size()) {
-        new_msg.velocity.push_back(msg.velocity[result.second]);
+      tgt_msg.name.push_back(target_names[i]);
+      tgt_msg.position.push_back(src_msg.position[result.second]);
+      if (src_msg.velocity.size() == src_msg.position.size()) {
+        tgt_msg.velocity.push_back(src_msg.velocity[result.second]);
       }
-      if (msg.effort.size() == msg.position.size()) {
-        new_msg.effort.push_back(msg.effort[result.second]);
+      if (src_msg.effort.size() == src_msg.position.size()) {
+        tgt_msg.effort.push_back(src_msg.effort[result.second]);
       }
     } else {
       ROS_ERROR_STREAM_NAMED("RoPort Converter", "Source joint name "
           << source_names[i] << "does not match any name in the given JointState message");
     }
   }
-  pub.publish(new_msg);
+  pub.publish(tgt_msg);
 }
 
-void publishJointCommand(const sensor_msgs::JointState& msg, const ros::Publisher &pub, const int& arg,
-                         const std::vector<std::string> &source_names, const std::vector<std::string> &target_names) {
+void publishFrankaJointCommand(const sensor_msgs::JointState& src_msg, const ros::Publisher &pub, const int& arg,
+                               const std::vector<std::string> &source_names,
+                               const std::vector<std::string> &target_names) {
 #ifdef FRANKA_CORE_MSGS
-  franka_core_msgs::JointCommand new_msg;
-  new_msg.header = msg.header;
+  franka_core_msgs::JointCommand tgt_msg;
+  tgt_msg.header = src_msg.header;
   std::set<int> supported_modes{
-      new_msg.IMPEDANCE_MODE, new_msg.POSITION_MODE, new_msg.TORQUE_MODE, new_msg.VELOCITY_MODE
+      tgt_msg.IMPEDANCE_MODE, tgt_msg.POSITION_MODE, tgt_msg.TORQUE_MODE, tgt_msg.VELOCITY_MODE
   };
   if (supported_modes.find(arg) == supported_modes.end()) {
     ROS_ERROR_STREAM_ONCE_NAMED("RoPort Converter", "Mode " << arg << " is not supported");
     return;
   } else {
-    new_msg.mode = arg;
+    tgt_msg.mode = arg;
   }
-  if (msg.name.empty()) {
+  if (src_msg.name.empty()) {
     ROS_ERROR_ONCE_NAMED("RoPort Converter", "Source JointState topic have empty name field");
     return;
   }
   // It is possible to convert only a part of the joint values in the given message.
-  if (msg.name.size() < source_names.size()) {
+  if (src_msg.name.size() < source_names.size()) {
     ROS_ERROR_NAMED("RoPort Converter", "Message name field has fewer names than source names");
     return;
   }
   for (size_t i = 0; i < source_names.size(); ++i) {
-    auto result = findInVector<std::string>(msg.name, source_names[i]);
+    auto result = findInVector<std::string>(src_msg.name, source_names[i]);
     if (result.first) {
-      new_msg.names.push_back(target_names[i]);
-      new_msg.position.push_back(msg.position[result.second]);
-      if (msg.velocity.size() == msg.position.size()) {
-        new_msg.velocity.push_back(msg.velocity[result.second]);
+      tgt_msg.names.push_back(target_names[i]);
+      tgt_msg.position.push_back(src_msg.position[result.second]);
+      if (src_msg.velocity.size() == src_msg.position.size()) {
+        tgt_msg.velocity.push_back(src_msg.velocity[result.second]);
       }
-      if (msg.effort.size() == msg.position.size()) {
-        new_msg.effort.push_back(msg.effort[result.second]);
+      if (src_msg.effort.size() == src_msg.position.size()) {
+        tgt_msg.effort.push_back(src_msg.effort[result.second]);
       }
     } else {
       ROS_ERROR_STREAM_NAMED("RoPort Converter", "Source joint name "
           << source_names[i] << "does not match any name in the given JointState message");
     }
   }
-  pub.publish(new_msg);
+  pub.publish(tgt_msg);
+#endif
+}
+
+void publishUBTJointCommand(const sensor_msgs::JointState& src_msg, const ros::Publisher &pub, const int& arg,
+                            const std::vector<std::string> &source_names,
+                            const std::vector<std::string> &target_names) {
+#ifdef UBT_CORE_MSGS
+  ubt_core_msgs::JointCommand tgt_msg;
+  std::set<int> supported_modes{5, 8};
+  if (supported_modes.find(arg) == supported_modes.end()) {
+    ROS_ERROR_STREAM_ONCE_NAMED("RoPort Converter", "Mode " << arg << " is not supported");
+    return;
+  } else {
+    tgt_msg.mode = arg;
+  }
+  if (src_msg.name.empty()) {
+    ROS_ERROR_ONCE_NAMED("RoPort Converter", "Source JointState topic have empty name field");
+    return;
+  }
+  // It is possible to convert only a part of the joint values in the given message.
+  if (src_msg.name.size() < source_names.size()) {
+    ROS_ERROR_NAMED("RoPort Converter", "Message name field has fewer names than source names");
+    return;
+  }
+  for (size_t i = 0; i < source_names.size(); ++i) {
+    auto result = findInVector<std::string>(src_msg.name, source_names[i]);
+    if (result.first) {
+      tgt_msg.names.push_back(target_names[i]);
+      tgt_msg.command.push_back(src_msg.position[result.second]);
+    } else {
+      ROS_ERROR_STREAM_NAMED("RoPort Converter", "Source joint name "
+          << source_names[i] << "does not match any name in the given JointState message");
+    }
+  }
+  pub.publish(tgt_msg);
 #endif
 }
 
@@ -184,19 +233,20 @@ bool filterJointState(const sensor_msgs::JointState::ConstPtr& msg, sensor_msgs:
 }
 
 void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const size_t& oto_id,
-                  const ros::Publisher &pub, const std::string& type, const int& arg,
+                  const ros::Publisher &publisher, const std::string& type, const int& arg,
                   const std::vector<std::string> &source_names, const std::vector<std::string> &target_names) {
   sensor_msgs::JointState filtered_msg;
   if (!filterJointState(msg, filtered_msg, source_names)) return;
   sensor_msgs::JointState smoothed_msg;
   smoothJointState(filtered_msg, optimizers_[oto_id], smoothed_msg);
-  if (type == "sensor_msgs/JointState") {
-    publishJointState(smoothed_msg, pub, source_names, target_names);
-  } else if (type == "franka_core_msgs/JointCommand") {
-    publishJointCommand(smoothed_msg, pub, arg, source_names, target_names);
+  if (type == msg_type_map_[SENSOR_MSGS_JOINT_STATE]) {
+    publishJointState(smoothed_msg, publisher, source_names, target_names);
+  } else if (type == msg_type_map_[FRANKA_CORE_MSGS_JOINT_COMMAND]) {
+    publishFrankaJointCommand(smoothed_msg, publisher, arg, source_names, target_names);
+  } else if (type == msg_type_map_[UBT_CORE_MSGS_JOINT_COMMAND]) {
+    publishUBTJointCommand(smoothed_msg, publisher, arg, source_names, target_names);
   } else {
-    ROS_ERROR_STREAM_ONCE("RoPort Msg Converter: Unknown target topic type: "
-        << type << " Known are: sensor_msgs/JointState, franka_core_msgs/JointCommand");
+    ROS_ERROR_STREAM_ONCE("RoPort Msg Converter: Unknown target topic type: " << type);
   }
 }
 
@@ -310,7 +360,7 @@ int main(int argc, char** argv) {
       target_names.push_back(target_joint_names[i][j]);
     }
 
-    std::string target_type = "sensor_msgs/JointState";
+    std::string target_type;
     if (target_types.size() > 0) {
       target_type = std::string(target_types[i]);
     }
@@ -324,9 +374,9 @@ int main(int argc, char** argv) {
     }
 
     ros::Publisher publisher;
-    if (target_type == "sensor_msgs/JointState") {
+    if (target_type == msg_type_map_[SENSOR_MSGS_JOINT_STATE]) {
       publisher = nh.advertise<sensor_msgs::JointState>(target_js_topics[i], 1);
-    } else if (target_type == "franka_core_msgs/JointCommand") {
+    } else if (target_type == msg_type_map_[FRANKA_CORE_MSGS_JOINT_COMMAND]) {
 #ifdef FRANKA_CORE_MSGS
       publisher = nh.advertise<franka_core_msgs::JointCommand>(target_js_topics[i], 1);
 #else
@@ -334,11 +384,19 @@ int main(int argc, char** argv) {
           << target_type << ", but the source code is not compiled with this message definition");
       continue;
 #endif
+    } else if (target_type == msg_type_map_[UBT_CORE_MSGS_JOINT_COMMAND]) {
+#ifdef UBT_CORE_MSGS
+      publisher = nh.advertise<ubt_core_msgs::JointCommand>(target_js_topics[i], 1);
+#else
+      ROS_ERROR_STREAM_NAMED("RoPort Converter", "Request target topic of type: "
+          << target_type << ", but the source code is not compiled with this message definition");
+      continue;
+#endif
     } else {
-      ROS_ERROR_STREAM_NAMED("RoPort Converter", "Unknown target topic type: "
-          << target_type << " Known are: sensor_msgs/JointState, franka_core_msgs/JointCommand");
+      ROS_ERROR_STREAM_NAMED("RoPort Converter", "Unknown target topic type: " << target_type);
       continue;
     }
+
     // Create reflex object for this topic
     auto *oto = new rotools::OnlineTrajectoryOptimizer(target_names.size(), 500);
     if (reflex_flag > 0) {
