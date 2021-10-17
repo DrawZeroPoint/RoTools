@@ -11,14 +11,16 @@ try:
 
     import moveit_commander
 
-    import geometry_msgs.msg as GeometryMsg
+    import geometry_msgs.msg as geo_msg
     import moveit_msgs.msg as MoveItMsg
     import control_msgs.msg as ControlMsg
     import trajectory_msgs.msg as TrajectoryMsg
     import std_msgs.msg as StdMsg
-    import sensor_msgs.msg as SensorMsg
+    import sensor_msgs.msg as sensor_msg
 except ImportError:
-    pass
+    rospy = None
+    geo_msg = None
+    sensor_msg = None
 
 from rotools.utility import common
 
@@ -94,7 +96,7 @@ class Datagram(object):
         :param scaling_factor: float Scale the position of the pose if src_frame_id is not None.
                                Its value equals to the robot/human body dimension ratio
         """
-        pose_array_msg = GeometryMsg.PoseArray()
+        pose_array_msg = geo_msg.PoseArray()
         pose_array_msg.header.stamp = rospy.Time.now()
         pose_array_msg.header.frame_id = ref_frame
 
@@ -106,7 +108,7 @@ class Datagram(object):
             pose_array_msg.poses.append(pose_msg)
 
         if ref_frame_id is not None and ref_frame_id < len(pose_array_msg.poses):
-            relative_pose_array_msg = GeometryMsg.PoseArray()
+            relative_pose_array_msg = geo_msg.PoseArray()
             relative_pose_array_msg.header.frame_id = ref_frame
             reference_pose = pose_array_msg.poses[ref_frame_id]
             for p in pose_array_msg.poses:
@@ -180,7 +182,7 @@ class XsensInterface(object):
         if self.object_poses is None:
             return None
         else:
-            pose = GeometryMsg.PoseStamped()
+            pose = geo_msg.PoseStamped()
             pose.header = self.object_poses.header
             pose.pose = self.object_poses.poses[0]
             return pose
@@ -210,13 +212,15 @@ class XsensInterface(object):
         :return: PoseArray PoseStamped PoseStamped PoseStamped PoseStamped
                  Body segment poses, left hand pose, right hand pose, left sole pose, right sole pose.
         """
-        main_body_msg = GeometryMsg.PoseArray()
+        main_body_msg = geo_msg.PoseArray()
         main_body_msg.header = self.all_body_poses.header
-        base_pose_msg = GeometryMsg.PoseStamped()
-        left_tcp_msg = GeometryMsg.PoseStamped()
-        right_tcp_msg = GeometryMsg.PoseStamped()
-        left_sole_msg = GeometryMsg.PoseStamped()
-        right_sole_msg = GeometryMsg.PoseStamped()
+
+        base_pose_msg = geo_msg.PoseStamped()
+        left_tcp_msg = geo_msg.PoseStamped()
+        right_tcp_msg = geo_msg.PoseStamped()
+        left_sole_msg = geo_msg.PoseStamped()
+        right_sole_msg = geo_msg.PoseStamped()
+        head_msg = geo_msg.PoseStamped()
         # left_shoulder_msg = GeometryMsg.PoseStamped()
         # right_shoulder_msg = GeometryMsg.PoseStamped()
         # left_upper_arm_msg = GeometryMsg.PoseStamped()
@@ -230,6 +234,7 @@ class XsensInterface(object):
         right_tcp_msg.header = left_tcp_msg.header
         left_sole_msg.header = left_tcp_msg.header
         right_sole_msg.header = left_tcp_msg.header
+        geo_msg.header = left_tcp_msg.header
         # left_shoulder_msg.header = left_tcp_msg.header
         # right_shoulder_msg.header = left_tcp_msg.header
         # left_upper_arm_msg.header = left_tcp_msg.header
@@ -244,6 +249,8 @@ class XsensInterface(object):
             main_body_msg.poses.append(p)
             if segment_id == 4:  # T8
                 base_pose_msg.pose = p
+            if segment_id == 6:  # Head
+                head_msg.pose = p
             # if segment_id == 7:
             #     right_shoulder_msg.pose = p
             # if segment_id == 8:
@@ -268,13 +275,13 @@ class XsensInterface(object):
             if segment_id == self.header.body_segments_num:
                 break
         assert len(main_body_msg.poses) == self.header.body_segments_num
-        return [self.all_body_poses, main_body_msg, base_pose_msg, left_tcp_msg,
-                right_tcp_msg, left_sole_msg, right_sole_msg]
+        return [self.all_body_poses, main_body_msg], \
+               [base_pose_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg, head_msg]
 
     def get_prop_msgs(self):
         if self.header.props_num == 1:
             try:
-                prop_1_msg = GeometryMsg.PoseStamped()
+                prop_1_msg = geo_msg.PoseStamped()
                 prop_1_msg.header = self.all_body_poses.header
                 prop_1_msg.pose = self.all_body_poses.poses[24]
                 return prop_1_msg
@@ -299,8 +306,8 @@ class XsensInterface(object):
             rospy.logwarn_once("Finger segment number is not 40: {}".format(self.header.finger_segments_num))
             return None, None
 
-        left_hand_js = SensorMsg.JointState()
-        right_hand_js = SensorMsg.JointState()
+        left_hand_js = sensor_msg.JointState()
+        right_hand_js = sensor_msg.JointState()
         left_hand_js.header = self.all_body_poses.header
         right_hand_js.header = self.all_body_poses.header
         # Here the hand joint states are defined as j1 and j2 for thumb to pinky

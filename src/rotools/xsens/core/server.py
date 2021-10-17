@@ -10,7 +10,6 @@ from sensor_msgs.msg import JointState
 import rotools.xsens.core.interface as interface
 
 from rotools.utility.emergency_stop import EStop
-from rotools.utility.common import play_hint_sound
 
 
 class XsensServer(EStop):
@@ -29,11 +28,18 @@ class XsensServer(EStop):
         # Cartesian pose publishers
         self.all_poses_publisher = rospy.Publisher('/xsens/all_poses', PoseArray, queue_size=1)
         self.body_poses_publisher = rospy.Publisher('/xsens/body_poses', PoseArray, queue_size=1)
+        self.poses_publisher_wrapper = [self.all_poses_publisher, self.body_poses_publisher]
+
         self.base_pose_publisher = rospy.Publisher('/xsens/base', PoseStamped, queue_size=1)
         self.left_tcp_publisher = rospy.Publisher('/xsens/left_tcp', PoseStamped, queue_size=1)
         self.right_tcp_publisher = rospy.Publisher('/xsens/right_tcp', PoseStamped, queue_size=1)
         self.left_sole_publisher = rospy.Publisher('/xsens/left_sole', PoseStamped, queue_size=1)
         self.right_sole_publisher = rospy.Publisher('/xsens/right_sole', PoseStamped, queue_size=1)
+        self.head_publisher = rospy.Publisher('/xsens/head', PoseStamped, queue_size=1)
+        self.core_pose_publisher_wrapper = (
+            self.base_pose_publisher, self.left_tcp_publisher, self.right_tcp_publisher,
+            self.left_sole_publisher, self.right_sole_publisher, self.head_publisher,
+        )
 
         self.pub_prop = kwargs['prop']
         # Prop pose publisher
@@ -64,28 +70,30 @@ class XsensServer(EStop):
         if not self.interface.get_datagram():
             return
         if self.interface.header.is_object:
+            # Object pose is always published together with body poses
+            return
+
+        poses, core_pose = self.interface.get_body_poses(self.pub_detail)
+
+        for pub, p in zip(self.poses_publisher_wrapper, poses):
+            pub.publish(p)
+
+        for pub, p in zip(self.core_pose_publisher_wrapper, core_pose):
+            pub.publish(p)
+
+        if self.interface.first_object_pose is not None:
             self.object_pose_publisher.publish(self.interface.first_object_pose)
-        else:
-            all_poses, body_poses, base_pose, left_tcp, right_tcp, left_sole, right_sole = \
-                self.interface.get_body_poses(self.pub_detail)
+            self.interface.object_poses = None
 
-            self.all_poses_publisher.publish(all_poses)
-            self.body_poses_publisher.publish(body_poses)
-            self.base_pose_publisher.publish(base_pose)
-            self.left_tcp_publisher.publish(left_tcp)
-            self.right_tcp_publisher.publish(right_tcp)
-            self.left_sole_publisher.publish(left_sole)
-            self.right_sole_publisher.publish(right_sole)
+        prop_1 = self.interface.get_prop_msgs()
+        if prop_1 is not None and self.pub_prop:
+            self.prop_1_publisher.publish(prop_1)
 
-            prop_1 = self.interface.get_prop_msgs()
-            if prop_1 is not None and self.pub_prop:
-                self.prop_1_publisher.publish(prop_1)
-
-            left_hand_js, right_hand_js = self.interface.get_hand_joint_states()
-            if left_hand_js is not None:
-                self.left_hand_publisher.publish(left_hand_js)
-            if right_hand_js is not None:
-                self.right_hand_publisher.publish(right_hand_js)
+        left_hand_js, right_hand_js = self.interface.get_hand_joint_states()
+        if left_hand_js is not None:
+            self.left_hand_publisher.publish(left_hand_js)
+        if right_hand_js is not None:
+            self.right_hand_publisher.publish(right_hand_js)
 
     def pub_switch_handle(self, req):
         if req.data:
