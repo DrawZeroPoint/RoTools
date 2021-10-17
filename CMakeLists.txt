@@ -154,6 +154,7 @@ add_library(${PROJECT_NAME}
   src/lib/online_trajectory_optimizer.cpp
   ${ReflexxesLib}
 )
+add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
 )
