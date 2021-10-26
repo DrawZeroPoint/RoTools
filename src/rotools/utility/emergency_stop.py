@@ -15,7 +15,7 @@ class EStop(object):
         self._enable = False
 
         if Listener is not None:
-            hot_key = 'Home'
+            hot_key = 'Alt'
             if function_name:
                 print_warn('{} is deactivated, press {} button to activate/deactivate'.format(function_name, hot_key))
             else:
@@ -28,7 +28,7 @@ class EStop(object):
             print_warn('Consider install pynput (sudo pip install pynput) and restart!')
 
     def _on_press(self, key):
-        if key == Key.home:
+        if key == Key.alt:
             status = ~self._enable
             self.set_status(status)
 
