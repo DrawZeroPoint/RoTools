@@ -1,6 +1,7 @@
 <launch>
     <param name="/use_sim_time" value="false" />
 
+    <arg name="ip" default=""/>
     <arg name="port" default="9763"/>
     <!-- All frames will be transformed regarding to the reference frame,
          could be 'Pelvis', 'T8', or 'world' -->
@@ -12,7 +13,8 @@
     <arg name="rate" default="60"/>
 
     <node pkg="roport" type="roport_xsens_server.py" name="roport_xsens_server" output="screen">
-        <param name="udp_port" value="$(arg port)"/>
+        <param name="ip" value="$(arg ip)"/>
+        <param name="port" value="$(arg port)"/>
         <param name="ref_frame" value="$(arg ref_frame)"/>
         <param name="scaling" value="$(arg scaling)"/>
         <param name="rate" value="$(arg rate)"/>

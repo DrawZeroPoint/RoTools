@@ -163,7 +163,7 @@ class XsensInterface(object):
         if ref_frame in self._ref_frames:
             self.ref_frame = ref_frame
             self.ref_frame_id = self._ref_frames[ref_frame]
-        elif ref_frame == '' or ref_frame == 'world':
+        elif ref_frame == '' or ref_frame == 'world' or ref_frame == 'World':
             rospy.logwarn('Reference frame is the world frame')
             self.ref_frame = 'world'
             self.ref_frame_id = None
