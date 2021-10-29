@@ -2,7 +2,7 @@ from rotools.utility.common import play_hint_sound
 
 try:
     from pynput.keyboard import Key, Listener
-except ImportError:
+except ImportError as err:
     Key = None
     Listener = None
 
@@ -24,8 +24,7 @@ class EStop(object):
             self.listener = Listener(on_press=self._on_press)
             self.listener.start()  # start the thread and run subsequent codes
         else:
-            print_warn('Keyboard emergency stop control is not supported on the current platform')
-            print_warn('Consider install pynput (sudo pip install pynput) and restart!')
+            print_warn('{}'.format(err))
 
     def _on_press(self, key):
         if key == Key.alt:
