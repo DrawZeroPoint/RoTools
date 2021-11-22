@@ -29,23 +29,29 @@ find_package(catkin REQUIRED COMPONENTS
   behaviortree_cpp_v3
 )
 
-find_package(franka_core_msgs)
-
+find_package(franka_core_msgs QUIET)
 if (${franka_core_msgs_FOUND})
   add_definitions(-DFRANKA_CORE_MSGS)
-  MESSAGE(STATUS "FOUND franka_core_msgs")
+  message(STATUS "FOUND franka_core_msgs")
 else (${franka_core_msgs_FOUND})
-  MESSAGE(STATUS "NOT FOUND franka_core_msgs")
+  message(STATUS "NOT FOUND franka_core_msgs")
 endif (${franka_core_msgs_FOUND})
 
-find_package(ubt_core_msgs)
-
+find_package(ubt_core_msgs QUIET)
 if (${ubt_core_msgs_FOUND})
   add_definitions(-DUBT_CORE_MSGS)
-  MESSAGE(STATUS "FOUND ubt_core_msgs")
+  message(STATUS "FOUND ubt_core_msgs")
 else (${ubt_core_msgs_FOUND})
-  MESSAGE(STATUS "NOT FOUND ubt_core_msgs")
+  message(WARNING "NOT FOUND ubt_core_msgs")
 endif (${ubt_core_msgs_FOUND})
+
+find_package(ct_core QUIET)
+find_package(ct_optcon QUIET)
+if (ct_optcon_FOUND)
+  message(STATUS "FOUND ct_optcon")
+else ()
+  message(WARNING "NOT FOUND ct_optcon")
+endif ()
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -186,6 +192,31 @@ target_link_libraries(roport_msg_converter
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
 )
+
+if (${ct_optcon_FOUND})
+
+  ## include blasfeo and hpipm, assumed to be installed in "/opt"
+  list(APPEND CMAKE_PREFIX_PATH "/opt")
+  find_package(blasfeo QUIET)
+  find_package(hpipm QUIET)
+  if(blasfeo_FOUND AND hpipm_FOUND)
+    message(STATUS "Found HPIPM and BLASFEO")
+    set(HPIPM ON)
+    list(APPEND HPIPM_LIBS hpipm blasfeo)
+    list(APPEND ct_optcon_COMPILE_DEFINITIONS HPIPM)
+  else()
+    message(WARNING "Could not find HPIPM or BLASFEO")
+  endif()
+
+  add_executable(roport_lqr_solver src/roport_lqr_solver.cpp)
+  add_dependencies(roport_lqr_solver ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+  target_link_libraries(roport_lqr_solver
+    ${catkin_LIBRARIES}
+    ct_core
+    ct_optcon
+    ${PROJECT_NAME}
+    )
+endif()
 
 catkin_install_python(PROGRAMS
   scripts/roport_moveit_server.py
