@@ -38,12 +38,12 @@ else (${franka_core_msgs_FOUND})
 endif (${franka_core_msgs_FOUND})
 
 find_package(ubt_core_msgs QUIET)
-if (${ubt_core_msgs_FOUND})
+if (ubt_core_msgs_FOUND)
   add_definitions(-DUBT_CORE_MSGS)
   message(STATUS "FOUND ubt_core_msgs")
-else (${ubt_core_msgs_FOUND})
+else ()
   message(WARNING "NOT FOUND ubt_core_msgs")
-endif (${ubt_core_msgs_FOUND})
+endif ()
 
 find_package(ct_core QUIET)
 find_package(ct_optcon QUIET)
@@ -148,6 +148,18 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+if (ubt_core_msgs_FOUND)
+  include_directories(
+    ${ubt_core_msgs_INCLUDE_DIRS}
+  )
+endif ()
+
+if (franka_core_msgs_FOUND)
+  include_directories(
+    ${franka_core_msgs_INCLUDE_DIRS}
+  )
+endif ()
+
 file(GLOB ReflexxesLib
   "src/lib/Reflexxes/*.cpp"
 )
@@ -194,7 +206,6 @@ target_link_libraries(roport_msg_converter
 )
 
 if (${ct_optcon_FOUND})
-
   ## include blasfeo and hpipm, assumed to be installed in "/opt"
   list(APPEND CMAKE_PREFIX_PATH "/opt")
   find_package(blasfeo QUIET)
