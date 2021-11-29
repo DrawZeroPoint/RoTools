@@ -75,12 +75,18 @@ class Test(unittest.TestCase):
         e = transform.euler_from_matrix(Q3)
         print('e', e)
 
-        # Franka robot install on non-default pose
+        # Franka robot install on non-default pose (curiosity's left arm)
         qm_left = transform.quaternion_matrix([-0.40318, 0.52543, 0.097796, 0.74283])  # T_base_to_install
         g_vector = np.array([0., 0., -9.81, 0])  # G_base
         g_vector_t = np.dot(qm_left.transpose(), g_vector)  # G_install = T_install_to_base * G_base
         print(qm_left.transpose())
-        print('g_vector_t\n', g_vector_t)
+        print('left arm g_vector_t\n', g_vector_t)
+
+        # Franka robot install on non-default pose (curiosity's right arm)
+        qm_right = transform.quaternion_matrix([0.40318, 0.52543, -0.097796, 0.74283])  # T_base_to_install
+        g_vector = np.array([0., 0., -9.81, 0])  # G_base
+        g_vector_t = np.dot(qm_right.transpose(), g_vector)  # G_install = T_install_to_base * G_base
+        print('right arm g_vector_t\n', g_vector_t)
 
         print(np.linalg.norm(np.subtract(g_vector_t, g_vector)))
 
