@@ -32,6 +32,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(franka_core_msgs)
 
 if (${franka_core_msgs_FOUND})
+  include_directories(${franka_core_msgs_INCLUDE_DIRS})
   add_definitions(-DFRANKA_CORE_MSGS)
   MESSAGE(STATUS "FOUND franka_core_msgs")
 else (${franka_core_msgs_FOUND})
@@ -41,6 +42,7 @@ endif (${franka_core_msgs_FOUND})
 find_package(ubt_core_msgs)
 
 if (${ubt_core_msgs_FOUND})
+  include_directories(${ubt_core_msgs_INCLUDE_DIRS})
   add_definitions(-DUBT_CORE_MSGS)
   MESSAGE(STATUS "FOUND ubt_core_msgs")
 else (${ubt_core_msgs_FOUND})
