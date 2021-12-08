@@ -1,0 +1,25 @@
+<launch>
+  <!-- This launch file is only for debugging -->
+  <param name="/use_sim_time" value="false" />
+
+  <arg name="ip" default="127.0.0.1"/>
+  <arg name="port" default="9090"/>
+
+  <node pkg="roport" type="roport_websocket_client.py" name="roport_websocket_client" output="screen">
+    <param name="ip" value="$(arg ip)"/>
+    <param name="port" value="$(arg port)"/>
+
+    <!-- Downstream: from this local client to the remote server -->
+    <rosparam param="downstream_list">
+      <!-- A 2D list, the inner list contains: local_topic_id, remote_topic_id, msg_type
+           Multiple downstream topics could be defined here -->
+      [["/local/cmd_vel", "/remote/cmd_vel", "Twist"]]
+    </rosparam>
+
+    <!-- Downstream: from remote server to this client -->
+    <rosparam param="upstream_list">
+      [["/local/odom", "/remote/odom", "Odometry"]]
+    </rosparam>
+  </node>
+
+</launch>
