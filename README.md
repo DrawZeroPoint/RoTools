@@ -49,7 +49,7 @@ May also work for other version combinations.
 ### Officially supported robots
 
 - Walker from UBTech
-- Curiosity from SMART Lab CUHK
+- [Curiosity](https://github.com/DrawZeroPoint/curiosity) from CLOVER Lab CUHK
 
 ### Dependence
 
@@ -79,9 +79,8 @@ sudo pip install playsound pynput requests
 
 Not supported.
 
-## Usage
 
-### Use with MoveIt!
+## Use with MoveIt!
 
 The pipeline of using RoTools for a particular robot involves:
 
@@ -109,7 +108,7 @@ After finishing these preparations, you can run the demo by
 3. Launch `<robot>_roport.launch`.
 4. Launch `<robot>_task.launch`.
 
-### Use with CartesI/O
+## Use with CartesI/O
 
 CartesI/O is a whole-body motion planning software developed in [ADVR, Istituto Italiano di Tecnologia](https://advr.iit.it/). 
 It has not been added to the ROS distribution and hence [install](https://advrhumanoids.github.io/CartesianInterface/index.html) 
@@ -133,9 +132,9 @@ After the preparations, you can
 2. In RViz, right-click the interactive marker (IM) in scene, choose `continous control`, then you can control
    the robot by dragging the IM.
    
-### Use with Xsens motion capture stream
+## Xsens Motion Capture Applications
 
-#### Launch process
+### Launch process
 
 The IMU based motion capture suit provided by [Xsens](https://www.xsens.com/) could be used as a direct tele-operation
 input source for controlling the robot. RoTools enables converting the motion capture stream sent via UDP to ROS messages.
@@ -166,7 +165,7 @@ To establish the conversion:
     roslaunch roport roport_xsens.launch
    ```
    
-#### Converted topics
+### Converted topics
 
 By default, the server will publish poses on topics: `/xsens/all_poses`, `/xsens/body_poses`, `/xsens/left_tcp`,
 `/xsens/right_tcp`, `/xsens/left_sole`, `/xsens/right_sole`. 
@@ -193,12 +192,12 @@ These poses all reference to the reference_frame, which could be 'Pelvis' or 'T8
 reference frame in the launch file. If the frame name is not within these two, a given one will be used.
 If empty string is given, the default one `world` will be used.
 
-#### State switch
+### State switch
 
 For safety concern, you need to activate the conversion by:
 
-Press the `Caps_Lock` key on the keyboard. This will switch the status from `deactive` to `active`.
-To change back, press `Caps_Lock` again. The last output in the console will indicate the current status.
+Press the `Alt` key (either left or right) on the keyboard. This will switch the status from `deactive` to `active`.
+To change back, press `Alt` again. The last output in the console will indicate the current status.
 
 Alternatively, you can use:
 

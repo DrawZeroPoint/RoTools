@@ -16,7 +16,7 @@ class EStop(object):
 
         if Listener is not None:
             hot_key = 'Alt'
-            if function_name:
+            if isinstance(function_name, str):
                 print_warn('{} is deactivated, press {} button to activate/deactivate'.format(function_name, hot_key))
             else:
                 print_warn('Function is deactivated, press {} button to activate/deactivate'.format(hot_key))
@@ -25,9 +25,10 @@ class EStop(object):
             self.listener.start()  # start the thread and run subsequent codes
         else:
             print_warn('{}'.format(err))
+            print_warn('To use keyboard interactions: sudo pip install pynput playsound')
 
     def _on_press(self, key):
-        if key == Key.alt:
+        if key == Key.alt or key == Key.alt_r:
             status = ~self._enable
             self.set_status(status)
 

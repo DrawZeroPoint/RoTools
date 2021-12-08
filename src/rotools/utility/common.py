@@ -455,19 +455,15 @@ def play_hint_sound(enable):
         from playsound import playsound
         import os
         import sys
-        if sys.version_info >= (3, 0):
-            from pathlib import Path
-        else:
-            from pathlib2 import Path
-        misc_dir = Path(__file__).absolute().parent.parent.parent.parent
+        import os.path as osp
+        misc_dir = osp.dirname(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__)))))
         if enable:
-            misc_path = os.path.join(str(misc_dir), 'misc/audio/Sophia_function_activated.mp3')
+            misc_path = osp.join(misc_dir, 'misc/audio/Sophia_function_activated.mp3')
         else:
-            misc_path = os.path.join(str(misc_dir), 'misc/audio/Sophia_function_deactivated.mp3')
+            misc_path = osp.join(misc_dir, 'misc/audio/Sophia_function_deactivated.mp3')
         playsound(misc_path)  # Not support block=True on Ubuntu
     except ImportError as e:
         rospy.logdebug('Sound not played due to missing dependence: {}'.format(e))
-        pass
 
 
 if __name__ == "__main__":

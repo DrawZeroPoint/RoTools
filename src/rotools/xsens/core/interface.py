@@ -51,7 +51,8 @@ class Header:
             rospy.logwarn('XSensInterface: Segments number in total does not match item counter')
             return False
         if self.payload_size % self.item_counter != 0:
-            rospy.logwarn('XSensInterface: Payload size {} is not dividable by item number {}'.format(self.payload_size, self.item_num))
+            rospy.logwarn('XSensInterface: Payload size {} is not dividable by item number {}'.format(
+                self.payload_size, self.item_num))
             return False
         return True
 
@@ -204,19 +205,19 @@ class XsensInterface(object):
             if pose_array_msg is None:
                 return False
             if datagram.is_object:
-                self.object_poses = pose_array_msg  # Only body poses are returned
+                self.object_poses = pose_array_msg
             else:
                 self.body_segments_poses = pose_array_msg
             return True
         else:
             return False
 
-    def get_body_poses(self, pub_details=False):
+    def get_body_poses(self):
         """Given all segment poses, extract the interested body segment poses from that.
         The body poses excepts hand segment poses and property poses.
 
         :return: PoseArray PoseStamped ...
-                 Body segment poses, left hand pose, right hand pose, left sole pose, right sole pose ...
+                 Body segment poses, left-hand pose, right-hand pose, left sole pose, right sole pose ...
         """
         main_body_msg = geo_msg.PoseArray()
         main_body_msg.header = self.body_segments_poses.header
@@ -227,12 +228,6 @@ class XsensInterface(object):
         left_sole_msg = geo_msg.PoseStamped()
         right_sole_msg = geo_msg.PoseStamped()
         head_msg = geo_msg.PoseStamped()
-        # left_shoulder_msg = GeometryMsg.PoseStamped()
-        # right_shoulder_msg = GeometryMsg.PoseStamped()
-        # left_upper_arm_msg = GeometryMsg.PoseStamped()
-        # right_upper_arm_msg = GeometryMsg.PoseStamped()
-        left_forearm_msg = geo_msg.PoseStamped()
-        right_forearm_msg = geo_msg.PoseStamped()
 
         # Initialize message headers
         base_pose_msg.header = self.body_segments_poses.header
@@ -240,13 +235,6 @@ class XsensInterface(object):
         right_tcp_msg.header = base_pose_msg.header
         left_sole_msg.header = base_pose_msg.header
         right_sole_msg.header = base_pose_msg.header
-        geo_msg.header = base_pose_msg.header
-        # left_shoulder_msg.header = left_tcp_msg.header
-        # right_shoulder_msg.header = left_tcp_msg.header
-        # left_upper_arm_msg.header = left_tcp_msg.header
-        # right_upper_arm_msg.header = left_tcp_msg.header
-        left_forearm_msg.header = base_pose_msg.header
-        right_forearm_msg.header = base_pose_msg.header
 
         # all_poses should at least contain body segment poses
         segment_id = 0
@@ -258,20 +246,8 @@ class XsensInterface(object):
                 base_pose_msg.pose = p
             if segment_id == 6:  # Head
                 head_msg.pose = p
-            # if segment_id == 7:
-            #     right_shoulder_msg.pose = p
-            # if segment_id == 8:
-            #     right_upper_arm_msg.pose = p
-            if segment_id == 9:
-                right_forearm_msg.pose = p
             if segment_id == 10:
                 right_tcp_msg.pose = p
-            # if segment_id == 11:
-            #     left_shoulder_msg.pose = p
-            # if segment_id == 12:
-            #     left_upper_arm_msg.pose = p
-            if segment_id == 13:
-                left_forearm_msg.pose = p
             if segment_id == 14:
                 left_tcp_msg.pose = p
             if segment_id == 18:
@@ -283,8 +259,34 @@ class XsensInterface(object):
                 break
         assert len(main_body_msg.poses) == self.header.body_segments_num
         return [self.body_segments_poses, main_body_msg], \
-               [base_pose_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg, head_msg], \
-               [left_forearm_msg, right_forearm_msg]
+               [base_pose_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg, head_msg]
+
+    def get_transform(self, base_frame, distal_frame):
+        """Given both base frame and distal frame be two of the body frames, get the transform
+        from the base frame to the distal frame as a pose.
+
+        Args:
+            base_frame: str Base frame name.
+            distal_frame: str Distal frame name.
+
+        Returns:
+
+        """
+        pose_msg = geo_msg.PoseStamped()
+        pose_msg.header = self.body_segments_poses.header
+        if base_frame not in self._body_frames or distal_frame not in self._body_frames:
+            rospy.logerr('Base frame {} is not in known body frames'.format(base_frame))
+            return None
+        if distal_frame not in self._body_frames:
+            rospy.logerr('Distal frame {} is not in known body frames'.format(distal_frame))
+            return None
+        base_frame_id = self._body_frames[base_frame]
+        distal_frame_id = self._body_frames[distal_frame]
+        base_pose = self.body_segments_poses.poses[base_frame_id]
+        distal_pose = self.body_segments_poses.poses[distal_frame_id]
+        std_pose = common.get_transform_same_origin(base_pose, distal_pose)
+        pose_msg.pose = common.to_ros_pose_stamped(std_pose, base_frame)
+        return pose_msg
 
     def get_prop_msgs(self):
         if self.header.props_num == 1:
@@ -303,7 +305,7 @@ class XsensInterface(object):
         """Get joint states for both hand.
 
         :return: JointState/None JointState/None.
-                 Left hand joint states (10), right hand joint states (10)
+                 Left-hand joint states (10), right-hand joint states (10)
         """
         if self.header is None or not self.header.is_valid:
             return None, None
@@ -338,7 +340,7 @@ class XsensInterface(object):
 
         :param poses: Pose[] Finger segment poses
         :param meta_id: int Id of the metacarpals in the poses
-        :return: float float. J1 and J2
+        :return: float, float. J1 and J2
         """
         m_pose = poses[meta_id]
         pp_pose = poses[meta_id + 1]
