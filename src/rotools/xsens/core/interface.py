@@ -273,6 +273,8 @@ class XsensInterface(object):
 
         """
         pose_msg = geo_msg.PoseStamped()
+        base_frame = base_frame.lower()
+        distal_frame = distal_frame.lower()
         pose_msg.header = self.body_segments_poses.header
         if base_frame not in self._body_frames or distal_frame not in self._body_frames:
             rospy.logerr('Base frame {} is not in known body frames'.format(base_frame))
@@ -285,7 +287,7 @@ class XsensInterface(object):
         base_pose = self.body_segments_poses.poses[base_frame_id]
         distal_pose = self.body_segments_poses.poses[distal_frame_id]
         std_pose = common.get_transform_same_origin(base_pose, distal_pose)
-        pose_msg.pose = common.to_ros_pose_stamped(std_pose, base_frame)
+        pose_msg = common.to_ros_pose_stamped(std_pose, base_frame)
         return pose_msg
 
     def get_prop_msgs(self):
