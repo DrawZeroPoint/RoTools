@@ -10,6 +10,7 @@ from sensor_msgs.msg import JointState
 import rotools.xsens.core.interface as interface
 
 from rotools.utility.emergency_stop import EStop
+from rotools.utility.common import print_warn
 
 
 class XsensServer(EStop):
@@ -22,7 +23,7 @@ class XsensServer(EStop):
 
         # Publisher switch
         self.srv_pub_switch = rospy.Service('/xsens/enable', SetBool, self.pub_switch_handle)
-        rospy.loginfo_once('Use: rosservice call /xsens/enable "data: true" to enable receiving XSens data.')
+        print_warn('Use [rosservice call /xsens/enable "data: true"] to enable receiving XSens data.')
 
         self.interface = interface.XsensInterface(**kwargs)
 

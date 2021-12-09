@@ -16,7 +16,6 @@ if __name__ == "__main__":
             'ref_frame': get_param('~ref_frame', 'world'),
             'scaling': get_param('~scaling', 1.0),
             'rate': get_param('~rate', 60.),
-            'detail': get_param('~detail', False),
             'prop': get_param('~prop', False)
         }
 
