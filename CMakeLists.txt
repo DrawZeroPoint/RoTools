@@ -138,9 +138,12 @@ catkin_package(
   CATKIN_DEPENDS ${ROS_DEPENDENCIES}
 )
 
+add_subdirectory(src/lib/ruckig)
+
 include_directories(
   include
   include/Reflexxes
+  src/lib/ruckig/include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -153,12 +156,14 @@ add_library(${PROJECT_NAME}
   src/lib/rosout_logger.cpp
   src/lib/robot_interface.cpp
   src/lib/control_server.cpp
+  src/lib/msg_converter.cpp
   src/lib/online_trajectory_optimizer.cpp
   ${ReflexxesLib}
 )
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
+  rotools_ruckig
 )
 
 add_executable(roport_task_scheduler src/roport_task_scheduler.cpp)
