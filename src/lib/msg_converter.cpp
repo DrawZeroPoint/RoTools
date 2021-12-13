@@ -345,18 +345,18 @@ void MsgConverter::publishFrankaJointCommand(const sensor_msgs::JointState& src_
   tgt_msg.header = src_msg.header;
   std::set<int> supported_modes{tgt_msg.IMPEDANCE_MODE, tgt_msg.POSITION_MODE, tgt_msg.TORQUE_MODE, tgt_msg.VELOCITY_MODE};
   if (supported_modes.find(arg) == supported_modes.end()) {
-    ROS_ERROR_STREAM_ONCE_NAMED("RoPort Converter", "Mode " << arg << " is not supported");
+    ROS_ERROR_STREAM_ONCE(prefix_ << "Mode " << arg << " is not supported by franka_core_msg");
     return;
   } else {
     tgt_msg.mode = arg;
   }
   if (src_msg.name.empty()) {
-    ROS_ERROR_ONCE_NAMED("RoPort Converter", "Source JointState topic have empty name field");
+    ROS_ERROR_STREAM_THROTTLE(3, prefix_ << "Source JointState topic have empty name field");
     return;
   }
   // It is possible to convert only a part of the joint values in the given message.
   if (src_msg.name.size() < source_names.size()) {
-    ROS_ERROR_NAMED("RoPort Converter", "Message name field has fewer names than source names");
+    ROS_ERROR_STREAM_THROTTLE(3, prefix_ << "Message name field has fewer names than source names");
     return;
   }
   for (size_t i = 0; i < source_names.size(); ++i) {
@@ -371,9 +371,8 @@ void MsgConverter::publishFrankaJointCommand(const sensor_msgs::JointState& src_
         tgt_msg.effort.push_back(src_msg.effort[result.second]);
       }
     } else {
-      ROS_ERROR_STREAM_NAMED("RoPort Converter", "Source joint name "
-                                                     << source_names[i]
-                                                     << "does not match any name in the given JointState message");
+      ROS_ERROR_STREAM(prefix_ << "Source joint name " << source_names[i]
+                               << "does not match any name in the given JointState message");
     }
   }
   pub.publish(tgt_msg);
