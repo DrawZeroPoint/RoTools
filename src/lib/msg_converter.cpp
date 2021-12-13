@@ -156,8 +156,8 @@ bool MsgConverter::init() {
 #ifdef UBT_CORE_MSGS
       publisher = nh_.advertise<ubt_core_msgs::JointCommand>(target_js_topics[group_id], 1);
 #else
-      ROS_ERROR_STREAM(MODULE << "Request target topic of type: " << target_type
-                              << ", but the source code is not compiled with this message definition");
+      ROS_ERROR_STREAM(prefix_ << "Request target topic of type: " << target_type
+                               << ", but the source code is not compiled with this message definition");
       continue;
 #endif
     } else {
