@@ -7,7 +7,7 @@
 namespace roport {
 
 MsgConverter::MsgConverter(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) : nh_(nh), pnh_(pnh) {
-  if (init()) return;
+  if (!init()) return;
 }
 
 bool MsgConverter::init() {
@@ -123,7 +123,7 @@ bool MsgConverter::init() {
     for (int j = 0; j < source_names.size(); ++j) {
       start_position.push_back(start_positions[group_id][j]);
     }
-
+    rotools::RuckigOptimizer* ro;
     if (smooth_start_flag > 0) {
       enable_smooth_start_flags_.push_back(true);
       auto subscriber =
@@ -132,13 +132,13 @@ bool MsgConverter::init() {
           });
       start_ref_subscribers_.push_back(subscriber);
       smooth_started_flags_.push_back(false);
+      ro = new rotools::RuckigOptimizer(static_cast<int>(source_names.size()), max_vel, max_acc, max_jerk);
     } else {
       enable_smooth_start_flags_.push_back(false);
       ros::Subscriber dummy_subscriber;
       start_ref_subscribers_.push_back(dummy_subscriber);
       smooth_started_flags_.push_back(true);
     }
-    auto* ro = new rotools::RuckigOptimizer(static_cast<int>(source_names.size()), max_vel, max_acc, max_jerk);
     optimizers_.push_back(ro);
 
     ros::Publisher publisher;
@@ -185,7 +185,9 @@ void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, co
 
   sensor_msgs::JointState smoothed_msg;
   if (enable_smooth_start_flags_[group_id] && !smooth_started_flags_[group_id]) {
-    smoothJointState(filtered_msg, optimizers_[group_id], smoothed_msg);
+    if (!smoothJointState(filtered_msg, optimizers_[group_id], smoothed_msg)) {
+      return;
+    }
   } else {
     smoothed_msg = filtered_msg;
   }
@@ -228,7 +230,7 @@ bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
         filtered_msg.effort.push_back(src_msg->effort[result.second]);
       }
     } else {
-      ROS_WARN_STREAM_ONCE(prefix_ << "No name in the source joint state message match the given source names");
+      ROS_WARN_STREAM_ONCE(prefix_ << "No name in the source joint state message match the given source names (print only once)");
       if (src_msg->position.size() == source_names.size()) {
         filtered_msg.position.push_back(src_msg->position[i]);
         if (src_msg->velocity.size() == source_names.size()) {
@@ -247,30 +249,34 @@ bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
   return true;
 }
 
-void MsgConverter::smoothJointState(const sensor_msgs::JointState& msg, rotools::RuckigOptimizer* oto,
+bool MsgConverter::smoothJointState(const sensor_msgs::JointState& msg, rotools::RuckigOptimizer* oto,
                                     sensor_msgs::JointState& smoothed_msg) {
-  if (!oto->initialized_) return;
+  if (!*oto->initialized_) return false;
   smoothed_msg.header = msg.header;
   smoothed_msg.name = msg.name;
 
-  oto->set(msg.position, msg.velocity);
+  if (!oto->set(msg.position, msg.velocity)) return false;
   std::vector<double> q_cmd;
   std::vector<double> dq_cmd;
   oto->update(q_cmd, dq_cmd);
   smoothed_msg.position = q_cmd;
   smoothed_msg.velocity = dq_cmd;
+  return true;
 }
 
 void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg, const int& group_id, const std::vector<double>& q_d) {
   if (smooth_started_flags_[group_id]) return;
 
-  if (!optimizers_[group_id]->initialized_) {
+  if (!*optimizers_[group_id]->initialized_) {
     optimizers_[group_id]->init(*msg, q_d);
     return;
   }
 
   if (allClose<double>(msg->position, q_d)) {
     smooth_started_flags_[group_id] = true;
+    ROS_INFO("Successfully moved group %d to the start configuration.", group_id);
+  } else {
+    ROS_WARN_THROTTLE(1, "Smoothly moving group %d to the start configuration ...", group_id);
   }
 }
 

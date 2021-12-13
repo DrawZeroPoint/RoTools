@@ -75,7 +75,8 @@ class MsgConverter {
   bool filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg, sensor_msgs::JointState& filtered_msg,
                         const std::vector<std::string>& source_names);
 
-  static void smoothJointState(const sensor_msgs::JointState& msg, rotools::RuckigOptimizer* oto, sensor_msgs::JointState& smoothed_msg);
+  static bool smoothJointState(const sensor_msgs::JointState& msg, rotools::RuckigOptimizer* oto,
+                               sensor_msgs::JointState& smoothed_msg);
 
   template <class T>
   bool phaseJointParameterMap(const std::string& param_name, const std::vector<std::string>& source_names,

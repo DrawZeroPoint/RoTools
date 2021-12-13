@@ -52,20 +52,21 @@ class OnlineTrajectoryOptimizer {
 
 class RuckigOptimizer {
  public:
+  RuckigOptimizer() = delete;
   explicit RuckigOptimizer(int dof, const std::vector<double>& max_vel, const std::vector<double>& max_acc,
                            const std::vector<double>& max_jerk, double frequency = 1000.);
   ~RuckigOptimizer();
 
-  bool initialized_;
+  bool *initialized_;
 
   void init(const sensor_msgs::JointState& msg, const std::vector<double>& q_d);
 
-  void set(const std::vector<double>& joint_position, const std::vector<double>& joint_velocity);
+  bool set(const std::vector<double>& joint_position, const std::vector<double>& joint_velocity);
 
   void update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd);
 
  private:
-  int dof_;
+  int *dof_;
   std::chrono::steady_clock::time_point start_;
 
   ruckig::Ruckig<7>* trajectory_generator_;
