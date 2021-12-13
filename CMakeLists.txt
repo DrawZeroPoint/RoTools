@@ -142,13 +142,8 @@ add_subdirectory(src/lib/ruckig)
 
 include_directories(
   include
-  include/Reflexxes
   src/lib/ruckig/include
   ${catkin_INCLUDE_DIRS}
-)
-
-file(GLOB ReflexxesLib
-  "src/lib/Reflexxes/*.cpp"
 )
 
 # Declare a C++ library
@@ -158,7 +153,6 @@ add_library(${PROJECT_NAME}
   src/lib/control_server.cpp
   src/lib/msg_converter.cpp
   src/lib/online_trajectory_optimizer.cpp
-  ${ReflexxesLib}
 )
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(${PROJECT_NAME}
@@ -199,6 +193,7 @@ catkin_install_python(PROGRAMS
   scripts/roport_planner_server.py
   scripts/roport_sensing_server.py
   scripts/roport_xsens_server.py
+  scripts/roport_websocket_client.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 install(DIRECTORY
