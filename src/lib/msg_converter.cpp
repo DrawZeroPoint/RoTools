@@ -177,14 +177,18 @@ bool MsgConverter::init() {
   return true;
 }
 
-void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const size_t& oto_id,
+void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const size_t& group_id,
                                 const ros::Publisher& publisher, const std::string& type, const int& arg,
                                 const std::vector<std::string>& source_names, const std::vector<std::string>& target_names) {
   sensor_msgs::JointState filtered_msg;
   if (!filterJointState(msg, filtered_msg, source_names)) return;
 
   sensor_msgs::JointState smoothed_msg;
-  smoothJointState(filtered_msg, optimizers_[oto_id], smoothed_msg);
+  if (enable_smooth_start_flags_[group_id] && !smooth_started_flags_[group_id]) {
+    smoothJointState(filtered_msg, optimizers_[group_id], smoothed_msg);
+  } else {
+    smoothed_msg = filtered_msg;
+  }
 
   if (type == msg_type_map_[SENSOR_MSGS_JOINT_STATE]) {
     publishJointState(smoothed_msg, publisher, source_names, target_names);
@@ -245,36 +249,16 @@ bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
 
 void MsgConverter::smoothJointState(const sensor_msgs::JointState& msg, rotools::RuckigOptimizer* oto,
                                     sensor_msgs::JointState& smoothed_msg) {
+  if (!oto->initialized_) return;
   smoothed_msg.header = msg.header;
   smoothed_msg.name = msg.name;
-  bool smoothed = false;
-  try {
-    if (oto->enabled_) {
-      std::vector<double> q, dq;
-      for (size_t j = 0; j < msg.position.size(); j++) {
-        q.push_back(msg.position[j]);
-        dq.push_back(msg.velocity[j]);
-      }
-      if (!oto->initialized_) {
-        oto->update(q, dq);
-      }
-      std::vector<double> q_out, dq_out, ddq_out;
-      if (oto->output(q, dq, q_out, dq_out, ddq_out)) {
-        for (size_t j = 0; j < msg.position.size(); ++j) {
-          smoothed_msg.position.push_back(q_out[j]);
-          smoothed_msg.velocity.push_back(dq_out[j]);
-        }
-        smoothed = true;
-      }
-    }
-  } catch (const std::out_of_range& oor) {
-    ROS_ERROR_STREAM(prefix_ << "Out of Range error: " << oor.what());
-  }
-  if (!smoothed) {
-    smoothed_msg.position = msg.position;
-    smoothed_msg.velocity = msg.velocity;
-    smoothed_msg.effort = msg.effort;
-  }
+
+  oto->set(msg.position, msg.velocity);
+  std::vector<double> q_cmd;
+  std::vector<double> dq_cmd;
+  oto->update(q_cmd, dq_cmd);
+  smoothed_msg.position = q_cmd;
+  smoothed_msg.velocity = dq_cmd;
 }
 
 void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg, const int& group_id, const std::vector<double>& q_d) {
@@ -282,6 +266,11 @@ void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg, const i
 
   if (!optimizers_[group_id]->initialized_) {
     optimizers_[group_id]->init(*msg, q_d);
+    return;
+  }
+
+  if (allClose<double>(msg->position, q_d)) {
+    smooth_started_flags_[group_id] = true;
   }
 }
 

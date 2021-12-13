@@ -62,7 +62,7 @@ class RuckigOptimizer {
 
   void set(const std::vector<double>& joint_position, const std::vector<double>& joint_velocity);
 
-  void update(std::vector<double>& q_cmd);
+  void update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd);
 
  private:
   int dof_;

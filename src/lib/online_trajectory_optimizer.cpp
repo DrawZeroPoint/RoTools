@@ -108,14 +108,14 @@ void RuckigOptimizer::init(const sensor_msgs::JointState& msg, const std::vector
   std::array<double, 7> position{};
   std::array<double, 7> velocity{};
   std::array<double, 7> acceleration{};
-  std::copy(position.begin(), position.end(), msg.position.begin());
-  std::copy(velocity.begin(), velocity.end(), msg.velocity.begin());
+  std::copy(msg.position.begin(), msg.position.end(), position.begin());
+  std::copy(msg.velocity.begin(), msg.velocity.end(), velocity.begin());
   input_param_->current_position = position;
   input_param_->current_velocity = velocity;
   input_param_->current_acceleration = acceleration;
 
   std::array<double, 7> q_desired{};
-  std::copy(q_desired.begin(), q_desired.end(), q_d.begin());
+  std::copy(q_d.begin(), q_d.end(), q_desired.begin());
   input_param_->target_position = q_desired;
 
   start_ = std::chrono::steady_clock::now();
@@ -127,13 +127,13 @@ void RuckigOptimizer::set(const std::vector<double>& joint_position, const std::
 
   std::array<double, 7> position{};
   std::array<double, 7> velocity{};
-  std::copy(position.begin(), position.end(), joint_position.begin());
-  std::copy(velocity.begin(), velocity.end(), joint_velocity.begin());
+  std::copy(joint_position.begin(), joint_position.end(), position.begin());
+  std::copy(joint_velocity.begin(), joint_velocity.end(), velocity.begin());
   input_param_->target_position = position;
   input_param_->target_velocity = velocity;
 }
 
-void RuckigOptimizer::update(std::vector<double>& q_cmd) {
+void RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd) {
   auto interval = std::chrono::steady_clock::now() - start_;
   auto i_ms = std::chrono::duration_cast<std::chrono::milliseconds>(interval);
   const unsigned long steps = std::max<unsigned long>(i_ms.count(), 1);
@@ -145,8 +145,11 @@ void RuckigOptimizer::update(std::vector<double>& q_cmd) {
     input_param_->current_acceleration = output_param_->new_acceleration;
   }
   q_cmd.resize(dof_);
+  dq_cmd.resize(dof_);
   std::array<double, 7> new_position = output_param_->new_position;
-  std::copy(new_position.begin(), new_position.end(), q_cmd);
+  std::array<double, 7> new_velocity = output_param_->new_velocity;
+  std::copy(new_position.begin(), new_position.end(), q_cmd.begin());
+  std::copy(new_velocity.begin(), new_velocity.end(), dq_cmd.begin());
 }
 
 }  // namespace rotools

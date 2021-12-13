@@ -59,7 +59,7 @@ class MsgConverter {
 
   bool init();
 
-  void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const size_t& oto_id, const ros::Publisher& publisher,
+  void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const size_t& group_id, const ros::Publisher& publisher,
                     const std::string& type, const int& arg, const std::vector<std::string>& source_names,
                     const std::vector<std::string>& target_names);
 
@@ -75,7 +75,7 @@ class MsgConverter {
   bool filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg, sensor_msgs::JointState& filtered_msg,
                         const std::vector<std::string>& source_names);
 
-  void smoothJointState(const sensor_msgs::JointState& msg, rotools::RuckigOptimizer* oto, sensor_msgs::JointState& smoothed_msg);
+  static void smoothJointState(const sensor_msgs::JointState& msg, rotools::RuckigOptimizer* oto, sensor_msgs::JointState& smoothed_msg);
 
   template <class T>
   bool phaseJointParameterMap(const std::string& param_name, const std::vector<std::string>& source_names,
@@ -120,6 +120,16 @@ class MsgConverter {
       result.second = -1;
     }
     return result;
+  }
+
+  template <typename T>
+  bool allClose(std::vector<T> a, std::vector<T> b, T tol = 0.01) {
+    for (size_t i = 0; i < a.size(); ++i) {
+      if (fabs(a[i] - b[i]) > tol) {
+        return false;
+      }
+    }
+    return true;
   }
 };
 }  // namespace roport

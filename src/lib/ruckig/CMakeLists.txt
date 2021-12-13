@@ -25,7 +25,7 @@ add_library(rotools_ruckig
   src/velocity-step1.cpp
   src/velocity-step2.cpp
 )
-add_library(rotools_ruckig::ruckig ALIAS ruckig)
+add_library(rotools_ruckig::ruckig ALIAS rotools_ruckig)
 
 target_compile_features(rotools_ruckig PUBLIC cxx_std_17)
 target_include_directories(rotools_ruckig PUBLIC

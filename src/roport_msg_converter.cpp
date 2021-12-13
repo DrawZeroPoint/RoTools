@@ -322,32 +322,33 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 
+  ROS_WARN("Init started");
   XmlRpc::XmlRpcValue source_joint_names;
-  pnh.getParam("source_joint_names_", source_joint_names);
+  pnh.getParam("source_joint_names", source_joint_names);
   ROS_ASSERT(source_joint_names.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue target_joint_names;
-  pnh.getParam("target_joint_names_", target_joint_names);
+  pnh.getParam("target_joint_names", target_joint_names);
   ROS_ASSERT(target_joint_names.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue source_js_topics;
-  pnh.getParam("source_js_topics_", source_js_topics);
+  pnh.getParam("source_js_topics", source_js_topics);
   ROS_ASSERT(source_js_topics.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue target_js_topics;
-  pnh.getParam("target_js_topics_", target_js_topics);
+  pnh.getParam("target_js_topics", target_js_topics);
   ROS_ASSERT(target_js_topics.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue target_types;
-  pnh.getParam("target_types_", target_types);
+  pnh.getParam("target_types", target_types);
   ROS_ASSERT(target_types.getType() == XmlRpc::XmlRpcValue::TypeArray && target_js_topics.size() == target_types.size());
 
   XmlRpc::XmlRpcValue target_args;
-  pnh.getParam("target_args_", target_args);
+  pnh.getParam("target_args", target_args);
   ROS_ASSERT(target_args.getType() == XmlRpc::XmlRpcValue::TypeArray && target_js_topics.size() == target_args.size());
 
   XmlRpc::XmlRpcValue enable_reflex;
-  pnh.getParam("enable_reflex_", enable_reflex);
+  pnh.getParam("enable_reflex", enable_reflex);
   ROS_ASSERT(enable_reflex.getType() == XmlRpc::XmlRpcValue::TypeArray && target_js_topics.size() == enable_reflex.size());
 
   ROS_ASSERT(source_joint_names.size() > 0 && source_joint_names.size() == target_joint_names.size());
@@ -445,6 +446,7 @@ int main(int argc, char** argv) {
     subscribers_.push_back(subscriber);
   }
 
+  ROS_WARN("Spin started");
   ros::AsyncSpinner spinner(source_js_topics.size());
   spinner.start();
   ros::waitForShutdown();
