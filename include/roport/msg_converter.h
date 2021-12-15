@@ -57,6 +57,8 @@ class MsgConverter {
       {FRANKA_CORE_MSGS_JOINT_COMMAND, "franka_core_msgs/JointCommand"},
   };
 
+  std::vector<std::chrono::steady_clock::time_point> starts_;
+
   bool init();
 
   void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const size_t& group_id, const ros::Publisher& publisher,
@@ -123,6 +125,14 @@ class MsgConverter {
     return result;
   }
 
+  /**
+   * Judge if all corresponding elements in the two given vectors are close to each other under the tolerance.
+   * @tparam T
+   * @param a One vector.
+   * @param b Other vector.
+   * @param tol Tolerance.
+   * @return True if close.
+   */
   template <typename T>
   bool allClose(std::vector<T> a, std::vector<T> b, T tol = 0.01) {
     for (size_t i = 0; i < a.size(); ++i) {

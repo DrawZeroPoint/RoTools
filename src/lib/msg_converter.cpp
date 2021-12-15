@@ -8,6 +8,7 @@ namespace roport {
 
 MsgConverter::MsgConverter(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) : nh_(nh), pnh_(pnh) {
   if (!init()) return;
+  starts_.resize(enable_smooth_start_flags_.size());
 }
 
 bool MsgConverter::init() {
@@ -269,6 +270,7 @@ void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg, const i
 
   if (!*optimizers_[group_id]->initialized_) {
     optimizers_[group_id]->init(*msg, q_d);
+    starts_[group_id] = std::chrono::steady_clock::now();
     return;
   }
 
@@ -277,6 +279,11 @@ void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg, const i
     ROS_INFO("Successfully moved group %d to the start configuration.", group_id);
   } else {
     ROS_WARN_THROTTLE(1, "Smoothly moving group %d to the start configuration ...", group_id);
+  }
+
+  if (std::chrono::steady_clock::now() - starts_[group_id] > std::chrono::seconds(20)) {
+    smooth_started_flags_[group_id] = true;
+    ROS_WARN("Unable to smoothly move group %d to the start configuration in 20 sec. Aborted.", group_id);
   }
 }
 
