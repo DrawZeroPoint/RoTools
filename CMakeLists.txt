@@ -207,7 +207,6 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/ClangTools.cmake OPTIONAL
   )
 if (CLANG_TOOLS)
   file(GLOB_RECURSE SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/*.cpp
     )
   file(GLOB_RECURSE HEADERS
