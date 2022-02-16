@@ -202,3 +202,26 @@ install(DIRECTORY
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/ClangTools.cmake OPTIONAL
+  RESULT_VARIABLE CLANG_TOOLS
+  )
+if (CLANG_TOOLS)
+  file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+  file(GLOB_RECURSE HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+    )
+  add_format_target(rotools FILES ${SOURCES} ${HEADERS})
+  add_tidy_target(rotools
+    FILES ${SOURCES}
+    DEPENDS ${PROJECT_NAME}
+    )
+endif ()
+
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/PepTools.cmake OPTIONAL
+  RESULT_VARIABLE PEP_TOOLS
+  )
+if (PEP_TOOLS)
+  file(GLOB_RECURSE PYSOURCES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.py)
+  add_pyformat_target(rotools FILES ${PYSOURCES})
+endif ()

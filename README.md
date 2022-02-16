@@ -1,5 +1,7 @@
 # RoTools
 
+[![CI](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml/badge.svg)](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml)
+
 RoTools is an all-in-one ROS package for high-level robotic task scheduling,
 visual perception, direct and tele-manipulation control. It leverages BehaviorTree to
 deliver fast task construction and coordination, and uses MoveIt

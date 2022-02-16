@@ -1,0 +1,46 @@
+# =================================================================
+# Author: Zhipeng Dong
+# CLOVER Lab CUHK
+# -----------------------------------------------------------------
+
+FROM osrf/ros:noetic-desktop-focal
+
+# ==================================================================
+# Install dependencies
+# Essentials: g++, vim, python3-pip, python3-click, python3-requests
+# ROS Basic: python3-catkin-tools, ros-noetic-std-srvs, ros-noetic-behaviortree-cpp-v3,
+# ROS Control: ros-noetic-ros-control, ros-noetic-ros-controllers
+# ROS MoveIt: ros-noetic-moveit, ros-noetic-trac-ik-kinematics-plugin
+# Format Check: clang-7, clang-format-7, clang-tidy-7, pycodestyle
+# Franka: ros-noetic-libfranka, ros-noetic-gazebo-dev, ros-noetic-gazebo-ros-control, liborocos-kdl-dev
+# CartesI/O: libmatio-dev
+# ------------------------------------------------------------------
+
+RUN apt-get update && apt-get install -y \
+    g++ \
+    vim \
+    python3-catkin-tools \
+    libatlas-base-dev \
+    libmatio-dev \
+    ros-noetic-std-srvs \
+    ros-noetic-behaviortree-cpp-v3 \
+    ros-noetic-ros-control \
+    ros-noetic-ros-controllers \
+    ros-noetic-webots-ros \
+    ros-noetic-moveit \
+    ros-noetic-trac-ik-kinematics-plugin \
+    ros-noetic-eigen-conversions \
+    ros-noetic-robot-state-publisher \
+    ros-noetic-libfranka \
+    ros-noetic-franka-ros \
+    ros-noetic-gazebo-dev \
+    ros-noetic-gazebo-ros-control \
+    liborocos-kdl-dev \
+    clang-7 \
+    clang-format-7 \
+    clang-tidy-7 \
+    pycodestyle \
+    python3-pip \
+    python3-click \
+    python3-requests \
+    && rm -rf /var/lib/apt/lists/*

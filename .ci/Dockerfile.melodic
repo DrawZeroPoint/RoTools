@@ -1,0 +1,46 @@
+# =================================================================
+# Author: Zhipeng Dong
+# CLOVER Lab CUHK
+# -----------------------------------------------------------------
+
+FROM osrf/ros:melodic-desktop-bionic
+
+# ==================================================================
+# Install dependencies
+# Essentials: g++, vim, python-pip, python-click, python-requests
+# ROS Basic: python3-catkin-tools, ros-melodic-std-srvs, ros-melodic-behaviortree-cpp-v3,
+# ROS Control: ros-melodic-ros-control, ros-melodic-ros-controllers
+# ROS MoveIt: ros-melodic-moveit, ros-melodic-trac-ik-kinematics-plugin
+# Format Check: clang-7, clang-format-7, clang-tidy-7, pycodestyle
+# Franka: ros-melodic-libfranka, ros-melodic-gazebo-dev, ros-melodic-gazebo-ros-control, ros-melodic-orocos-kdl
+# CartesI/O: libmatio-dev
+# ------------------------------------------------------------------
+
+RUN apt-get update && apt-get install -y \
+    g++ \
+    vim \
+    python3-catkin-tools \
+    libatlas-base-dev \
+    libmatio-dev \
+    ros-melodic-std-srvs \
+    ros-melodic-behaviortree-cpp-v3 \
+    ros-melodic-ros-control \
+    ros-melodic-ros-controllers \
+    ros-melodic-webots-ros \
+    ros-melodic-moveit \
+    ros-melodic-trac-ik-kinematics-plugin \
+    ros-melodic-eigen-conversions \
+    ros-melodic-robot-state-publisher \
+    ros-melodic-libfranka \
+    ros-melodic-franka-ros \
+    ros-melodic-gazebo-dev \
+    ros-melodic-gazebo-ros-control \
+    ros-melodic-orocos-kdl \
+    clang-7 \
+    clang-format-7 \
+    clang-tidy-7 \
+    pycodestyle \
+    python-pip \
+    python-click \
+    python-requests \
+    && rm -rf /var/lib/apt/lists/*
