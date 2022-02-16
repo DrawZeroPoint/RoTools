@@ -5,9 +5,9 @@ import os
 import click
 import numpy as np
 
-import sys
-script_dir = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, script_dir + os.sep + "..")
+# import sys
+# script_dir = os.path.abspath(os.path.dirname(__file__))
+# sys.path.insert(0, script_dir + os.sep + "..")
 
 from rotools.utility import common
 
