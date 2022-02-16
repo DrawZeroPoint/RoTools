@@ -84,16 +84,16 @@ jobs:
           source /ros/devel/setup.bash
           cmake --build /ros/build --target check-pyformat
 
-    - name: Check Linting
-      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-      uses: addnab/docker-run-action@v3
-      with:
-        image:    rotools:${{matrix.ros_distro}}
-        options:  -v ${{github.workspace}}:/ros/
-        shell:    bash
-        run: |
-          source /ros/devel/setup.bash
-          cmake --build /ros/build --target check-tidy
+#    - name: Check Linting
+#      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
+#      uses: addnab/docker-run-action@v3
+#      with:
+#        image:    rotools:${{matrix.ros_distro}}
+#        options:  -v ${{github.workspace}}:/ros/
+#        shell:    bash
+#        run: |
+#          source /ros/devel/setup.bash
+#          cmake --build /ros/build --target check-tidy
 
 #    - name: Run Tests
 #      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}

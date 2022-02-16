@@ -2,7 +2,7 @@
 
 #include "roport/control_server.h"
 
-int main(int argc, char** argv) {
+auto main(int argc, char** argv) -> int {
   ros::init(argc, argv, "roport_control_server");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");

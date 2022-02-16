@@ -2,7 +2,7 @@
 
 #include "roport/robot_interface.h"
 
-int main(int argc, char** argv) {
+auto main(int argc, char** argv) -> int {
   ros::init(argc, argv, "roport_robot_interface");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");

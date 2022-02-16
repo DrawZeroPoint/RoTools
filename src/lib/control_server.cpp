@@ -4,9 +4,11 @@
 
 #include "roport/control_server.h"
 
+#include <utility>
+
 namespace roport {
 
-ControlServer::ControlServer(ros::NodeHandle& nh, ros::NodeHandle& pnh) : nh_(nh), pnh_(pnh) {
+ControlServer::ControlServer(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) : nh_(nh), pnh_(pnh) {
   // Get all available planning group names
   XmlRpc::XmlRpcValue group_names;
   pnh_.getParam("group_names", group_names);
@@ -53,8 +55,8 @@ ControlServer::ControlServer(ros::NodeHandle& nh, ros::NodeHandle& pnh) : nh_(nh
 
 ControlServer::~ControlServer() = default;
 
-bool ControlServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
-                                         roport::ExecuteAllPoses::Response& resp) {
+auto ControlServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req, roport::ExecuteAllPoses::Response& resp)
+    -> bool {
   ROS_ASSERT(req.group_names.size() == req.goals.poses.size());
   std::map<int, trajectory_msgs::JointTrajectory> trajectories;
 
@@ -82,8 +84,7 @@ bool ControlServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
         }
 
         // Build trajectory to reach the goal
-        bool ok = buildTrajectory(*interfaces_[i], goal_pose_wrt_base, trajectory);
-        if (!ok) {
+        if (!buildTrajectory(*interfaces_[i], goal_pose_wrt_base, trajectory)) {
           ROS_ERROR("Building trajectory failed");
           resp.result_status = resp.FAILED;
           return true;
@@ -106,8 +107,8 @@ bool ControlServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
   return true;
 }
 
-bool ControlServer::executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Request& req,
-                                             roport::ExecuteMirroredPose::Response& resp) {
+auto ControlServer::executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Request& req,
+                                             roport::ExecuteMirroredPose::Response& resp) -> bool {
   int i = getGroupIndex(req.reference_group);
   if (i < 0) {
     throw std::runtime_error("Reference group is not exist");
@@ -138,8 +139,7 @@ bool ControlServer::executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Reques
   }
 
   // Build trajectory to reach the goal
-  bool ok = buildTrajectory(*interfaces_[i], goal_pose_wrt_base, trajectory, req.is_cartesian);
-  if (!ok) {
+  if (!buildTrajectory(*interfaces_[i], goal_pose_wrt_base, trajectory, req.is_cartesian)) {
     ROS_ERROR("RoPort: Building trajectory failed");
     resp.result_status = resp.FAILED;
     return true;
@@ -168,23 +168,21 @@ bool ControlServer::executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Reques
 void ControlServer::relativePoseToAbsolutePose(geometry_msgs::PoseStamped transform_wrt_local_base,
                                                geometry_msgs::PoseStamped current_pose_wrt_base,
                                                geometry_msgs::PoseStamped& goal_pose_wrt_base) {
-  // T_be
-  Eigen::Matrix4d T_be;
-  geometryPoseToEigenMatrix(current_pose_wrt_base, T_be);
-  // T_bl
-  Eigen::Matrix4d T_bl = Eigen::Matrix4d::Identity();
+  Eigen::Matrix4d mat_be;
+  geometryPoseToEigenMatrix(current_pose_wrt_base, mat_be);
+  // mat_bl
+  Eigen::Matrix4d mat_bl = Eigen::Matrix4d::Identity();
   Eigen::Vector3d t_bl(current_pose_wrt_base.pose.position.x, current_pose_wrt_base.pose.position.y,
                        current_pose_wrt_base.pose.position.z);
-  T_bl.topRightCorner(3, 1) = t_bl;
-  // T_le
-  Eigen::Matrix4d T_lb = T_bl.inverse();
-  Eigen::Matrix4d T_le = T_lb * T_be;
-  // T_ll_new
-  Eigen::Matrix4d T_ll_new;
-  geometryPoseToEigenMatrix(transform_wrt_local_base, T_ll_new);
-  // T_be_new
-  Eigen::Matrix4d T_be_new = T_bl * T_ll_new * T_le;
-  eigenMatrixToGeometryPose(T_be_new, goal_pose_wrt_base);
+  mat_bl.topRightCorner(3, 1) = t_bl;
+  // mat_le
+  Eigen::Matrix4d mat_le = mat_bl.inverse() * mat_be;
+  // mat_ll_new
+  Eigen::Matrix4d mat_ll_new;
+  geometryPoseToEigenMatrix(std::move(transform_wrt_local_base), mat_ll_new);
+  // mat_be_new
+  Eigen::Matrix4d mat_be_new = mat_bl * mat_ll_new * mat_le;
+  eigenMatrixToGeometryPose(mat_be_new, goal_pose_wrt_base);
 }
 
 void ControlServer::getMirroredTrajectory(MoveGroupInterface& move_group,
@@ -199,12 +197,15 @@ void ControlServer::getMirroredTrajectory(MoveGroupInterface& move_group,
     ROS_ASSERT(p.positions.size() == mirror_vector.size());
     for (size_t j = 0; j < p.positions.size(); ++j) {
       p.positions[j] *= mirror_vector[j];
-      if (!p.velocities.empty())
+      if (!p.velocities.empty()) {
         p.velocities[j] *= mirror_vector[j];
-      if (!p.accelerations.empty())
+      }
+      if (!p.accelerations.empty()) {
         p.accelerations[j] *= mirror_vector[j];
-      if (!p.effort.empty())
+      }
+      if (!p.effort.empty()) {
         p.effort[j] *= mirror_vector[j];
+      }
     }
     mirrored_trajectory.points.push_back(p);
   }
@@ -219,20 +220,20 @@ bool ControlServer::buildTrajectory(MoveGroupInterface& move_group,
     move_group.clearPoseTargets();
     move_group.setPoseTarget(pose);
     moveit::planning_interface::MoveGroupInterface::Plan plan;
-    auto r = move_group.plan(plan);
-    if (r != moveit::planning_interface::MoveItErrorCode::SUCCESS) {
+    auto res = move_group.plan(plan);
+    if (res != moveit::planning_interface::MoveItErrorCode::SUCCESS) {
       ROS_ERROR_STREAM("RoPort: Planning for group " + move_group.getName() + " failed with MoveItErrorCode " +
-                       std::to_string(r.val));
+                       std::to_string(res.val));
       return false;
     }
     robot_trajectory = plan.trajectory_;
   } else {
-    const double jump_threshold = 0.0;  // No joint-space jump constraint (see moveit_msgs/GetCartesianPath)
-    const double eef_step = 0.01;
+    const double kJumpThreshold = 0.0;  // No joint-space jump constraint (see moveit_msgs/GetCartesianPath)
+    const double kEEStep = 0.01;
 
     std::vector<geometry_msgs::Pose> way_points;
     way_points.push_back(pose.pose);
-    double fraction = move_group.computeCartesianPath(way_points, eef_step, jump_threshold, robot_trajectory);
+    double fraction = move_group.computeCartesianPath(way_points, kEEStep, kJumpThreshold, robot_trajectory);
     if (fraction != 1) {
       ROS_ERROR_STREAM("RoPort: Planning for group " + move_group.getName() + " failed with fraction " +
                        std::to_string(fraction));
@@ -249,8 +250,9 @@ bool ControlServer::buildTrajectory(const std::shared_ptr<MoveGroupInterface>& m
                                     const std::vector<geometry_msgs::PoseStamped>& poses,
                                     const std::vector<ros::Duration>& time_stamps,
                                     trajectory_msgs::JointTrajectory& trajectory) {
-  if (poses.empty())
+  if (poses.empty()) {
     throw std::invalid_argument("RoPort: Received empty pose vector");
+  }
 
   if (poses.size() != time_stamps.size()) {
     throw std::invalid_argument("RoPort: Poses and time_stamps should have the same size, but " +
@@ -263,16 +265,16 @@ bool ControlServer::buildTrajectory(const std::shared_ptr<MoveGroupInterface>& m
 
   std::vector<std::vector<double>> joint_poses;
   for (unsigned int i = 0; i < poses.size(); i++) {
-    const geometry_msgs::Pose& p = poses[i].pose;
+    const geometry_msgs::Pose& pose = poses[i].pose;
     std::vector<double> joint_pose;
-    bool foundIk = robot_state->setFromIK(joint_group, p, move_group->getEndEffectorLink(), 1.0);
-    if (!foundIk)
+    if (!robot_state->setFromIK(joint_group, pose, move_group->getEndEffectorLink(), 1.0)) {
       throw std::runtime_error("RoPort: followEePoseTrajectory failed, IK solution not found for pose " +
-                               std::to_string(i) + " ( requested pose is (" + std::to_string(p.position.x) + ", " +
-                               std::to_string(p.position.y) + ", " + std::to_string(p.position.z) + ") (" +
-                               std::to_string(p.orientation.x) + ", " + std::to_string(p.orientation.y) + ", " +
-                               std::to_string(p.orientation.z) + ", " + std::to_string(p.orientation.w) +
+                               std::to_string(i) + " ( requested pose is (" + std::to_string(pose.position.x) + ", " +
+                               std::to_string(pose.position.y) + ", " + std::to_string(pose.position.z) + ") (" +
+                               std::to_string(pose.orientation.x) + ", " + std::to_string(pose.orientation.y) + ", " +
+                               std::to_string(pose.orientation.z) + ", " + std::to_string(pose.orientation.w) +
                                ") transformed from " + poses.at(i).header.frame_id + ")");
+    }
     robot_state->copyJointGroupPositions(joint_group, joint_pose);
     joint_poses.push_back(joint_pose);
   }
@@ -295,25 +297,26 @@ void ControlServer::updateTrajectoryStamp(trajectory_msgs::JointTrajectory traj_
 
   ros::Duration last_stamp = traj_in.points[traj_in.points.size() - 1].time_from_start;
   double ratio = stamp / last_stamp.toSec();
-  for (auto& p : traj_in.points) {
+  for (auto& traj_point : traj_in.points) {
     trajectory_msgs::JointTrajectoryPoint point;
-    point.positions = p.positions;
-    point.time_from_start = ros::Duration(p.time_from_start.toSec() * ratio);
+    point.positions = traj_point.positions;
+    point.time_from_start = ros::Duration(traj_point.time_from_start.toSec() * ratio);
     traj_out.points.push_back(point);
   }
 }
 
-bool ControlServer::executeTrajectories(const std::map<int, trajectory_msgs::JointTrajectory>& trajectories) {
+bool ControlServer::executeTrajectories(const std::map<int, trajectory_msgs::JointTrajectory>& trajectories,
+                                        double duration) {
   std::vector<control_msgs::FollowJointTrajectoryGoal> goals;
-  for (auto& t : trajectories) {
+  for (const auto& traj : trajectories) {
     control_msgs::FollowJointTrajectoryGoal goal;
-    buildControllerGoal(t.first, t.second, goal);
+    buildControllerGoal(traj.first, traj.second, goal);
     goals.push_back(goal);
   }
 
   std::vector<std::shared_ptr<FJT_actionClient>> clients;
-  for (auto& t : trajectories) {
-    std::shared_ptr<FJT_actionClient> client = control_clients_[t.first];
+  for (const auto& traj : trajectories) {
+    std::shared_ptr<FJT_actionClient> client = control_clients_[traj.first];
     clients.push_back(client);
   }
 
@@ -321,9 +324,9 @@ bool ControlServer::executeTrajectories(const std::map<int, trajectory_msgs::Joi
     clients[i]->sendGoal(goals[i]);
   }
 
-  for (size_t i = 0; i < clients.size(); ++i) {
-    if (!clients[i]->waitForResult(ros::Duration(120))) {
-      ROS_ERROR("RoPort: Trajectory execution timeout");
+  for (auto& client : clients) {
+    if (!client->waitForResult(ros::Duration(duration))) {
+      ROS_ERROR("RoPort: Trajectory execution timeout after %f seconds", duration);
       return false;
     }
   }
@@ -358,8 +361,8 @@ void ControlServer::geometryPoseToEigenMatrix(geometry_msgs::PoseStamped pose, E
   orientation.coeffs() << pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z,
       pose.pose.orientation.w;
   Eigen::Quaterniond orientation_n = orientation.normalized();
-  Eigen::Matrix3d R_eigen = orientation_n.toRotationMatrix();
-  mat.topLeftCorner(3, 3) = R_eigen;
+  Eigen::Matrix3d rotation_matrix = orientation_n.toRotationMatrix();
+  mat.topLeftCorner(3, 3) = rotation_matrix;
 
   Eigen::Vector3d t_eigen;
   t_eigen << pose.pose.position.x, pose.pose.position.y, pose.pose.position.z;
@@ -367,25 +370,24 @@ void ControlServer::geometryPoseToEigenMatrix(geometry_msgs::PoseStamped pose, E
 }
 
 void ControlServer::eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::PoseStamped& pose) {
-  Eigen::Matrix3d R_eigen = mat.topLeftCorner(3, 3);
+  Eigen::Matrix3d rotation_matrix = mat.topLeftCorner(3, 3);
   Eigen::Vector3d t_eigen = mat.topRightCorner(3, 1);
-  Eigen::Quaterniond q(R_eigen);
+  Eigen::Quaterniond quat(rotation_matrix);
 
   pose.pose.position.x = t_eigen[0];
   pose.pose.position.y = t_eigen[1];
   pose.pose.position.z = t_eigen[2];
-  pose.pose.orientation.x = q.x();
-  pose.pose.orientation.y = q.y();
-  pose.pose.orientation.z = q.z();
-  pose.pose.orientation.w = q.w();
+  pose.pose.orientation.x = quat.x();
+  pose.pose.orientation.y = quat.y();
+  pose.pose.orientation.z = quat.z();
+  pose.pose.orientation.w = quat.w();
 }
 
-int ControlServer::getGroupIndex(std::string group_name) {
-  auto it = std::find(group_names_.begin(), group_names_.end(), group_name);
-  if (it != group_names_.end()) {
-    return it - group_names_.begin();
-  } else {
-    return -1;
+int ControlServer::getGroupIndex(const std::string& group_name) {
+  auto name = std::find(group_names_.begin(), group_names_.end(), group_name);
+  if (name != group_names_.end()) {
+    return name - group_names_.begin();
   }
+  return -1;
 }
 }  // namespace roport

@@ -34,12 +34,12 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 namespace roport {
 class ControlServer {
  public:
-  ControlServer(ros::NodeHandle& nh, ros::NodeHandle& pnh);
+  ControlServer(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
   ~ControlServer();
 
  protected:
-  ros::NodeHandle& nh_;
-  ros::NodeHandle& pnh_;
+  ros::NodeHandle nh_;
+  ros::NodeHandle pnh_;
 
  private:
   std::vector<std::string> group_names_;
@@ -76,7 +76,7 @@ class ControlServer {
                              double stamp,
                              trajectory_msgs::JointTrajectory& traj_out);
 
-  bool executeTrajectories(const std::map<int, trajectory_msgs::JointTrajectory>& trajectories);
+  bool executeTrajectories(const std::map<int, trajectory_msgs::JointTrajectory>& trajectories, double duration = 120);
 
   void buildControllerGoal(int group_id,
                            const trajectory_msgs::JointTrajectory& trajectory,
@@ -98,7 +98,7 @@ class ControlServer {
   void geometryPoseToEigenMatrix(geometry_msgs::PoseStamped pose, Eigen::Matrix4d& mat);
   void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::PoseStamped& pose);
 
-  int getGroupIndex(std::string group_name);
+  int getGroupIndex(const std::string& group_name);
 };
 
 }  // namespace roport

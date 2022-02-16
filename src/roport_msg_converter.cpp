@@ -3,7 +3,7 @@
 
 #include "roport/msg_converter.h"
 
-int main(int argc, char** argv) {
+auto main(int argc, char** argv) -> int {
   ros::init(argc, argv, "roport_msg_converter");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
