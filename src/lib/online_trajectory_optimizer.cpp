@@ -4,11 +4,13 @@
 
 #include "roport/online_trajectory_optimizer.h"
 
-
 namespace rotools {
 
-RuckigOptimizer::RuckigOptimizer(int dof, const std::vector<double>& max_vel, const std::vector<double>& max_acc,
-                                 const std::vector<double>& max_jerk, double frequency) {
+RuckigOptimizer::RuckigOptimizer(int dof,
+                                 const std::vector<double>& max_vel,
+                                 const std::vector<double>& max_acc,
+                                 const std::vector<double>& max_jerk,
+                                 double frequency) {
   if (dof > 7) {
     ROS_WARN("DOF %d exceed the capacity 7", dof);
   }
@@ -55,7 +57,8 @@ void RuckigOptimizer::init(const sensor_msgs::JointState& msg, const std::vector
 }
 
 bool RuckigOptimizer::set(const std::vector<double>& joint_position, const std::vector<double>& joint_velocity) {
-  if (!*initialized_) return false;
+  if (!*initialized_)
+    return false;
 
   std::array<double, 7> position{};
   std::array<double, 7> velocity{};

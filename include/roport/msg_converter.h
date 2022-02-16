@@ -61,8 +61,12 @@ class MsgConverter {
 
   bool init();
 
-  void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const size_t& group_id, const ros::Publisher& publisher,
-                    const std::string& type, const int& arg, const std::vector<std::string>& source_names,
+  void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
+                    const size_t& group_id,
+                    const ros::Publisher& publisher,
+                    const std::string& type,
+                    const int& arg,
+                    const std::vector<std::string>& source_names,
                     const std::vector<std::string>& target_names);
 
   /**
@@ -74,15 +78,19 @@ class MsgConverter {
    * @param source_names Names of the joints to be selected.
    * @return True if filtering is succeed, false otherwise.
    */
-  bool filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg, sensor_msgs::JointState& filtered_msg,
+  bool filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg,
+                        sensor_msgs::JointState& filtered_msg,
                         const std::vector<std::string>& source_names);
 
-  static bool smoothJointState(const sensor_msgs::JointState& msg, rotools::RuckigOptimizer* oto,
+  static bool smoothJointState(const sensor_msgs::JointState& msg,
+                               rotools::RuckigOptimizer* oto,
                                sensor_msgs::JointState& smoothed_msg);
 
   template <class T>
-  bool phaseJointParameterMap(const std::string& param_name, const std::vector<std::string>& source_names,
-                              const std::vector<std::string>& target_names, std::vector<T>& param_out);
+  bool phaseJointParameterMap(const std::string& param_name,
+                              const std::vector<std::string>& source_names,
+                              const std::vector<std::string>& target_names,
+                              std::vector<T>& param_out);
 
   void startCb(const sensor_msgs::JointState::ConstPtr& msg, const int& group_id, const std::vector<double>& q_d);
 
@@ -93,14 +101,22 @@ class MsgConverter {
    * @param source_names
    * @param target_names
    */
-  void publishJointState(const sensor_msgs::JointState& src_msg, const ros::Publisher& pub,
-                         const std::vector<std::string>& source_names, const std::vector<std::string>& target_names);
+  void publishJointState(const sensor_msgs::JointState& src_msg,
+                         const ros::Publisher& pub,
+                         const std::vector<std::string>& source_names,
+                         const std::vector<std::string>& target_names);
 
-  void publishFrankaJointCommand(const sensor_msgs::JointState& src_msg, const ros::Publisher& pub, const int& arg,
-                                 const std::vector<std::string>& source_names, const std::vector<std::string>& target_names);
+  void publishFrankaJointCommand(const sensor_msgs::JointState& src_msg,
+                                 const ros::Publisher& pub,
+                                 const int& arg,
+                                 const std::vector<std::string>& source_names,
+                                 const std::vector<std::string>& target_names);
 
-  void publishUBTJointCommand(const sensor_msgs::JointState& src_msg, const ros::Publisher& pub, const int& arg,
-                              const std::vector<std::string>& source_names, const std::vector<std::string>& target_names);
+  void publishUBTJointCommand(const sensor_msgs::JointState& src_msg,
+                              const ros::Publisher& pub,
+                              const int& arg,
+                              const std::vector<std::string>& source_names,
+                              const std::vector<std::string>& target_names);
 
   /**
    * Generic function to find an element in vector and also its position. It returns a pair of bool & int.

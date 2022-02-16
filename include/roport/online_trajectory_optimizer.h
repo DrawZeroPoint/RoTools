@@ -20,8 +20,11 @@ namespace rotools {
 class RuckigOptimizer {
  public:
   RuckigOptimizer() = delete;
-  explicit RuckigOptimizer(int dof, const std::vector<double>& max_vel, const std::vector<double>& max_acc,
-                           const std::vector<double>& max_jerk, double frequency = 1000.);
+  explicit RuckigOptimizer(int dof,
+                           const std::vector<double>& max_vel,
+                           const std::vector<double>& max_acc,
+                           const std::vector<double>& max_jerk,
+                           double frequency = 1000.);
   ~RuckigOptimizer();
 
   bool* initialized_;

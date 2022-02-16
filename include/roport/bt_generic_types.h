@@ -12,7 +12,6 @@
 
 #include <utility>
 
-
 // std_msgs/Header
 struct Header {
   uint32_t seq;
@@ -177,9 +176,7 @@ struct DoubleArray {
     return output;
   }
 
-  inline void fromROS(std::vector<double> v) {
-    this->values = std::move(v);
-  }
+  inline void fromROS(std::vector<double> v) { this->values = std::move(v); }
 };
 
 // string[]
@@ -194,121 +191,125 @@ struct StringArray {
     return output;
   }
 
-  inline void fromROS(std::vector<std::string> v) {
-    this->values = std::move(v);
-  }
+  inline void fromROS(std::vector<std::string> v) { this->values = std::move(v); }
 };
 
 /**
  * Note that BT::convertFromString() do not support template specialization of float,
  * so we use double for all the float values.
  */
-namespace BT
-{
-  template <> inline Pose2D convertFromString(StringView str) {
-    // We expect real numbers separated by spaces
-    auto parts = splitString(str, ' ');
-    if (parts.size() != 3) {
-      throw RuntimeError("invalid input %s)", str);
-    } else {
-      Pose2D output{};
-      output.x = convertFromString<double>(parts[0]);
-      output.y = convertFromString<double>(parts[1]);
-      output.theta = convertFromString<double>(parts[2]);
-      return output;
-    }
+namespace BT {
+template <>
+inline Pose2D convertFromString(StringView str) {
+  // We expect real numbers separated by spaces
+  auto parts = splitString(str, ' ');
+  if (parts.size() != 3) {
+    throw RuntimeError("invalid input %s)", str);
+  } else {
+    Pose2D output{};
+    output.x = convertFromString<double>(parts[0]);
+    output.y = convertFromString<double>(parts[1]);
+    output.theta = convertFromString<double>(parts[2]);
+    return output;
   }
+}
 
-  template <> inline Point convertFromString(StringView str) {
-    // We expect real numbers separated by spaces
-    auto parts = splitString(str, ' ');
-    if (parts.size() != 3) {
-      throw RuntimeError("invalid input %s for type Point)", str);
-    } else {
-      Point output{};
-      output.px = convertFromString<double>(parts[0]);
-      output.py = convertFromString<double>(parts[1]);
-      output.pz = convertFromString<double>(parts[2]);
-      return output;
-    }
+template <>
+inline Point convertFromString(StringView str) {
+  // We expect real numbers separated by spaces
+  auto parts = splitString(str, ' ');
+  if (parts.size() != 3) {
+    throw RuntimeError("invalid input %s for type Point)", str);
+  } else {
+    Point output{};
+    output.px = convertFromString<double>(parts[0]);
+    output.py = convertFromString<double>(parts[1]);
+    output.pz = convertFromString<double>(parts[2]);
+    return output;
   }
+}
 
-  template <> inline Pose convertFromString(StringView str) {
+template <>
+inline Pose convertFromString(StringView str) {
+  // We expect real numbers separated by spaces
+  auto parts = splitString(str, ' ');
+  if (parts.size() != 7) {
+    throw RuntimeError("invalid input %s for type Pose)", str);
+  } else {
+    Pose output{};
+    output.px = convertFromString<double>(parts[0]);
+    output.py = convertFromString<double>(parts[1]);
+    output.pz = convertFromString<double>(parts[2]);
+    output.ox = convertFromString<double>(parts[3]);
+    output.oy = convertFromString<double>(parts[4]);
+    output.oz = convertFromString<double>(parts[5]);
+    output.ow = convertFromString<double>(parts[6]);
+    return output;
+  }
+}
+
+template <>
+inline PoseArray convertFromString(StringView str) {
+  // We expect poses separated by semicolons
+  auto poses_str = splitString(str, ';');
+  int len = poses_str.size();
+  PoseArray output{};
+
+  for (auto p_str : poses_str) {
     // We expect real numbers separated by spaces
-    auto parts = splitString(str, ' ');
+    auto parts = splitString(p_str, ' ');
     if (parts.size() != 7) {
-      throw RuntimeError("invalid input %s for type Pose)", str);
+      throw RuntimeError("invalid input %s)", p_str);
     } else {
-      Pose output{};
-      output.px = convertFromString<double>(parts[0]);
-      output.py = convertFromString<double>(parts[1]);
-      output.pz = convertFromString<double>(parts[2]);
-      output.ox = convertFromString<double>(parts[3]);
-      output.oy = convertFromString<double>(parts[4]);
-      output.oz = convertFromString<double>(parts[5]);
-      output.ow = convertFromString<double>(parts[6]);
-      return output;
+      Pose p{};
+      p.px = convertFromString<double>(parts[0]);
+      p.py = convertFromString<double>(parts[1]);
+      p.pz = convertFromString<double>(parts[2]);
+      p.ox = convertFromString<double>(parts[3]);
+      p.oy = convertFromString<double>(parts[4]);
+      p.oz = convertFromString<double>(parts[5]);
+      p.ow = convertFromString<double>(parts[6]);
+      output.poses.push_back(p);
     }
   }
+  return output;
+}
 
-  template <> inline PoseArray convertFromString(StringView str) {
-    // We expect poses separated by semicolons
-    auto poses_str = splitString(str, ';');
-    int len = poses_str.size();
-    PoseArray output{};
+template <>
+inline PoseArrayArray convertFromString(StringView str) {
+  auto pose_arrays = splitString(str, '|');
 
-    for (auto p_str : poses_str) {
-      // We expect real numbers separated by spaces
-      auto parts = splitString(p_str, ' ');
-      if (parts.size() != 7) {
-        throw RuntimeError("invalid input %s)", p_str);
-      } else {
-        Pose p{};
-        p.px = convertFromString<double>(parts[0]);
-        p.py = convertFromString<double>(parts[1]);
-        p.pz = convertFromString<double>(parts[2]);
-        p.ox = convertFromString<double>(parts[3]);
-        p.oy = convertFromString<double>(parts[4]);
-        p.oz = convertFromString<double>(parts[5]);
-        p.ow = convertFromString<double>(parts[6]);
-        output.poses.push_back(p);
-      }
-    }
-    return output;
+  PoseArrayArray output{};
+  for (auto pa_str : pose_arrays) {
+    output.all_poses.push_back(convertFromString<PoseArray>(pa_str));
   }
+  return output;
+}
 
-  template <> inline PoseArrayArray convertFromString(StringView str) {
-    auto pose_arrays = splitString(str, '|');
+template <>
+inline DoubleArray convertFromString(StringView str) {
+  // We expect real numbers separated by spaces
+  auto parts = splitString(str, ' ');
 
-    PoseArrayArray output{};
-    for (auto pa_str : pose_arrays) {
-      output.all_poses.push_back(convertFromString<PoseArray>(pa_str));
-    }
-    return output;
+  DoubleArray output;
+  for (auto p : parts) {
+    output.values.push_back(convertFromString<double>(p));
   }
+  return output;
+}
 
-  template <> inline DoubleArray convertFromString(StringView str) {
-    // We expect real numbers separated by spaces
-    auto parts = splitString(str, ' ');
+template <>
+inline StringArray convertFromString(StringView str) {
+  // We expect real numbers separated by spaces
+  auto parts = splitString(str, ' ');
 
-    DoubleArray output;
-    for (auto p : parts) {
-      output.values.push_back(convertFromString<double>(p));
-    }
-    return output;
+  StringArray output;
+  for (auto p : parts) {
+    output.values.push_back(convertFromString<std::string>(p));
   }
+  return output;
+}
 
-  template <> inline StringArray convertFromString(StringView str) {
-    // We expect real numbers separated by spaces
-    auto parts = splitString(str, ' ');
+}  // end namespace BT
 
-    StringArray output;
-    for (auto p : parts) {
-      output.values.push_back(convertFromString<std::string>(p));
-    }
-    return output;
-  }
-
-} // end namespace BT
-
-#endif //SRC_BT_GENERIC_TYPES_HH
+#endif  // SRC_BT_GENERIC_TYPES_HH

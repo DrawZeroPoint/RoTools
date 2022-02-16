@@ -7,7 +7,8 @@
 namespace roport {
 
 MsgConverter::MsgConverter(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) : nh_(nh), pnh_(pnh) {
-  if (!init()) return;
+  if (!init())
+    return;
   starts_.resize(enable_smooth_start_flags_.size());
 }
 
@@ -76,10 +77,12 @@ bool MsgConverter::init() {
   ROS_ASSERT(start_positions.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   ROS_ASSERT(source_joint_groups.size() > 0);
-  ROS_ASSERT(source_joint_groups.size() == target_joint_groups.size() && source_joint_groups.size() == source_js_topics.size() &&
-             source_joint_groups.size() == target_js_topics.size() && source_joint_groups.size() == target_types.size() &&
-             source_joint_groups.size() == target_args.size() && source_joint_groups.size() == enable_smooth_start.size() &&
-             source_joint_groups.size() == start_ref_topics.size() && source_joint_groups.size() == start_positions.size());
+  ROS_ASSERT(
+      source_joint_groups.size() == target_joint_groups.size() &&
+      source_joint_groups.size() == source_js_topics.size() && source_joint_groups.size() == target_js_topics.size() &&
+      source_joint_groups.size() == target_types.size() && source_joint_groups.size() == target_args.size() &&
+      source_joint_groups.size() == enable_smooth_start.size() &&
+      source_joint_groups.size() == start_ref_topics.size() && source_joint_groups.size() == start_positions.size());
 
   // Subscribe source JointState topics and publish them to target topics.
   // If enable_reflex_ is set, the values to be published will first be smoothed.
@@ -127,8 +130,8 @@ bool MsgConverter::init() {
     rotools::RuckigOptimizer* ro;
     if (smooth_start_flag > 0) {
       enable_smooth_start_flags_.push_back(true);
-      auto subscriber =
-          nh_.subscribe<sensor_msgs::JointState>(start_ref_topics[group_id], 1, [this, group_id, start_position](auto&& PH1) {
+      auto subscriber = nh_.subscribe<sensor_msgs::JointState>(
+          start_ref_topics[group_id], 1, [this, group_id, start_position](auto&& PH1) {
             return startCb(std::forward<decltype(PH1)>(PH1), group_id, start_position);
           });
       start_ref_subscribers_.push_back(subscriber);
@@ -169,8 +172,8 @@ bool MsgConverter::init() {
     ros::Subscriber subscriber = nh_.subscribe<sensor_msgs::JointState>(
         source_js_topics[group_id], 1,
         [this, group_id, publisher, target_type, target_arg, source_names, target_names](auto&& PH1) {
-          return jointStateCb(std::forward<decltype(PH1)>(PH1), group_id, publisher, target_type, target_arg, source_names,
-                              target_names);
+          return jointStateCb(std::forward<decltype(PH1)>(PH1), group_id, publisher, target_type, target_arg,
+                              source_names, target_names);
         });
     publishers_.push_back(publisher);
     subscribers_.push_back(subscriber);
@@ -178,11 +181,16 @@ bool MsgConverter::init() {
   return true;
 }
 
-void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, const size_t& group_id,
-                                const ros::Publisher& publisher, const std::string& type, const int& arg,
-                                const std::vector<std::string>& source_names, const std::vector<std::string>& target_names) {
+void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
+                                const size_t& group_id,
+                                const ros::Publisher& publisher,
+                                const std::string& type,
+                                const int& arg,
+                                const std::vector<std::string>& source_names,
+                                const std::vector<std::string>& target_names) {
   sensor_msgs::JointState filtered_msg;
-  if (!filterJointState(msg, filtered_msg, source_names)) return;
+  if (!filterJointState(msg, filtered_msg, source_names))
+    return;
 
   sensor_msgs::JointState smoothed_msg;
   if (enable_smooth_start_flags_[group_id] && !smooth_started_flags_[group_id]) {
@@ -204,7 +212,8 @@ void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg, co
   }
 }
 
-bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg, sensor_msgs::JointState& filtered_msg,
+bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg,
+                                    sensor_msgs::JointState& filtered_msg,
                                     const std::vector<std::string>& source_names) {
   filtered_msg.header = src_msg->header;
   filtered_msg.name = source_names;
@@ -214,8 +223,9 @@ bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
     return false;
   }
   if (src_msg->position.size() < source_names.size()) {
-    ROS_ERROR_STREAM_THROTTLE(3, prefix_ << "Source JointState message have fewer positions (" << src_msg->position.size()
-                                         << ") than expected (" << source_names.size() << ")");
+    ROS_ERROR_STREAM_THROTTLE(3, prefix_ << "Source JointState message have fewer positions ("
+                                         << src_msg->position.size() << ") than expected (" << source_names.size()
+                                         << ")");
     return false;
   }
 
@@ -231,7 +241,8 @@ bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
         filtered_msg.effort.push_back(src_msg->effort[result.second]);
       }
     } else {
-      ROS_WARN_STREAM_ONCE(prefix_ << "No name in the source joint state message match the given source names (print only once)");
+      ROS_WARN_STREAM_ONCE(
+          prefix_ << "No name in the source joint state message match the given source names (print only once)");
       if (src_msg->position.size() == source_names.size()) {
         filtered_msg.position.push_back(src_msg->position[i]);
         if (src_msg->velocity.size() == source_names.size()) {
@@ -250,13 +261,16 @@ bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
   return true;
 }
 
-bool MsgConverter::smoothJointState(const sensor_msgs::JointState& msg, rotools::RuckigOptimizer* oto,
+bool MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
+                                    rotools::RuckigOptimizer* oto,
                                     sensor_msgs::JointState& smoothed_msg) {
-  if (!*oto->initialized_) return false;
+  if (!*oto->initialized_)
+    return false;
   smoothed_msg.header = msg.header;
   smoothed_msg.name = msg.name;
 
-  if (!oto->set(msg.position, msg.velocity)) return false;
+  if (!oto->set(msg.position, msg.velocity))
+    return false;
   std::vector<double> q_cmd;
   std::vector<double> dq_cmd;
   oto->update(q_cmd, dq_cmd);
@@ -265,8 +279,11 @@ bool MsgConverter::smoothJointState(const sensor_msgs::JointState& msg, rotools:
   return true;
 }
 
-void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg, const int& group_id, const std::vector<double>& q_d) {
-  if (smooth_started_flags_[group_id]) return;
+void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg,
+                           const int& group_id,
+                           const std::vector<double>& q_d) {
+  if (smooth_started_flags_[group_id])
+    return;
 
   if (!*optimizers_[group_id]->initialized_) {
     optimizers_[group_id]->init(*msg, q_d);
@@ -288,8 +305,10 @@ void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg, const i
 }
 
 template <class T>
-bool MsgConverter::phaseJointParameterMap(const std::string& param_name, const std::vector<std::string>& source_names,
-                                          const std::vector<std::string>& target_names, std::vector<T>& param_out) {
+bool MsgConverter::phaseJointParameterMap(const std::string& param_name,
+                                          const std::vector<std::string>& source_names,
+                                          const std::vector<std::string>& target_names,
+                                          std::vector<T>& param_out) {
   std::map<std::string, T> param_map;
   if (!pnh_.getParam(param_name, param_map)) {
     ROS_ERROR_STREAM(prefix_ << ("Get param %s failed", param_name.c_str()));
@@ -309,8 +328,10 @@ bool MsgConverter::phaseJointParameterMap(const std::string& param_name, const s
   return true;
 }
 
-void MsgConverter::publishJointState(const sensor_msgs::JointState& src_msg, const ros::Publisher& pub,
-                                     const std::vector<std::string>& source_names, const std::vector<std::string>& target_names) {
+void MsgConverter::publishJointState(const sensor_msgs::JointState& src_msg,
+                                     const ros::Publisher& pub,
+                                     const std::vector<std::string>& source_names,
+                                     const std::vector<std::string>& target_names) {
   sensor_msgs::JointState tgt_msg;
   tgt_msg.header = src_msg.header;
 
@@ -321,8 +342,8 @@ void MsgConverter::publishJointState(const sensor_msgs::JointState& src_msg, con
   // It is possible to convert only a part of the joint values in the given source message to target message.
   // i.e., src_msg.name.size() >= source_names.size() is legal
   if (src_msg.name.size() < source_names.size()) {
-    ROS_ERROR_STREAM_THROTTLE(3, prefix_ << "Source message has fewer joint names (" << src_msg.name.size() << ") than expected ("
-                                         << source_names.size() << ")");
+    ROS_ERROR_STREAM_THROTTLE(3, prefix_ << "Source message has fewer joint names (" << src_msg.name.size()
+                                         << ") than expected (" << source_names.size() << ")");
     return;
   }
   for (size_t i = 0; i < source_names.size(); ++i) {
@@ -344,13 +365,16 @@ void MsgConverter::publishJointState(const sensor_msgs::JointState& src_msg, con
   pub.publish(tgt_msg);
 }
 
-void MsgConverter::publishFrankaJointCommand(const sensor_msgs::JointState& src_msg, const ros::Publisher& pub, const int& arg,
+void MsgConverter::publishFrankaJointCommand(const sensor_msgs::JointState& src_msg,
+                                             const ros::Publisher& pub,
+                                             const int& arg,
                                              const std::vector<std::string>& source_names,
                                              const std::vector<std::string>& target_names) {
 #ifdef FRANKA_CORE_MSGS
   franka_core_msgs::JointCommand tgt_msg;
   tgt_msg.header = src_msg.header;
-  std::set<int> supported_modes{tgt_msg.IMPEDANCE_MODE, tgt_msg.POSITION_MODE, tgt_msg.TORQUE_MODE, tgt_msg.VELOCITY_MODE};
+  std::set<int> supported_modes{tgt_msg.IMPEDANCE_MODE, tgt_msg.POSITION_MODE, tgt_msg.TORQUE_MODE,
+                                tgt_msg.VELOCITY_MODE};
   if (supported_modes.find(arg) == supported_modes.end()) {
     ROS_ERROR_STREAM_ONCE(prefix_ << "Mode " << arg << " is not supported by franka_core_msg");
     return;
@@ -386,7 +410,9 @@ void MsgConverter::publishFrankaJointCommand(const sensor_msgs::JointState& src_
 #endif
 }
 
-void MsgConverter::publishUBTJointCommand(const sensor_msgs::JointState& src_msg, const ros::Publisher& pub, const int& arg,
+void MsgConverter::publishUBTJointCommand(const sensor_msgs::JointState& src_msg,
+                                          const ros::Publisher& pub,
+                                          const int& arg,
                                           const std::vector<std::string>& source_names,
                                           const std::vector<std::string>& target_names) {
 #ifdef UBT_CORE_MSGS
@@ -403,8 +429,8 @@ void MsgConverter::publishUBTJointCommand(const sensor_msgs::JointState& src_msg
     return;
   }
   if (src_msg.name.size() < source_names.size()) {
-    ROS_ERROR_STREAM_THROTTLE(3, prefix_ << "Source message has fewer joint names (" << src_msg.name.size() << ") than expected ("
-                                         << source_names.size() << ")");
+    ROS_ERROR_STREAM_THROTTLE(3, prefix_ << "Source message has fewer joint names (" << src_msg.name.size()
+                                         << ") than expected (" << source_names.size() << ")");
     return;
   }
   for (size_t i = 0; i < source_names.size(); ++i) {

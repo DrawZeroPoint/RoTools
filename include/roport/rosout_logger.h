@@ -5,33 +5,28 @@
 #include <behaviortree_cpp_v3/loggers/bt_zmq_publisher.h>
 #include <ros/console.h>
 
+namespace BT {
+class RosoutLogger : public StatusChangeLogger {
+  static std::atomic<bool> ref_count;
 
-namespace BT
-{
-  class RosoutLogger : public StatusChangeLogger {
-    static std::atomic<bool> ref_count;
+ public:
+  RosoutLogger(TreeNode* root_node, ros::console::Level verbosity_level = ros::console::Level::Info);
 
-  public:
-    RosoutLogger(TreeNode* root_node, ros::console::Level verbosity_level = ros::console::Level::Info);
+  ros::console::Level getLevel() const;
 
-    ros::console::Level getLevel() const;
+  // Accepts only Info and Debug
+  void setLevel(ros::console::Level level);
 
-    // Accepts only Info and Debug
-    void setLevel(ros::console::Level level);
+  ~RosoutLogger() override;
 
-    ~RosoutLogger() override;
+  void callback(Duration timestamp, const TreeNode& node, NodeStatus prev_status, NodeStatus status) override;
 
-    void callback(Duration timestamp,
-                  const TreeNode& node,
-                  NodeStatus prev_status,
-                  NodeStatus status) override;
+  void flush() override;
 
-    void flush() override;
+ private:
+  ros::console::Level _level;
+};
 
-  private:
-    ros::console::Level _level;
-  };
+}  // namespace BT
 
-}   // end namespace
-
-#endif //SRC_ROSOUT_LOGGER_H
+#endif  // SRC_ROSOUT_LOGGER_H

@@ -2,7 +2,6 @@
 
 #include "roport/robot_interface.h"
 
-
 int main(int argc, char** argv) {
   ros::init(argc, argv, "roport_robot_interface");
   ros::NodeHandle nh;
@@ -16,5 +15,3 @@ int main(int argc, char** argv) {
 
   return 0;
 }
-
-
