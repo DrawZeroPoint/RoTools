@@ -27,7 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
   hardware_interface
   controller_manager
   behaviortree_cpp_v3
-)
+  )
 
 find_package(franka_core_msgs)
 
@@ -153,40 +153,40 @@ add_library(${PROJECT_NAME}
   src/lib/control_server.cpp
   src/lib/msg_converter.cpp
   src/lib/online_trajectory_optimizer.cpp
-)
+  )
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   rotools_ruckig
-)
+  )
 
 add_executable(roport_task_scheduler src/roport_task_scheduler.cpp)
 add_dependencies(roport_task_scheduler ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_task_scheduler
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
-)
+  )
 
 add_executable(roport_robot_interface src/roport_robot_interface.cpp)
 add_dependencies(roport_robot_interface ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_robot_interface
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
-)
+  )
 
 add_executable(roport_control_server src/roport_control_server.cpp)
 add_dependencies(roport_control_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_control_server
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
-)
+  )
 
 add_executable(roport_msg_converter src/roport_msg_converter.cpp)
 add_dependencies(roport_msg_converter ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_msg_converter
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
-)
+  )
 
 catkin_install_python(PROGRAMS
   scripts/roport_moveit_server.py
@@ -200,16 +200,18 @@ install(DIRECTORY
   launch
   tree
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
+  )
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/ClangTools.cmake OPTIONAL
   RESULT_VARIABLE CLANG_TOOLS
   )
 if (CLANG_TOOLS)
-  file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+  file(GLOB_RECURSE SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/*.cpp
+    )
   file(GLOB_RECURSE HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/*.h
     )
   add_format_target(rotools FILES ${SOURCES} ${HEADERS})
   add_tidy_target(rotools
