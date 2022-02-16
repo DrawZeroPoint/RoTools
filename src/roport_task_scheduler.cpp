@@ -29,14 +29,14 @@
 
 // Actions (customized)
 
-using namespace BT;
+namespace BT {
 
 class ExecuteAddCollisionBox : public RosServiceNode<roport::ExecuteAddCollisionBox> {
  public:
-  ExecuteAddCollisionBox(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteAddCollisionBox>(nh, name, cfg), name_(name) {}
+  ExecuteAddCollisionBox(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteAddCollisionBox>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),   InputPort<std::string>("group_name"), InputPort<std::string>("box_name"),
         InputPort<Pose>("box_pose"),   InputPort<Point>("box_size"),         InputPort<int>("is_absolute"),
@@ -55,38 +55,20 @@ class ExecuteAddCollisionBox : public RosServiceNode<roport::ExecuteAddCollision
     request.box_size = box_size.toROS();
     int is_absolute;
     getInput<int>("is_absolute", is_absolute);
-    request.is_absolute = bool(is_absolute);
+    request.is_absolute = static_cast<bool>(is_absolute);
     int auto_suffix;
     getInput<int>("auto_suffix", auto_suffix);
     request.auto_suffix = bool(auto_suffix);
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteAddCollisionPlane : public RosServiceNode<roport::ExecuteAddCollisionPlane> {
  public:
-  ExecuteAddCollisionPlane(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteAddCollisionPlane>(nh, name, cfg), name_(name) {}
+  ExecuteAddCollisionPlane(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteAddCollisionPlane>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),   InputPort<std::string>("group_name"), InputPort<std::string>("plane_name"),
         InputPort<Pose>("plane_pose"), InputPort<Point>("plane_normal"),     InputPort<int>("auto_suffix"),
@@ -107,32 +89,14 @@ class ExecuteAddCollisionPlane : public RosServiceNode<roport::ExecuteAddCollisi
     request.auto_suffix = bool(auto_suffix);
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteAllPlans : public RosServiceNode<roport::ExecuteAllPlans> {
  public:
-  ExecuteAllPlans(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteAllPlans>(nh, name, cfg), name_(name) {}
+  ExecuteAllPlans(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteAllPlans>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),      InputPort<StringArray>("group_names"),
         InputPort<int>("is_absolute"),    InputPort<PoseArrayArray>("all_poses"),
@@ -163,32 +127,14 @@ class ExecuteAllPlans : public RosServiceNode<roport::ExecuteAllPlans> {
 
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteAllPoses : public RosServiceNode<roport::ExecuteAllPoses> {
  public:
-  ExecuteAllPoses(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteAllPoses>(nh, name, cfg), name_(name) {}
+  ExecuteAllPoses(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteAllPoses>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),       InputPort<StringArray>("group_names"), InputPort<int>("goal_type"),
         InputPort<PoseArray>("goals"),     InputPort<DoubleArray>("stamps"),      InputPort<int>("is_cartesian"),
@@ -223,32 +169,14 @@ class ExecuteAllPoses : public RosServiceNode<roport::ExecuteAllPoses> {
 
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteMirroredPose : public RosServiceNode<roport::ExecuteMirroredPose> {
  public:
-  ExecuteMirroredPose(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteMirroredPose>(nh, name, cfg), name_(name) {}
+  ExecuteMirroredPose(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteMirroredPose>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),
         InputPort<std::string>("reference_group"),
@@ -290,32 +218,14 @@ class ExecuteMirroredPose : public RosServiceNode<roport::ExecuteMirroredPose> {
 
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteAttachCollisionBox : public RosServiceNode<roport::ExecuteAttachCollisionBox> {
  public:
-  ExecuteAttachCollisionBox(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteAttachCollisionBox>(nh, name, cfg), name_(name) {}
+  ExecuteAttachCollisionBox(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteAttachCollisionBox>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),
         InputPort<std::string>("group_name"),
@@ -338,32 +248,14 @@ class ExecuteAttachCollisionBox : public RosServiceNode<roport::ExecuteAttachCol
     request.box_size = box_size.toROS();
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteBinaryAction : public RosServiceNode<roport::ExecuteBinaryAction> {
  public:
   ExecuteBinaryAction(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteBinaryAction>(nh, name, cfg), name_(name) {}
+      : RosServiceNode<roport::ExecuteBinaryAction>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),
         InputPort<int>("device_id"),
@@ -382,32 +274,14 @@ class ExecuteBinaryAction : public RosServiceNode<roport::ExecuteBinaryAction> {
     getInput<double>("value", request.value);
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteDetachCollision : public RosServiceNode<roport::ExecuteDetachCollision> {
  public:
-  ExecuteDetachCollision(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteDetachCollision>(nh, name, cfg), name_(name) {}
+  ExecuteDetachCollision(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteDetachCollision>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),
         InputPort<std::string>("group_name"),
@@ -420,32 +294,14 @@ class ExecuteDetachCollision : public RosServiceNode<roport::ExecuteDetachCollis
     getInput<std::string>("obj_name", request.obj_name);
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteGroupAngularJointStates : public RosServiceNode<roport::ExecuteGroupJointStates> {
  public:
-  ExecuteGroupAngularJointStates(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteGroupJointStates>(nh, name, cfg), name_(name) {}
+  ExecuteGroupAngularJointStates(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteGroupJointStates>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),
         InputPort<std::string>("group_name"),
@@ -463,31 +319,14 @@ class ExecuteGroupAngularJointStates : public RosServiceNode<roport::ExecuteGrou
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
 
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteGroupLinearJointStates : public RosServiceNode<roport::ExecuteGroupJointStates> {
  public:
-  ExecuteGroupLinearJointStates(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteGroupJointStates>(nh, name, cfg), name_(name) {}
+  ExecuteGroupLinearJointStates(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteGroupJointStates>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),
         InputPort<std::string>("group_name"),
@@ -504,32 +343,14 @@ class ExecuteGroupLinearJointStates : public RosServiceNode<roport::ExecuteGroup
     getInput<double>("tolerance", request.tolerance);
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteGroupNamedStates : public RosServiceNode<roport::ExecuteGroupNamedStates> {
  public:
-  ExecuteGroupNamedStates(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteGroupNamedStates>(nh, name, cfg), name_(name) {}
+  ExecuteGroupNamedStates(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteGroupNamedStates>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),
         InputPort<std::string>("group_name"),
@@ -542,32 +363,14 @@ class ExecuteGroupNamedStates : public RosServiceNode<roport::ExecuteGroupNamedS
     getInput<std::string>("state_name", request.state_name);
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteGroupPlan : public RosServiceNode<roport::ExecuteGroupPlan> {
  public:
-  ExecuteGroupPlan(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteGroupPlan>(nh, name, cfg), name_(name) {}
+  ExecuteGroupPlan(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteGroupPlan>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),   InputPort<std::string>("group_name"), InputPort<int>("goal_type"),
         InputPort<PoseArray>("poses"), InputPort<double>("stamp"),           InputPort<int>("allow_collision"),
@@ -593,32 +396,14 @@ class ExecuteGroupPlan : public RosServiceNode<roport::ExecuteGroupPlan> {
 
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteGroupPose : public RosServiceNode<roport::ExecuteGroupPose> {
  public:
-  ExecuteGroupPose(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteGroupPose>(nh, name, cfg), name_(name) {}
+  ExecuteGroupPose(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteGroupPose>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"), InputPort<std::string>("group_name"), InputPort<int>("goal_type"),
         InputPort<Pose>("goal"),     InputPort<double>("tolerance"),       InputPort<std::string>("constraint"),
@@ -640,32 +425,14 @@ class ExecuteGroupPose : public RosServiceNode<roport::ExecuteGroupPose> {
     getInput<std::string>("constraint", request.constraint);
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteGroupPosition : public RosServiceNode<roport::ExecuteGroupPosition> {
  public:
-  ExecuteGroupPosition(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteGroupPosition>(nh, name, cfg), name_(name) {}
+  ExecuteGroupPosition(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteGroupPosition>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"), InputPort<std::string>("group_name"), InputPort<int>("goal_type"),
         InputPort<Point>("goal"),    InputPort<double>("tolerance"),
@@ -686,32 +453,14 @@ class ExecuteGroupPosition : public RosServiceNode<roport::ExecuteGroupPosition>
     getInput<double>("tolerance", request.tolerance);
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteGroupShift : public RosServiceNode<roport::ExecuteGroupShift> {
  public:
-  ExecuteGroupShift(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteGroupShift>(nh, name, cfg), name_(name) {}
+  ExecuteGroupShift(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteGroupShift>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),   InputPort<std::string>("group_name"),
         InputPort<int>("is_absolute"), InputPort<std::string>("axis"),
@@ -722,7 +471,7 @@ class ExecuteGroupShift : public RosServiceNode<roport::ExecuteGroupShift> {
   void onSendRequest(RequestType& request) override {
     getInput<std::string>("group_name", request.group_name);
 
-    int is_absolute;
+    int is_absolute = 0;
     getInput<int>("is_absolute", is_absolute);
     request.is_absolute = bool(is_absolute);
 
@@ -732,32 +481,14 @@ class ExecuteGroupShift : public RosServiceNode<roport::ExecuteGroupShift> {
     getInput<double>("tolerance", request.tolerance);
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class ExecuteRemoveCollision : public RosServiceNode<roport::ExecuteRemoveCollision> {
  public:
-  ExecuteRemoveCollision(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::ExecuteRemoveCollision>(nh, name, cfg), name_(name) {}
+  ExecuteRemoveCollision(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteRemoveCollision>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),
         InputPort<std::string>("obj_name"),
@@ -772,32 +503,14 @@ class ExecuteRemoveCollision : public RosServiceNode<roport::ExecuteRemoveCollis
     request.is_exact = bool(is_exact);
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class GetPreparePose : public RosServiceNode<roport::GetPreparePose> {
  public:
-  GetPreparePose(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::GetPreparePose>(nh, name, cfg), name_(name) {}
+  GetPreparePose(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::GetPreparePose>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {InputPort<Header>("header"), InputPort<Pose>("pose"), InputPort<int>("is_absolute"),
             InputPort<Point>("shift"), OutputPort<Pose>("pre_pose")};
   }
@@ -815,34 +528,25 @@ class GetPreparePose : public RosServiceNode<roport::GetPreparePose> {
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
 
-  BT::NodeStatus onResponse(const ResponseType& response) override {
+  auto onResponse(const ResponseType& response) -> BT::NodeStatus override {
     if (response.result_status == response.SUCCEEDED) {
       Pose pre_pose{};
       pre_pose.fromROS(response.pre_pose);
       setOutput("pre_pose", pre_pose);
       ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
       return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
     }
+    ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
+    return NodeStatus::FAILURE;
   }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class GetTransformedPose : public RosServiceNode<roport::GetTransformedPose> {
  public:
-  GetTransformedPose(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::GetTransformedPose>(nh, name, cfg), name_(name) {}
+  GetTransformedPose(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::GetTransformedPose>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {InputPort<Header>("header"), InputPort<Pose>("pose"), InputPort<std::string>("source_frame"),
             InputPort<std::string>("target_frame"), OutputPort<Pose>("trans_pose")};
   }
@@ -856,34 +560,25 @@ class GetTransformedPose : public RosServiceNode<roport::GetTransformedPose> {
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
 
-  BT::NodeStatus onResponse(const ResponseType& response) override {
+  auto onResponse(const ResponseType& response) -> BT::NodeStatus override {
     if (response.result_status == response.SUCCEEDED) {
       Pose trans_pose{};
       trans_pose.fromROS(response.trans_pose);
       setOutput("trans_pose", trans_pose);
       ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
       return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
     }
+    ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
+    return NodeStatus::FAILURE;
   }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class SenseManipulationPoses : public RosServiceNode<roport::SenseManipulationPoses> {
  public:
-  SenseManipulationPoses(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::SenseManipulationPoses>(nh, name, cfg), name_(name) {}
+  SenseManipulationPoses(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::SenseManipulationPoses>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {InputPort<Header>("header"), InputPort<StringArray>("device_names"), InputPort<int>("algorithm_id"),
             OutputPort<PoseArray>("poses"), OutputPort<Pose>("best_pose")};
   }
@@ -898,7 +593,7 @@ class SenseManipulationPoses : public RosServiceNode<roport::SenseManipulationPo
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
 
-  BT::NodeStatus onResponse(const ResponseType& response) override {
+  auto onResponse(const ResponseType& response) -> BT::NodeStatus override {
     if (response.result_status == response.SUCCEEDED) {
       PoseArray poses{};
       poses.fromROS(response.poses);
@@ -908,27 +603,18 @@ class SenseManipulationPoses : public RosServiceNode<roport::SenseManipulationPo
       setOutput("best_pose", best_pose);
       ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
       return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
     }
+    ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
+    return NodeStatus::FAILURE;
   }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
 
 class VisualizePose : public RosServiceNode<roport::VisualizePose> {
  public:
-  VisualizePose(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
-      : RosServiceNode<roport::VisualizePose>(nh, name, cfg), name_(name) {}
+  VisualizePose(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::VisualizePose>(nh, name, cfg) {}
 
-  static BT::PortsList providedPorts() {
+  static auto providedPorts() -> BT::PortsList {
     return {InputPort<Header>("header"), InputPort<std::string>("frame"), InputPort<PoseArray>("poses"),
             InputPort<Pose>("pose")};
   }
@@ -943,25 +629,8 @@ class VisualizePose : public RosServiceNode<roport::VisualizePose> {
     request.pose = pose.toROS();
     ROS_INFO("RoPort: %s sending request.", name_.c_str());
   }
-
-  BT::NodeStatus onResponse(const ResponseType& response) override {
-    if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
-      return NodeStatus::SUCCESS;
-    } else {
-      ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
-      return NodeStatus::FAILURE;
-    }
-  }
-
-  BT::NodeStatus onFailedRequest(RosServiceNode::FailureCause failure) override {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
-    return BT::NodeStatus::FAILURE;
-  }
-
- private:
-  std::string name_;
 };
+}  // namespace BT
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "roport_bt_port");
@@ -976,31 +645,31 @@ int main(int argc, char** argv) {
   }
 
   BT::BehaviorTreeFactory factory;
-  RegisterRosService<ExecuteAddCollisionBox>(factory, "ExecuteAddCollisionBox", nh);
-  RegisterRosService<ExecuteAddCollisionPlane>(factory, "ExecuteAddCollisionPlane", nh);
-  RegisterRosService<ExecuteAllPlans>(factory, "ExecuteAllPlans", nh);
-  RegisterRosService<ExecuteAllPoses>(factory, "ExecuteAllPoses", nh);
-  RegisterRosService<ExecuteMirroredPose>(factory, "ExecuteMirroredPose", nh);
-  RegisterRosService<ExecuteAttachCollisionBox>(factory, "ExecuteAttachCollisionBox", nh);
-  RegisterRosService<ExecuteBinaryAction>(factory, "ExecuteBinaryAction", nh);
-  RegisterRosService<ExecuteDetachCollision>(factory, "ExecuteDetachCollision", nh);
-  RegisterRosService<ExecuteGroupAngularJointStates>(factory, "ExecuteGroupAngularJointStates", nh);
-  RegisterRosService<ExecuteGroupLinearJointStates>(factory, "ExecuteGroupLinearJointStates", nh);
-  RegisterRosService<ExecuteGroupNamedStates>(factory, "ExecuteGroupNamedStates", nh);
-  RegisterRosService<ExecuteGroupPlan>(factory, "ExecuteGroupPlan", nh);
-  RegisterRosService<ExecuteGroupPose>(factory, "ExecuteGroupPose", nh);
-  RegisterRosService<ExecuteGroupPosition>(factory, "ExecuteGroupPosition", nh);
-  RegisterRosService<ExecuteGroupShift>(factory, "ExecuteGroupShift", nh);
-  RegisterRosService<ExecuteRemoveCollision>(factory, "ExecuteRemoveCollision", nh);
-  RegisterRosService<GetPreparePose>(factory, "GetPreparePose", nh);
-  RegisterRosService<GetTransformedPose>(factory, "GetTransformedPose", nh);
-  RegisterRosService<SenseManipulationPoses>(factory, "SenseManipulationPoses", nh);
-  RegisterRosService<VisualizePose>(factory, "VisualizePose", nh);
+  BT::registerRosService<BT::ExecuteAddCollisionBox>(factory, "ExecuteAddCollisionBox", nh);
+  BT::registerRosService<BT::ExecuteAddCollisionPlane>(factory, "ExecuteAddCollisionPlane", nh);
+  BT::registerRosService<BT::ExecuteAllPlans>(factory, "ExecuteAllPlans", nh);
+  BT::registerRosService<BT::ExecuteAllPoses>(factory, "ExecuteAllPoses", nh);
+  BT::registerRosService<BT::ExecuteMirroredPose>(factory, "ExecuteMirroredPose", nh);
+  BT::registerRosService<BT::ExecuteAttachCollisionBox>(factory, "ExecuteAttachCollisionBox", nh);
+  BT::registerRosService<BT::ExecuteBinaryAction>(factory, "ExecuteBinaryAction", nh);
+  BT::registerRosService<BT::ExecuteDetachCollision>(factory, "ExecuteDetachCollision", nh);
+  BT::registerRosService<BT::ExecuteGroupAngularJointStates>(factory, "ExecuteGroupAngularJointStates", nh);
+  BT::registerRosService<BT::ExecuteGroupLinearJointStates>(factory, "ExecuteGroupLinearJointStates", nh);
+  BT::registerRosService<BT::ExecuteGroupNamedStates>(factory, "ExecuteGroupNamedStates", nh);
+  BT::registerRosService<BT::ExecuteGroupPlan>(factory, "ExecuteGroupPlan", nh);
+  BT::registerRosService<BT::ExecuteGroupPose>(factory, "ExecuteGroupPose", nh);
+  BT::registerRosService<BT::ExecuteGroupPosition>(factory, "ExecuteGroupPosition", nh);
+  BT::registerRosService<BT::ExecuteGroupShift>(factory, "ExecuteGroupShift", nh);
+  BT::registerRosService<BT::ExecuteRemoveCollision>(factory, "ExecuteRemoveCollision", nh);
+  BT::registerRosService<BT::GetPreparePose>(factory, "GetPreparePose", nh);
+  BT::registerRosService<BT::GetTransformedPose>(factory, "GetTransformedPose", nh);
+  BT::registerRosService<BT::SenseManipulationPoses>(factory, "SenseManipulationPoses", nh);
+  BT::registerRosService<BT::VisualizePose>(factory, "VisualizePose", nh);
 
   auto tree = factory.createTreeFromFile(tree_file);
   BT::PublisherZMQ publisher_zmp(tree);
 
-  RosoutLogger logger(tree.rootNode());
+  BT::RosoutLogger logger(tree.rootNode());
   printTreeRecursively(tree.rootNode());
 
   ROS_WARN("Get ready and press Enter to run the task.");
