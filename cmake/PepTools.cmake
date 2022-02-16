@@ -1,7 +1,7 @@
 include(CMakeParseArguments)
 
 find_program(PEP_FORMAT_PROG pycodestyle DOC "'pycodestyle' executable")
-if(PEP_FORMAT_PROG AND NOT TARGET pyformat)
+if(PEP_FORMAT_PROG AND NOT TARGET check-pyformat)
   add_custom_target(check-pyformat)
 endif()
 

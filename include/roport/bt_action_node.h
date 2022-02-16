@@ -5,6 +5,7 @@
 #include <behaviortree_cpp_v3/action_node.h>
 #include <behaviortree_cpp_v3/bt_factory.h>
 #include <ros/ros.h>
+#include <rosgraph_msgs/Clock.h>
 
 namespace BT {
 
@@ -105,16 +106,18 @@ class RosActionNode : public BT::ActionNodeBase {
     if (action_state == actionlib::SimpleClientGoalState::PENDING ||
         action_state == actionlib::SimpleClientGoalState::ACTIVE) {
       return NodeStatus::RUNNING;
-    } else if (action_state == actionlib::SimpleClientGoalState::SUCCEEDED) {
-      return onResult(*action_client_->getResult());
-    } else if (action_state == actionlib::SimpleClientGoalState::ABORTED) {
-      return onFailedRequest(ABORTED_BY_SERVER);
-    } else if (action_state == actionlib::SimpleClientGoalState::REJECTED) {
-      return onFailedRequest(REJECTED_BY_SERVER);
-    } else {
-      // FIXME: is there any other valid state we should consider?
-      throw std::logic_error("Unexpected state in RosActionNode::tick()");
     }
+    if (action_state == actionlib::SimpleClientGoalState::SUCCEEDED) {
+      return onResult(*action_client_->getResult());
+    }
+    if (action_state == actionlib::SimpleClientGoalState::ABORTED) {
+      return onFailedRequest(ABORTED_BY_SERVER);
+    }
+    if (action_state == actionlib::SimpleClientGoalState::REJECTED) {
+      return onFailedRequest(REJECTED_BY_SERVER);
+    }
+    // FIXME: is there any other valid state we should consider?
+    throw std::logic_error("Unexpected state in RosActionNode::tick()");
   }
 
   int time_sec_;
