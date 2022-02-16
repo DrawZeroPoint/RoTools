@@ -1,6 +1,5 @@
 ## Example 2: Offline Trajectory Generation
 
-
 ### C++
 
 \include 2_position_offline.cpp

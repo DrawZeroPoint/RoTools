@@ -57,7 +57,6 @@ if __name__ == '__main__':
 
     out_list, time_offsets, duration = walk_through_trajectory(otg, inp, intermediate_waypoints)
 
-
     print(f'Calculation duration: {out_list[0].calculation_duration:0.1f} [µs]')
     print(f'Trajectory duration: {duration:0.6f} [s]')
 

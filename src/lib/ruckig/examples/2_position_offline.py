@@ -7,7 +7,6 @@ path.insert(0, str(build_path))
 
 from ruckig import InputParameter, Ruckig, Trajectory, Result
 
-
 if __name__ == '__main__':
     inp = InputParameter(3)
 

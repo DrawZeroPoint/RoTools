@@ -6,7 +6,10 @@ from plotter import Plotter
 
 path.insert(0, str(Path(__file__).parent.absolute().parent / 'build'))
 
-from ruckig import InputParameter, OutputParameter, Result, Ruckig, Synchronization, ControlInterface, DurationDiscretization
+from ruckig import InputParameter, OutputParameter, Result, Ruckig, Synchronization, ControlInterface, \
+    DurationDiscretization
+
+
 # from ruckig import Reflexxes
 
 
@@ -49,7 +52,6 @@ if __name__ == '__main__':
     inp.max_jerk = [1.0, 1.0, 1.0]
 
     # inp.minimum_duration = 5.0
-
 
     # otg = Reflexxes(inp.degrees_of_freedom, 0.005)
     otg = Ruckig(inp.degrees_of_freedom, 0.001)

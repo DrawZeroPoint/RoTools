@@ -8,7 +8,6 @@ path.insert(0, str(build_path))
 
 from ruckig import InputParameter, OutputParameter, Result, Ruckig
 
-
 if __name__ == '__main__':
     otg = Ruckig(3, 0.01)
     inp = InputParameter(3)
@@ -29,7 +28,6 @@ if __name__ == '__main__':
 
     # Set minimum duration (equals the trajectory duration when target velocity and acceleration are zero)
     inp.minimum_duration = 5.0;
-
 
     print('\t'.join(['t'] + [str(i) for i in range(otg.degrees_of_freedom)]))
 

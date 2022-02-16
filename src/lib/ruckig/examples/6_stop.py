@@ -8,13 +8,12 @@ path.insert(0, str(build_path))
 
 from ruckig import InputParameter, OutputParameter, Result, Ruckig, ControlInterface, Synchronization
 
-
 if __name__ == '__main__':
     # Create instances: the Ruckig OTG as well as input and output parameters
     otg = Ruckig(3, 0.01)  # DoFs, control cycle
     inp = InputParameter(3)
     out = OutputParameter(3)
-    
+
     inp.current_position = [0.0, 0.0, 0.5]
     inp.current_velocity = [0.0, -2.2, -0.5]
     inp.current_acceleration = [0.0, 2.5, -0.5]
@@ -26,7 +25,6 @@ if __name__ == '__main__':
     inp.max_velocity = [3.0, 1.0, 3.0]
     inp.max_acceleration = [3.0, 2.0, 1.0]
     inp.max_jerk = [4.0, 3.0, 2.0]
-
 
     print('\t'.join(['t'] + [str(i) for i in range(otg.degrees_of_freedom)]))
 

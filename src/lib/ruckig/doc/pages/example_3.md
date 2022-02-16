@@ -1,6 +1,5 @@
 ## Example 3: Waypoints Trajectory
 
-
 ### C++
 
 \include 3_waypoints.cpp

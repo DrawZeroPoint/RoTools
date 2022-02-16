@@ -10,10 +10,10 @@ path.insert(0, str(build_path))
 
 from ruckig import InputParameter, OutputParameter, Result, Ruckig
 
-
 if __name__ == '__main__':
     # Create instances: the Ruckig OTG as well as input and output parameters
-    otg = Ruckig(3, 0.01, 10)  # DoFs, control cycle rate, maximum number of intermediate waypoints for memory allocation
+    otg = Ruckig(3, 0.01,
+                 10)  # DoFs, control cycle rate, maximum number of intermediate waypoints for memory allocation
     inp = InputParameter(3)  # DoFs
     out = OutputParameter(3, 10)  # DoFs, maximum number of intermediate waypoints for memory allocation
 
@@ -35,7 +35,6 @@ if __name__ == '__main__':
     inp.max_velocity = [1, 2, 1]
     inp.max_acceleration = [3, 2, 2]
     inp.max_jerk = [6, 10, 20]
-
 
     print('\t'.join(['t'] + [str(i) for i in range(otg.degrees_of_freedom)]))
 

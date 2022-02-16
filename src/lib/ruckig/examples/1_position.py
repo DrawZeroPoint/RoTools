@@ -8,7 +8,6 @@ path.insert(0, str(build_path))
 
 from ruckig import InputParameter, OutputParameter, Result, Ruckig
 
-
 if __name__ == '__main__':
     # Create instances: the Ruckig OTG as well as input and output parameters
     otg = Ruckig(3, 0.01)  # DoFs, control cycle
@@ -28,7 +27,6 @@ if __name__ == '__main__':
     inp.max_acceleration = [3.0, 2.0, 1.0]
     inp.max_jerk = [4.0, 3.0, 2.0]
 
-    
     print('\t'.join(['t'] + [str(i) for i in range(otg.degrees_of_freedom)]))
 
     # Generate the trajectory within the control loop
