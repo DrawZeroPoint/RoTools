@@ -45,13 +45,12 @@ It includes foundational modules for robotic problems including path & trajector
 
 ### System
 
-Well tested on Ubuntu 18.04 with Python 2.7 and ROS Melodic. ROS Indigo on Ubuntu 14.04 is not supported.
-May also work for other version combinations.
+This software is continuously tested on Ubuntu 18.04 and 20.04. ROS Indigo on Ubuntu 14.04 is not supported.
 
 ### Officially supported robots
 
 - Walker from UBTech
-- [Curiosity](https://github.com/DrawZeroPoint/curiosity) from CLOVER Lab CUHK
+- [CURI/Curiosity](https://github.com/DrawZeroPoint/curiosity) from CLOVER Lab CUHK
 
 ### Dependence
 
