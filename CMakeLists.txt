@@ -150,7 +150,7 @@ include_directories(
 add_library(${PROJECT_NAME}
   src/lib/rosout_logger.cpp
   src/lib/robot_interface.cpp
-  src/lib/control_server.cpp
+  src/lib/moveit_cpp_server.cpp
   src/lib/msg_converter.cpp
   src/lib/online_trajectory_optimizer.cpp
   )
@@ -174,9 +174,9 @@ target_link_libraries(roport_robot_interface
   ${PROJECT_NAME}
   )
 
-add_executable(roport_control_server src/roport_control_server.cpp)
-add_dependencies(roport_control_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(roport_control_server
+add_executable(roport_moveit_cpp_server src/roport_moveit_cpp_server.cpp)
+add_dependencies(roport_moveit_cpp_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(roport_moveit_cpp_server
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
   )
@@ -188,12 +188,9 @@ target_link_libraries(roport_msg_converter
   ${PROJECT_NAME}
   )
 
+file(GLOB_RECURSE PY_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.py)
 catkin_install_python(PROGRAMS
-  scripts/roport_moveit_server.py
-  scripts/roport_planner_server.py
-  scripts/roport_sensing_server.py
-  scripts/roport_xsens_server.py
-  scripts/roport_websocket_client.py
+  ${PY_SOURCES}
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 install(DIRECTORY
@@ -223,6 +220,6 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/PepTools.cmake OPTIONAL
   RESULT_VARIABLE PEP_TOOLS
   )
 if (PEP_TOOLS)
-  file(GLOB_RECURSE PYSOURCES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.py)
-  add_pyformat_target(rotools FILES ${PYSOURCES})
+  file(GLOB_RECURSE PY_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.py)
+  add_pyformat_target(rotools FILES ${PY_SOURCES})
 endif ()

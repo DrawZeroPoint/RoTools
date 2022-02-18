@@ -1,6 +1,7 @@
 # RoTools
 
-[![CI](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml/badge.svg)](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml)
+[![CI](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml/badge.svg)](
+https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml)
 
 RoTools is an all-in-one ROS package for high-level robotic task scheduling,
 visual perception, direct and tele-manipulation control. It leverages BehaviorTree to
@@ -20,18 +21,18 @@ The packages compose of two components: roport and rotools.
 This module provides the entrance ports of the RoTools package. It is a middleware that allows using 
 rotools python interface in ROS environment. It provides: 
 
-- [MoveIt server](scripts/roport_moveit_server.py) for controlling the robot's single kinematic chain.
-- [control server](src/roport_control_server.cpp) simultaneously controlling multiple kinematic chains of a robot.
+- [MoveIt Python Server](scripts/roport_moveit_py_server.py) for controlling the robot's single kinematic chain using the Python interface.
+- [MoveIt CPP Server](src/roport_moveit_cpp_server.cpp) simultaneously controlling multiple kinematic chains of a robot.
   To do so, MoveIt configuration is needed.
-- [sensing server](scripts/roport_sensing_server.py) that bridges the perception modules outside the ROS environment 
+- [Sensing Server](scripts/roport_sensing_server.py) that bridges the perception modules outside the ROS environment 
   (like those run in Python3) to ROS via HTTP.
-- [planner server](scripts/roport_planner_server.py) bridges ROS modules with the planning algorithm outside the ROS
+- [Planner Server](scripts/roport_planner_server.py) bridges ROS modules with the planning algorithm outside the ROS
   environment (running in Python3 or on another server on the local network) via HTTP. This server is designed for 
   online control, that given the current state, it will query the algorithm for the next state. For now, the states
   are Cartesian poses.
-- [task scheduler](src/roport_task_scheduler.cpp) using behavior tree for task scheduling. 
+- [Task Scheduler](src/roport_task_scheduler.cpp) using behavior tree for task scheduling. 
   A bunch of general purpose services are provided for building the task map fast.
-- [xsens server](scripts/roport_xsens_server.py) converting the live stream from Xsens's MVN Awinda motion capture
+- [Xsens Server](scripts/roport_xsens_server.py) converting the live stream from Xsens's MVN Awinda motion capture
   suit to ROS pose messages. 
 - Hardware/Simulation interfaces adapted for a variety types of robots.
 
@@ -339,8 +340,7 @@ For these parameters the comment could be omitted.
 
 ## Note
 
-### Simultaneously execution
+### Simultaneous execution
 
-The python version MoveItServer do not support simultaneously execution. To
-perform such function, you need to directly send goal to the controller client.
-The `roport_control_server` serves for this purpose.
+The MoveIt Python Server does not support simultaneously execution for multiple end-effectors. 
+To circumvent this, you can use the MoveIt CPP Server instead.
