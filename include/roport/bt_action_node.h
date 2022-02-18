@@ -23,11 +23,11 @@ namespace BT {
 template <class ActionT>
 class RosActionNode : public BT::ActionNodeBase {
  protected:
-  RosActionNode(ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& conf)
-      : BT::ActionNodeBase(name, conf), node_(nh) {
-    const std::string server_name = getInput<std::string>("server_name").value();
-    action_client_ = std::make_shared<ActionClientType>(node_, server_name, true);
-    clock_suber_ = node_.subscribe("/clock", 1, &RosActionNode::clockCb, this);
+  RosActionNode(ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& conf)
+      : BT::ActionNodeBase(name, conf), node_(node_handle), time_sec_(0), time_nsec_(0), name_(name) {
+    const std::string kServerName = getInput<std::string>("server_name").value();
+    action_client_ = std::make_shared<ActionClientType>(node_, kServerName, true);
+    clock_subscriber_ = node_.subscribe("/clock", 1, &RosActionNode::clockCb, this);
   }
 
  public:
@@ -38,51 +38,56 @@ class RosActionNode : public BT::ActionNodeBase {
   using ResultType = typename ActionT::_action_result_type::_result_type;
 
   RosActionNode() = delete;
-  virtual ~RosActionNode() = default;
+  ~RosActionNode() override = default;
 
   /// These ports will be added automatically if this Node is
   /// registered using RegisterRosAction<DeriveClass>()
-  static PortsList providedPorts() {
+  static auto providedPorts() -> PortsList {
+    const int kPortTimeout = 1000;
     return {InputPort<std::string>("server_name", "name of the Action Server"),
-            InputPort<unsigned>("timeout", 500, "timeout to connect (milliseconds)")};
+            InputPort<unsigned>("timeout", kPortTimeout, "timeout to connect (milliseconds)")};
   }
 
   /// Method called when the Action makes a transition from IDLE to RUNNING.
   /// If it return false, the entire action is immediately aborted, it returns
   /// FAILURE and no request is sent to the server.
-  virtual bool onSendGoal(GoalType& goal) = 0;
+  virtual auto onSendGoal(GoalType& goal) -> bool = 0;
 
   /// Method (to be implemented by the user) to receive the reply.
   /// User can decide which NodeStatus it will return (SUCCESS or FAILURE).
-  virtual NodeStatus onResult(const ResultType& res) = 0;
+  virtual auto onResult(const ResultType& res) -> NodeStatus = 0;
 
-  enum FailureCause { MISSING_SERVER = 0, ABORTED_BY_SERVER = 1, REJECTED_BY_SERVER = 2 };
+  enum FailureCause { kMissingServer = 0, kAbortedByServer = 1, kRejectedByServer = 2 };
 
   /// Called when a service call failed. Can be override by the user.
-  virtual NodeStatus onFailedRequest(FailureCause failure) { return NodeStatus::FAILURE; }
+  virtual auto onFailedRequest(FailureCause failure) -> NodeStatus {
+    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
+    return NodeStatus::FAILURE;
+ }
 
   /// If you override this method, you MUST call this implementation invoking:
   ///
   ///    BaseClass::halt()
   ///
-  virtual void halt() override {
+  void halt() override {
     if (status() == NodeStatus::RUNNING) {
       action_client_->cancelGoal();
     }
     setStatus(NodeStatus::IDLE);
   }
 
- protected:
+ private:
   std::shared_ptr<ActionClientType> action_client_;
   ros::NodeHandle& node_;
 
-  BT::NodeStatus tick() override {
+  auto tick() -> BT::NodeStatus override {
     unsigned msec = getInput<unsigned>("timeout").value();
-    ros::Duration timeout(static_cast<double>(msec) * 1e-3);
+    const double kMultiplier = 1e-3;
+    ros::Duration timeout(static_cast<double>(msec) * kMultiplier);
 
     bool connected = action_client_->waitForServer(timeout);
     if (!connected) {
-      return onFailedRequest(MISSING_SERVER);
+      return onFailedRequest(kMissingServer);
     }
 
     // first step to be done only at the beginning of the Action
@@ -111,20 +116,20 @@ class RosActionNode : public BT::ActionNodeBase {
       return onResult(*action_client_->getResult());
     }
     if (action_state == actionlib::SimpleClientGoalState::ABORTED) {
-      return onFailedRequest(ABORTED_BY_SERVER);
+      return onFailedRequest(kAbortedByServer);
     }
     if (action_state == actionlib::SimpleClientGoalState::REJECTED) {
-      return onFailedRequest(REJECTED_BY_SERVER);
+      return onFailedRequest(kRejectedByServer);
     }
     // FIXME: is there any other valid state we should consider?
     throw std::logic_error("Unexpected state in RosActionNode::tick()");
   }
 
-  int time_sec_;
-  int time_nsec_;
-  ros::Subscriber clock_suber_;
+  std::string name_;
+  uint time_sec_;
+  uint time_nsec_;
+  ros::Subscriber clock_subscriber_;
 
- private:
   void clockCb(const rosgraph_msgs::ClockConstPtr& msg) {
     time_sec_ = msg->clock.sec;
     time_nsec_ = msg->clock.nsec;
@@ -134,8 +139,8 @@ class RosActionNode : public BT::ActionNodeBase {
 /// Method to register the service into a factory.
 /// It gives you the opportunity to set the ros::NodeHandle.
 template <class DerivedT>
-static void RegisterRosAction(BT::BehaviorTreeFactory& factory,
-                              const std::string& registration_ID,
+static void registerRosAction(BT::BehaviorTreeFactory& factory,
+                              const std::string& registration_id,
                               ros::NodeHandle& node_handle) {
   NodeBuilder builder = [&node_handle](const std::string& name, const NodeConfiguration& config) {
     return std::make_unique<DerivedT>(node_handle, name, config);
@@ -144,7 +149,7 @@ static void RegisterRosAction(BT::BehaviorTreeFactory& factory,
   TreeNodeManifest manifest;
   manifest.type = getType<DerivedT>();
   manifest.ports = DerivedT::providedPorts();
-  manifest.registration_ID = registration_ID;
+  manifest.registration_ID = registration_id;
   const auto& basic_ports = RosActionNode<typename DerivedT::ActionType>::providedPorts();
   manifest.ports.insert(basic_ports.begin(), basic_ports.end());
   factory.registerBuilder(manifest, builder);

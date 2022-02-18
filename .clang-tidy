@@ -1,5 +1,5 @@
 Checks: 'clang-diagnostic-*,clang-analyzer-*,-clang-analyzer-optin.cplusplus.VirtualCall,-clang-analyzer-alpha*,google-*,misc-*,readability-*,modernize-*,performance-*,-clang-diagnostic-deprecated-declarations,-modernize-pass-by-value,-clang-diagnostic-reinterpret-base-class,-clang-diagnostic-return-type,-clang-diagnostic-switch'
-HeaderFilterRegex: '^curi_.*'
+HeaderFilterRegex: '^rotools_.*'
 CheckOptions:
 # Classes, structs, ...
   - key:    readability-identifier-naming.NamespaceCase

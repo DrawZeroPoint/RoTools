@@ -8,7 +8,8 @@
 
 namespace roport {
 
-ControlServer::ControlServer(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) : nh_(nh), pnh_(pnh) {
+ControlServer::ControlServer(const ros::NodeHandle& node_handle, const ros::NodeHandle& pnh)
+    : nh_(node_handle), pnh_(pnh) {
   // Get all available planning group names
   XmlRpc::XmlRpcValue group_names;
   pnh_.getParam("group_names", group_names);
@@ -37,13 +38,14 @@ ControlServer::ControlServer(const ros::NodeHandle& nh, const ros::NodeHandle& p
   }
 
   // Initialize controller action clients, one for each group
+  const double kTimeout = 3.;
   for (auto& group_name : group_names_) {
     std::string action_name = group_name + "_controller/follow_joint_trajectory";
-    auto c = std::make_shared<FJT_actionClient>(action_name);
-    if (!c->waitForServer(ros::Duration(10))) {
+    auto client = std::make_shared<FJT_actionClient>(action_name);
+    if (!client->waitForServer(ros::Duration(kTimeout))) {
       throw std::runtime_error("RoPort: Action server " + action_name + " unavailable");
     }
-    control_clients_.push_back(c);
+    control_clients_.push_back(client);
     ROS_INFO_STREAM("RoPort: Controller action client " << action_name << " initialized");
   }
 
@@ -52,8 +54,6 @@ ControlServer::ControlServer(const ros::NodeHandle& nh, const ros::NodeHandle& p
   execute_mirrored_pose_srv_ =
       nh_.advertiseService("execute_mirrored_pose", &ControlServer::executeMirroredPoseSrvCb, this);
 }
-
-ControlServer::~ControlServer() = default;
 
 auto ControlServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req, roport::ExecuteAllPoses::Response& resp)
     -> bool {
@@ -109,18 +109,18 @@ auto ControlServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req, 
 
 auto ControlServer::executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Request& req,
                                              roport::ExecuteMirroredPose::Response& resp) -> bool {
-  int i = getGroupIndex(req.reference_group);
-  if (i < 0) {
-    throw std::runtime_error("Reference group is not exist");
+  int ref_index = getGroupIndex(req.reference_group);
+  if (ref_index < 0) {
+    throw std::runtime_error("Reference group does not exist");
   }
-  int j = getGroupIndex(req.mirror_group);
-  if (j < 0) {
-    throw std::runtime_error("Mirror group is not exist");
+  int mirror_index = getGroupIndex(req.mirror_group);
+  if (mirror_index < 0) {
+    throw std::runtime_error("Mirror group does not exist");
   }
 
   std::map<int, trajectory_msgs::JointTrajectory> trajectories;
   trajectory_msgs::JointTrajectory trajectory;
-  geometry_msgs::PoseStamped current_pose_wrt_base = interfaces_[i]->getCurrentPose();
+  geometry_msgs::PoseStamped current_pose_wrt_base = interfaces_[ref_index]->getCurrentPose();
   geometry_msgs::PoseStamped goal_pose_wrt_base;
   goal_pose_wrt_base.header = current_pose_wrt_base.header;
 
@@ -134,12 +134,13 @@ auto ControlServer::executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Reques
   } else {
     geometry_msgs::PoseStamped goal_pose_wrt_eef;
     goal_pose_wrt_eef.pose = req.goal;
-    goal_pose_wrt_eef.header.frame_id = interfaces_[i]->getEndEffectorLink();
-    goal_pose_wrt_base = tf_buffer_.transform(goal_pose_wrt_eef, interfaces_[i]->getPlanningFrame(), ros::Duration(1));
+    goal_pose_wrt_eef.header.frame_id = interfaces_[ref_index]->getEndEffectorLink();
+    goal_pose_wrt_base =
+        tf_buffer_.transform(goal_pose_wrt_eef, interfaces_[ref_index]->getPlanningFrame(), ros::Duration(1));
   }
 
   // Build trajectory to reach the goal
-  if (!buildTrajectory(*interfaces_[i], goal_pose_wrt_base, trajectory, req.is_cartesian)) {
+  if (!buildTrajectory(*interfaces_[ref_index], goal_pose_wrt_base, trajectory, req.is_cartesian)) {
     ROS_ERROR("RoPort: Building trajectory failed");
     resp.result_status = resp.FAILED;
     return true;
@@ -151,11 +152,11 @@ auto ControlServer::executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Reques
   } else {
     updated_trajectory = trajectory;
   }
-  trajectories.insert({i, updated_trajectory});
+  trajectories.insert({ref_index, updated_trajectory});
 
   trajectory_msgs::JointTrajectory mirrored_trajectory;
-  getMirroredTrajectory(*interfaces_[j], updated_trajectory, req.mirror_vector, mirrored_trajectory);
-  trajectories.insert({j, mirrored_trajectory});
+  getMirroredTrajectory(*interfaces_[mirror_index], updated_trajectory, req.mirror_vector, mirrored_trajectory);
+  trajectories.insert({mirror_index, mirrored_trajectory});
 
   if (executeTrajectories(trajectories)) {
     resp.result_status = resp.SUCCEEDED;
@@ -165,8 +166,8 @@ auto ControlServer::executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Reques
   return true;
 }
 
-void ControlServer::relativePoseToAbsolutePose(geometry_msgs::PoseStamped transform_wrt_local_base,
-                                               geometry_msgs::PoseStamped current_pose_wrt_base,
+void ControlServer::relativePoseToAbsolutePose(const geometry_msgs::PoseStamped& transform_wrt_local_base,
+                                               const geometry_msgs::PoseStamped& current_pose_wrt_base,
                                                geometry_msgs::PoseStamped& goal_pose_wrt_base) {
   Eigen::Matrix4d mat_be;
   geometryPoseToEigenMatrix(current_pose_wrt_base, mat_be);
@@ -179,7 +180,7 @@ void ControlServer::relativePoseToAbsolutePose(geometry_msgs::PoseStamped transf
   Eigen::Matrix4d mat_le = mat_bl.inverse() * mat_be;
   // mat_ll_new
   Eigen::Matrix4d mat_ll_new;
-  geometryPoseToEigenMatrix(std::move(transform_wrt_local_base), mat_ll_new);
+  geometryPoseToEigenMatrix(transform_wrt_local_base, mat_ll_new);
   // mat_be_new
   Eigen::Matrix4d mat_be_new = mat_bl * mat_ll_new * mat_le;
   eigenMatrixToGeometryPose(mat_be_new, goal_pose_wrt_base);
@@ -211,10 +212,10 @@ void ControlServer::getMirroredTrajectory(MoveGroupInterface& move_group,
   }
 }
 
-bool ControlServer::buildTrajectory(MoveGroupInterface& move_group,
+auto ControlServer::buildTrajectory(MoveGroupInterface& move_group,
                                     const geometry_msgs::PoseStamped& pose,
                                     trajectory_msgs::JointTrajectory& trajectory,
-                                    bool do_cartesian) {
+                                    bool do_cartesian) -> bool {
   moveit_msgs::RobotTrajectory robot_trajectory;
   if (!do_cartesian) {
     move_group.clearPoseTargets();
@@ -246,10 +247,10 @@ bool ControlServer::buildTrajectory(MoveGroupInterface& move_group,
   return true;
 }
 
-bool ControlServer::buildTrajectory(const std::shared_ptr<MoveGroupInterface>& move_group,
+auto ControlServer::buildTrajectory(const std::shared_ptr<MoveGroupInterface>& move_group,
                                     const std::vector<geometry_msgs::PoseStamped>& poses,
                                     const std::vector<ros::Duration>& time_stamps,
-                                    trajectory_msgs::JointTrajectory& trajectory) {
+                                    trajectory_msgs::JointTrajectory& trajectory) -> bool {
   if (poses.empty()) {
     throw std::invalid_argument("RoPort: Received empty pose vector");
   }
@@ -305,8 +306,8 @@ void ControlServer::updateTrajectoryStamp(trajectory_msgs::JointTrajectory traj_
   }
 }
 
-bool ControlServer::executeTrajectories(const std::map<int, trajectory_msgs::JointTrajectory>& trajectories,
-                                        double duration) {
+auto ControlServer::executeTrajectories(const std::map<int, trajectory_msgs::JointTrajectory>& trajectories,
+                                        double duration) -> bool {
   std::vector<control_msgs::FollowJointTrajectoryGoal> goals;
   for (const auto& traj : trajectories) {
     control_msgs::FollowJointTrajectoryGoal goal;
@@ -342,10 +343,8 @@ void ControlServer::buildControllerGoal(int group_id,
   goal.trajectory = trajectory;
 }
 
-std::vector<control_msgs::JointTolerance> ControlServer::buildTolerance(int group_id,
-                                                                        double position,
-                                                                        double velocity,
-                                                                        double acceleration) {
+auto ControlServer::buildTolerance(int group_id, double position, double velocity, double acceleration)
+    -> std::vector<control_msgs::JointTolerance> {
   control_msgs::JointTolerance joint_tolerance;
   joint_tolerance.position = position;
   joint_tolerance.velocity = velocity;
@@ -354,7 +353,7 @@ std::vector<control_msgs::JointTolerance> ControlServer::buildTolerance(int grou
   return std::vector<control_msgs::JointTolerance>(joint_num, joint_tolerance);
 }
 
-void ControlServer::geometryPoseToEigenMatrix(geometry_msgs::PoseStamped pose, Eigen::Matrix4d& mat) {
+void ControlServer::geometryPoseToEigenMatrix(const geometry_msgs::PoseStamped& pose, Eigen::Matrix4d& mat) {
   mat = Eigen::Matrix4d::Identity();
 
   Eigen::Quaterniond orientation;
@@ -383,7 +382,7 @@ void ControlServer::eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs
   pose.pose.orientation.w = quat.w();
 }
 
-int ControlServer::getGroupIndex(const std::string& group_name) {
+auto ControlServer::getGroupIndex(const std::string& group_name) -> int {
   auto name = std::find(group_names_.begin(), group_names_.end(), group_name);
   if (name != group_names_.end()) {
     return name - group_names_.begin();

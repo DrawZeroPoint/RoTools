@@ -25,23 +25,22 @@
 
 namespace roport {
 
-enum MSG_TYPES {
-  SENSOR_MSGS_JOINT_STATE,
-  UBT_CORE_MSGS_JOINT_COMMAND,
-  FRANKA_CORE_MSGS_JOINT_COMMAND,
+enum MsgTypes {
+  kSensorMsgsJointState,
+  kUbtCoreMsgsJointCommand,
+  kFrankaCoreMsgsJointCommand,
 };
 
 class MsgConverter {
  public:
-  MsgConverter(const ros::NodeHandle& nh, const ros::NodeHandle& pn);
+  MsgConverter(const ros::NodeHandle& node_handle, const ros::NodeHandle& pnh);
   ~MsgConverter() = default;
 
- protected:
+ private:
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
 
- private:
-  const std::string prefix_{"Msg Converter: "};
+  const std::string prefix{"Msg Converter: "};
 
   std::vector<ros::Publisher> publishers_;
   std::vector<ros::Subscriber> subscribers_;
@@ -51,15 +50,15 @@ class MsgConverter {
   std::vector<bool> smooth_started_flags_;
   std::vector<ros::Subscriber> start_ref_subscribers_;
 
-  std::map<MSG_TYPES, std::string> msg_type_map_ = {
-      {SENSOR_MSGS_JOINT_STATE, "sensor_msgs/JointState"},
-      {UBT_CORE_MSGS_JOINT_COMMAND, "ubt_core_msgs/JointCommand"},
-      {FRANKA_CORE_MSGS_JOINT_COMMAND, "franka_core_msgs/JointCommand"},
+  std::map<MsgTypes, std::string> msg_type_map_ = {
+      {kSensorMsgsJointState, "sensor_msgs/JointState"},
+      {kUbtCoreMsgsJointCommand, "ubt_core_msgs/JointCommand"},
+      {kFrankaCoreMsgsJointCommand, "franka_core_msgs/JointCommand"},
   };
 
   std::vector<std::chrono::steady_clock::time_point> starts_;
 
-  bool init();
+  auto init() -> bool;
 
   void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
                     const size_t& group_id,
@@ -78,19 +77,19 @@ class MsgConverter {
    * @param source_names Names of the joints to be selected.
    * @return True if filtering is succeed, false otherwise.
    */
-  bool filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg,
+  auto filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg,
                         sensor_msgs::JointState& filtered_msg,
-                        const std::vector<std::string>& source_names);
+                        const std::vector<std::string>& source_names) -> bool;
 
-  static bool smoothJointState(const sensor_msgs::JointState& msg,
+  static auto smoothJointState(const sensor_msgs::JointState& msg,
                                rotools::RuckigOptimizer* oto,
-                               sensor_msgs::JointState& smoothed_msg);
+                               sensor_msgs::JointState& smoothed_msg) -> bool;
 
   template <class T>
-  bool phaseJointParameterMap(const std::string& param_name,
+  auto phaseJointParameterMap(const std::string& param_name,
                               const std::vector<std::string>& source_names,
                               const std::vector<std::string>& target_names,
-                              std::vector<T>& param_out);
+                              std::vector<T>& param_out) -> bool;
 
   void startCb(const sensor_msgs::JointState::ConstPtr& msg, const int& group_id, const std::vector<double>& q_d);
 
@@ -127,12 +126,12 @@ class MsgConverter {
    *         int: Represents the index of element in vector if its found else -1
    */
   template <typename T>
-  std::pair<bool, int> findInVector(const std::vector<T>& vecOfElements, const T& element) {
+  auto findInVector(const std::vector<T>& vec_of_elements, const T& element) -> std::pair<bool, int> {
     std::pair<bool, int> result;
     // Find given element in vector
-    auto it = std::find(vecOfElements.begin(), vecOfElements.end(), element);
-    if (it != vecOfElements.end()) {
-      result.second = distance(vecOfElements.begin(), it);
+    auto iterator = std::find(vec_of_elements.begin(), vec_of_elements.end(), element);
+    if (iterator != vec_of_elements.end()) {
+      result.second = distance(vec_of_elements.begin(), iterator);
       result.first = true;
     } else {
       result.first = false;
@@ -144,15 +143,15 @@ class MsgConverter {
   /**
    * Judge if all corresponding elements in the two given vectors are close to each other under the tolerance.
    * @tparam T
-   * @param a One vector.
-   * @param b Other vector.
+   * @param first One vector.
+   * @param second Other vector.
    * @param tol Tolerance.
    * @return True if close.
    */
   template <typename T>
-  bool allClose(std::vector<T> a, std::vector<T> b, T tol = 0.01) {
-    for (size_t i = 0; i < a.size(); ++i) {
-      if (fabs(a[i] - b[i]) > tol) {
+  auto allClose(std::vector<T> first, std::vector<T> second, T tol = 0.01) -> bool {
+    for (size_t i = 0; i < first.size(); ++i) {
+      if (fabs(first[i] - second[i]) > tol) {
         return false;
       }
     }

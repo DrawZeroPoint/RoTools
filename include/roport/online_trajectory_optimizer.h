@@ -27,15 +27,17 @@ class RuckigOptimizer {
                            double frequency = 1000.);
   ~RuckigOptimizer();
 
-  bool* initialized_;
-
   void init(const sensor_msgs::JointState& msg, const std::vector<double>& q_d);
 
-  bool set(const std::vector<double>& joint_position, const std::vector<double>& joint_velocity);
+  auto set(const std::vector<double>& joint_position, const std::vector<double>& joint_velocity) -> bool;
 
   void update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd);
 
+  auto isInitialized() -> bool { return *initialized_; }
+
  private:
+  bool* initialized_;
+
   int* dof_;
   std::chrono::steady_clock::time_point start_;
 

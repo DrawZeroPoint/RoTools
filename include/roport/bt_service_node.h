@@ -16,9 +16,9 @@ namespace BT {
 template <class ServiceT>
 class RosServiceNode : public BT::SyncActionNode {
  protected:
-  RosServiceNode(const ros::NodeHandle& nh, const std::string& name, const BT::NodeConfiguration& conf)
-      : BT::SyncActionNode(name, conf), node_(nh), time_sec_(0), name_(name) {
-    clock_suber_ = node_.subscribe("/clock", 1, &RosServiceNode::clockCb, this);
+  RosServiceNode(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& conf)
+      : BT::SyncActionNode(name, conf), node_(node_handle), time_sec_(0), name_(name) {
+    clock_subscriber_ = node_.subscribe("/clock", 1, &RosServiceNode::clockCb, this);
   }
 
  public:
@@ -34,9 +34,10 @@ class RosServiceNode : public BT::SyncActionNode {
   // registered using RegisterRosAction<DeriveClass>()
   // The ports without a default value (like the service_name port here)
   // must be given a value during implementation
-  static PortsList providedPorts() {
+  static auto providedPorts() -> PortsList {
+    const int kPortTimeout = 1000;
     return {InputPort<std::string>("service_name", "name of the ROS service"),
-            InputPort<unsigned>("timeout", 10000, "timeout to connect to server (milliseconds)")};
+            InputPort<unsigned>("timeout", kPortTimeout, "timeout to connect to server (milliseconds)")};
   }
 
   // User must implement this method.
@@ -46,10 +47,9 @@ class RosServiceNode : public BT::SyncActionNode {
   /// User can decide which NodeStatus it will return (SUCCESS or FAILURE).
   virtual auto onResponse(const ResponseType& response) -> BT::NodeStatus {
     if (response.result_status == response.SUCCEEDED) {
-      ROS_INFO("RoPort: %s response SUCCEEDED.", name_.c_str());
       return NodeStatus::SUCCESS;
     }
-    ROS_INFO("RoPort: %s response FAILURE.", name_.c_str());
+    ROS_INFO("RoPort: %s responded FAILURE.", name_.c_str());
     return NodeStatus::FAILURE;
   }
 
@@ -62,13 +62,6 @@ class RosServiceNode : public BT::SyncActionNode {
   }
 
  protected:
-  std::string name_;
-  ros::ServiceClient service_client_;
-  typename ServiceT::Response reply_;
-
-  // The node that will be used for any ROS operations
-  ros::NodeHandle node_;
-
   auto tick() -> BT::NodeStatus override {
     if (!service_client_.isValid()) {
       std::string server = getInput<std::string>("service_name").value();
@@ -77,7 +70,8 @@ class RosServiceNode : public BT::SyncActionNode {
 
     unsigned msec;
     getInput("timeout", msec);
-    ros::Duration timeout(static_cast<double>(msec) * 1e-3);
+    const double kMultiplier = 1e-3;
+    ros::Duration timeout(static_cast<double>(msec) * kMultiplier);
 
     bool connected = service_client_.waitForExistence(timeout);
     if (!connected) {
@@ -93,10 +87,19 @@ class RosServiceNode : public BT::SyncActionNode {
     return onResponse(reply_);
   }
 
-  uint time_sec_;
-  ros::Subscriber clock_suber_;
+  auto getName() -> std::string { return name_; }
 
  private:
+  std::string name_;
+  ros::ServiceClient service_client_;
+  typename ServiceT::Response reply_;
+
+  // The node that will be used for any ROS operations
+  ros::NodeHandle node_;
+
+  uint time_sec_;
+  ros::Subscriber clock_subscriber_;
+
   void clockCb(const rosgraph_msgs::ClockConstPtr& msg) { time_sec_ = msg->clock.sec; }
 };
 

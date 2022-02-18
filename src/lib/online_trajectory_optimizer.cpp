@@ -57,8 +57,9 @@ void RuckigOptimizer::init(const sensor_msgs::JointState& msg, const std::vector
 }
 
 bool RuckigOptimizer::set(const std::vector<double>& joint_position, const std::vector<double>& joint_velocity) {
-  if (!*initialized_)
+  if (!*initialized_) {
     return false;
+  }
 
   std::array<double, 7> position{};
   std::array<double, 7> velocity{};

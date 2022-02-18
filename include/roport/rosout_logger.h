@@ -10,9 +10,9 @@ class RosoutLogger : public StatusChangeLogger {
   static std::atomic<bool> ref_count;
 
  public:
-  RosoutLogger(TreeNode* root_node, ros::console::Level verbosity_level = ros::console::Level::Info);
+  explicit RosoutLogger(TreeNode* root_node, ros::console::Level verbosity_level = ros::console::Level::Info);
 
-  ros::console::Level getLevel() const;
+  [[nodiscard]] auto getLevel() const -> ros::console::Level;
 
   // Accepts only Info and Debug
   void setLevel(ros::console::Level level);
@@ -24,7 +24,7 @@ class RosoutLogger : public StatusChangeLogger {
   void flush() override;
 
  private:
-  ros::console::Level _level;
+  ros::console::Level level_;
 };
 
 }  // namespace BT

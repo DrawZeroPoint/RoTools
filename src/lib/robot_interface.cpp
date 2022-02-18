@@ -1,11 +1,12 @@
 #include "roport/robot_interface.h"
 
 namespace roport {
-RobotInterface::RobotInterface(ros::NodeHandle& nh, ros::NodeHandle& pnh)
-    : nh_(nh), pnh_(pnh), received_first_state_(false), received_num_(0) {
+RobotInterface::RobotInterface(ros::NodeHandle& node_handle, ros::NodeHandle& pnh)
+    : nh_(node_handle), pnh_(pnh), received_first_state_(false), received_num_(0), num_joints_(0) {
   init();
   controller_manager_ = std::make_shared<controller_manager::ControllerManager>(this, nh_);
-  non_realtime_loop_ = nh_.createTimer(ros::Duration(0.01), &RobotInterface::update, this);
+  const double kInterval = 0.001;
+  non_realtime_loop_ = nh_.createTimer(ros::Duration(kInterval), &RobotInterface::update, this);
   ROS_INFO("Robot hardware interface ready.");
 }
 
@@ -22,8 +23,8 @@ void RobotInterface::init() {
   }
 
   joint_names_.insert(joint_names_.end(), joint_names.begin(), joint_names.end());
-  for (const auto& n : joint_names_) {
-    ROS_INFO_STREAM("Initialized joint " << n);
+  for (const auto& name : joint_names_) {
+    ROS_INFO_STREAM("Initialized joint " << name);
   }
   num_joints_ = joint_names_.size();
 
@@ -42,7 +43,7 @@ void RobotInterface::init() {
     ROS_ASSERT(raw_measured_joint_states_id[i].getType() == XmlRpc::XmlRpcValue::TypeString);
     std::string measured_topic = std::string(raw_measured_joint_states_id[i]);
     ros::Subscriber js_getter = nh_.subscribe<sensor_msgs::JointState>(
-        measured_topic, 1, boost::bind(&RobotInterface::jointStatesCb, this, _1, measured_topic));
+        measured_topic, 1, [this, measured_topic](auto && ph1) { jointStatesCb(std::forward<decltype(ph1)>(ph1), measured_topic); });
     js_getters_.insert({measured_topic, js_getter});
     ROS_INFO_STREAM("Get measured joint states from <- " << measured_topic);
   }
@@ -87,11 +88,11 @@ void RobotInterface::init() {
   // Resize state vectors
   q_.resize(num_joints_);
   dq_.resize(num_joints_);
-  tau_J_.resize(num_joints_);
+  tau_j_.resize(num_joints_);
 
   std::fill(q_.begin(), q_.end(), 0.0);
   std::fill(dq_.begin(), dq_.end(), 0.0);
-  std::fill(tau_J_.begin(), tau_J_.end(), 0.0);
+  std::fill(tau_j_.begin(), tau_j_.end(), 0.0);
 
   XmlRpc::XmlRpcValue joint_init_positions;  // The initial positions of the joints
   XmlRpc::XmlRpcValue joint_init_names;      // Joints that need initial position values
@@ -124,9 +125,9 @@ void RobotInterface::init() {
     while (!received_first_state_) {
       ros::spinOnce();
     }
-    ros::Time t = ros::Time::now();
-    ros::Duration d;
-    read(t, d);
+    ros::Time now = ros::Time::now();
+    ros::Duration duration;
+    read(now, duration);
     for (size_t i = 0; i < num_joints_; ++i) {
       init_names.push_back(joint_names_[i]);
       init_positions.push_back(q_[i]);
@@ -136,7 +137,7 @@ void RobotInterface::init() {
   // Initialize joint state command vector
   q_cmd_.resize(num_joints_, 0.0);
   dq_cmd_.resize(num_joints_, 0.0);
-  tau_J_cmd_.resize(num_joints_, 0.0);
+  tau_j_cmd_.resize(num_joints_, 0.0);
 
   // Set the joint positions according to the initial positions
   for (int i = 0; i < init_names.size(); ++i) {
@@ -150,36 +151,36 @@ void RobotInterface::init() {
   // Initialize interface for each joint
   for (int i = 0; i < num_joints_; ++i) {
     // Create joint state update interface
-    JointStateHandle jointStateHandle(joint_names_[i], &q_[i], &dq_[i], &tau_J_[i]);
-    joint_state_interface_.registerHandle(jointStateHandle);
+    JointStateHandle joint_state_handle(joint_names_[i], &q_[i], &dq_[i], &tau_j_[i]);
+    joint_state_interface_.registerHandle(joint_state_handle);
 
     // Add joint control interfaces
-    JointHandle jointPositionHandle(jointStateHandle, &q_cmd_[i]);
-    q_cmd_interface_.registerHandle(jointPositionHandle);
-    JointHandle jointVelocityHandle(jointStateHandle, &dq_cmd_[i]);
-    dq_cmd_interface_.registerHandle(jointVelocityHandle);
-    JointHandle jointEffortHandle(jointStateHandle, &tau_J_cmd_[i]);
-    tau_J_cmd_interface_.registerHandle(jointEffortHandle);
+    JointHandle joint_position_handle(joint_state_handle, &q_cmd_[i]);
+    q_cmd_interface_.registerHandle(joint_position_handle);
+    JointHandle joint_velocity_handle(joint_state_handle, &dq_cmd_[i]);
+    dq_cmd_interface_.registerHandle(joint_velocity_handle);
+    JointHandle joint_effort_handle(joint_state_handle, &tau_j_cmd_[i]);
+    tau_j_cmd_interface_.registerHandle(joint_effort_handle);
   }
 
   registerInterface(&joint_state_interface_);
   registerInterface(&q_cmd_interface_);
   registerInterface(&dq_cmd_interface_);
-  registerInterface(&tau_J_cmd_interface_);
+  registerInterface(&tau_j_cmd_interface_);
   ROS_INFO_STREAM("Interfaces initialized");
 }
 
-void RobotInterface::update(const ros::TimerEvent& e) {
-  ros::Time t = ros::Time::now();
-  if (e.current_real < e.last_real) {
+void RobotInterface::update(const ros::TimerEvent& event) {
+  ros::Time now = ros::Time::now();
+  if (event.current_real < event.last_real) {
     ROS_ERROR("Time jump detected, you should only see this when use_sim_time=true, need rerun.");
     return;
   }
-  ros::Duration elapsed_duration = ros::Duration(e.current_real - e.last_real);
-  read(t, elapsed_duration);
-  ROS_DEBUG("Time for now: %f, elapsed: %f|", t.toSec(), elapsed_duration.toSec());
-  controller_manager_->update(t, elapsed_duration);
-  write(t, elapsed_duration);
+  auto elapsed_duration = ros::Duration(event.current_real - event.last_real);
+  read(now, elapsed_duration);
+  ROS_DEBUG("Time for now: %f, elapsed: %f|", now.toSec(), elapsed_duration.toSec());
+  controller_manager_->update(now, elapsed_duration);
+  write(now, elapsed_duration);
 }
 
 void RobotInterface::read(const ros::Time& /*time*/, const ros::Duration& /*period*/) {
@@ -189,10 +190,10 @@ void RobotInterface::read(const ros::Time& /*time*/, const ros::Duration& /*peri
       if (lock) {
         auto search = joint_states_.find(joint_names_[i]);
         if (search != joint_states_.end()) {
-          std::vector<double> jointState = search->second;
-          q_.at(i) = jointState[0];
-          dq_.at(i) = jointState[1];
-          tau_J_.at(i) = jointState[2];
+          std::vector<double> joint_state = search->second;
+          q_.at(i) = joint_state[0];
+          dq_.at(i) = joint_state[1];
+          tau_j_.at(i) = joint_state[2];
         }
       } else {
         ROS_ERROR("Couldn't acquire mutex, couldn't get joint state");
@@ -203,7 +204,7 @@ void RobotInterface::read(const ros::Time& /*time*/, const ros::Duration& /*peri
   }
 }
 
-void RobotInterface::write(const ros::Time& time, const ros::Duration& period) {
+void RobotInterface::write(const ros::Time& /*time*/, const ros::Duration& /*period*/) {
   for (int i = 0; i < js_setters_.size(); ++i) {
     sendJointPositionCmd(js_setters_[i], active_joint_groups_[i]);
   }
@@ -222,9 +223,9 @@ void RobotInterface::jointStatesCb(const sensor_msgs::JointState::ConstPtr& msg,
       std::vector<double> pve;
       if (msg->position.empty()) {
         throw std::runtime_error("Robot joint position cannot be empty");
-      } else {
-        pve.push_back(msg->position.at(i));
       }
+      pve.push_back(msg->position.at(i));
+
       if (msg->velocity.empty()) {
         pve.push_back(0.);
       } else {
@@ -240,12 +241,14 @@ void RobotInterface::jointStatesCb(const sensor_msgs::JointState::ConstPtr& msg,
     if (!received_first_state_) {
       for (std::map<std::string, ros::Subscriber>::iterator it = js_getters_.begin(); it != js_getters_.end(); ++it) {
         std::string key = it->first;
-        if (key == topic)
+        if (key == topic) {
           received_num_++;
+        }
       }
       ROS_WARN_STREAM_THROTTLE(3, "Receiving the init joint state... " << received_num_ << "/" << js_getters_.size());
-      if (received_num_ >= js_getters_.size())
+      if (received_num_ >= js_getters_.size()) {
         received_first_state_ = true;
+      }
     }
   } catch (const std::out_of_range& oor) {
     ROS_ERROR_STREAM("Out of Range error: " << oor.what());
@@ -256,7 +259,7 @@ void RobotInterface::sendJointPositionCmd(const ros::Publisher& setter, const st
   sensor_msgs::JointState msg;
   std::vector<double> js_q;
   js_q.reserve(js_names.size());
-  for (auto& js_name : js_names) {
+  for (const auto& js_name : js_names) {
     for (int i = 0; i < num_joints_; ++i) {
       if (js_name == joint_names_[i]) {
         js_q.push_back(q_cmd_[i]);

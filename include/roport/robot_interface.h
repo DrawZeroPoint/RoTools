@@ -15,11 +15,11 @@ using namespace hardware_interface;
 namespace roport {
 class RobotInterface : public hardware_interface::RobotHW {
  public:
-  RobotInterface(ros::NodeHandle& nh, ros::NodeHandle& pnh);
+  RobotInterface(ros::NodeHandle& node_handle, ros::NodeHandle& pnh);
   ~RobotInterface() override;
 
   void init();
-  void update(const ros::TimerEvent& e);
+  void update(const ros::TimerEvent& event);
   void read(const ros::Time& /*time*/, const ros::Duration& /*period*/) override;
   void write(const ros::Time& time, const ros::Duration& period) override;
 
@@ -36,7 +36,6 @@ class RobotInterface : public hardware_interface::RobotHW {
   bool received_first_state_;
   size_t received_num_;
 
- protected:
   ros::NodeHandle& nh_;
   ros::NodeHandle& pnh_;
   ros::Timer non_realtime_loop_;
@@ -47,7 +46,7 @@ class RobotInterface : public hardware_interface::RobotHW {
   JointStateInterface joint_state_interface_;
   PositionJointInterface q_cmd_interface_;
   VelocityJointInterface dq_cmd_interface_;
-  EffortJointInterface tau_J_cmd_interface_;
+  EffortJointInterface tau_j_cmd_interface_;
 
   // For each joint, this map contains its joint q, dq, and tau_J
   std::map<std::string, std::vector<double>> joint_states_;
@@ -61,12 +60,12 @@ class RobotInterface : public hardware_interface::RobotHW {
   // States
   std::vector<double> q_;
   std::vector<double> dq_;
-  std::vector<double> tau_J_;
+  std::vector<double> tau_j_;
 
   // Commands
   std::vector<double> q_cmd_;
   std::vector<double> dq_cmd_;
-  std::vector<double> tau_J_cmd_;
+  std::vector<double> tau_j_cmd_;
 };
 
 }  // namespace roport
