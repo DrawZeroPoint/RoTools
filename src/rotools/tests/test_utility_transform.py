@@ -38,7 +38,7 @@ class Test(unittest.TestCase):
         homogeneous_matrix = np.array([
             [0., 0., 1., 0.084415],
             [1., 0., 0., 0.],
-            [0., 1., 0, 0.098503+0.093313],
+            [0., 1., 0, 0.098503 + 0.093313],
             [0., 0., 0., 1.]
         ], dtype=float)
         q = transform.quaternion_from_matrix(homogeneous_matrix)
@@ -48,7 +48,7 @@ class Test(unittest.TestCase):
         homogeneous_matrix = np.array([
             [0., 0., 1., 0.084415],
             [1., 0., 0., 0.],
-            [0., 1., 0, 0.098503+0.093313],
+            [0., 1., 0, 0.098503 + 0.093313],
             [0., 0., 0., 1.]
         ], dtype=float)
         q = transform.quaternion_from_matrix(homogeneous_matrix)
@@ -71,12 +71,13 @@ class Test(unittest.TestCase):
         Q2 = transform.quaternion_matrix([0.0, 0.0, 0.0573195181787, 0.998355925083])
         print(transform.euler_from_matrix(Q2))
 
-        Q3 = np.dot(transform.euler_matrix(0, -np.pi/2, 0), transform.euler_matrix(173*np.pi / 180.,0,0))
+        Q3 = np.dot(transform.euler_matrix(0, -np.pi / 2, 0), transform.euler_matrix(173 * np.pi / 180., 0, 0))
         e = transform.euler_from_matrix(Q3)
         print('e', e)
 
         # Franka robot install on non-default pose (curiosity's left arm)
         qm_left = transform.quaternion_matrix([-0.40318, 0.52543, 0.097796, 0.74283])  # T_base_to_install
+        print('qm_left\n', qm_left)
         g_vector = np.array([0., 0., -9.81, 0])  # G_base
         g_vector_t = np.dot(qm_left.transpose(), g_vector)  # G_install = T_install_to_base * G_base
         print(qm_left.transpose())
@@ -89,6 +90,13 @@ class Test(unittest.TestCase):
         print('right arm g_vector_t\n', g_vector_t)
 
         print(np.linalg.norm(np.subtract(g_vector_t, g_vector)))
+
+        qm_left_new = np.dot(transform.euler_matrix(np.deg2rad(90.), np.deg2rad(-75.), np.deg2rad(-30.), 'ryxz'),
+                             transform.euler_matrix(0, np.deg2rad(-10.), 0, 'sxyz'))
+        print(transform.quaternion_from_matrix(qm_left_new))
+        qm_right_new = np.dot(transform.euler_matrix(np.deg2rad(90.), np.deg2rad(75.), np.deg2rad(30.), 'ryxz'),
+                              transform.euler_matrix(0, np.deg2rad(-10.), 0, 'sxyz'))
+        print(transform.quaternion_from_matrix(qm_right_new))
 
     def test_quaternion_multiply(self):
         """This example shows the usage of quaternion_multiply.
