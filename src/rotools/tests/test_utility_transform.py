@@ -97,6 +97,8 @@ class Test(unittest.TestCase):
         qm_right_new = np.dot(transform.euler_matrix(np.deg2rad(90.), np.deg2rad(75.), np.deg2rad(30.), 'ryxz'),
                               transform.euler_matrix(0, np.deg2rad(-10.), 0, 'sxyz'))
         print(transform.quaternion_from_matrix(qm_right_new))
+        print(transform.euler_from_matrix(qm_left_new))
+        print(transform.euler_from_matrix(qm_right_new))
 
     def test_quaternion_multiply(self):
         """This example shows the usage of quaternion_multiply.
