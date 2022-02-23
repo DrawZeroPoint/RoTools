@@ -91,14 +91,10 @@ class Test(unittest.TestCase):
 
         print(np.linalg.norm(np.subtract(g_vector_t, g_vector)))
 
-        qm_left_new = np.dot(transform.euler_matrix(np.deg2rad(90.), np.deg2rad(-75.), np.deg2rad(-30.), 'ryxz'),
-                             transform.euler_matrix(0, np.deg2rad(-10.), 0, 'sxyz'))
-        print(transform.quaternion_from_matrix(qm_left_new))
-        qm_right_new = np.dot(transform.euler_matrix(np.deg2rad(90.), np.deg2rad(75.), np.deg2rad(30.), 'ryxz'),
-                              transform.euler_matrix(0, np.deg2rad(-10.), 0, 'sxyz'))
-        print(transform.quaternion_from_matrix(qm_right_new))
-        print(transform.euler_from_matrix(qm_left_new))
-        print(transform.euler_from_matrix(qm_right_new))
+        # Calculate the orientation of the CURI arms regarding the base frame
+        qm_left_new = transform.quaternion_matrix([-0.5824349629454723, 0.3718840519259553, 0.2206752352096998, 0.688312549534299])
+        print(qm_left_new)
+        print(np.rad2deg(transform.euler_from_matrix(qm_left_new)))
 
     def test_quaternion_multiply(self):
         """This example shows the usage of quaternion_multiply.
