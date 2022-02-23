@@ -26,7 +26,7 @@ RosoutLogger::~RosoutLogger() {
   ref_count.store(false);
 }
 
-void RosoutLogger::callback(Duration  /*timestamp*/, const TreeNode& node, NodeStatus prev_status, NodeStatus status) {
+void RosoutLogger::callback(Duration /*timestamp*/, const TreeNode& node, NodeStatus prev_status, NodeStatus status) {
   constexpr const char* kWhitespaces = "                         ";
   const size_t kWsCount = strlen(kWhitespaces) - 1;
 

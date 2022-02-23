@@ -65,7 +65,9 @@ class ExecuteAddCollisionBox : public RosServiceNode<roport::ExecuteAddCollision
 
 class ExecuteAddCollisionPlane : public RosServiceNode<roport::ExecuteAddCollisionPlane> {
  public:
-  ExecuteAddCollisionPlane(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
+  ExecuteAddCollisionPlane(const ros::NodeHandle& node_handle,
+                           const std::string& name,
+                           const BT::NodeConfiguration& cfg)
       : RosServiceNode<roport::ExecuteAddCollisionPlane>(node_handle, name, cfg) {}
 
   static auto providedPorts() -> BT::PortsList {
@@ -222,7 +224,9 @@ class ExecuteMirroredPose : public RosServiceNode<roport::ExecuteMirroredPose> {
 
 class ExecuteAttachCollisionBox : public RosServiceNode<roport::ExecuteAttachCollisionBox> {
  public:
-  ExecuteAttachCollisionBox(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
+  ExecuteAttachCollisionBox(const ros::NodeHandle& node_handle,
+                            const std::string& name,
+                            const BT::NodeConfiguration& cfg)
       : RosServiceNode<roport::ExecuteAttachCollisionBox>(node_handle, name, cfg) {}
 
   static auto providedPorts() -> BT::PortsList {
@@ -298,7 +302,9 @@ class ExecuteDetachCollision : public RosServiceNode<roport::ExecuteDetachCollis
 
 class ExecuteGroupAngularJointStates : public RosServiceNode<roport::ExecuteGroupJointStates> {
  public:
-  ExecuteGroupAngularJointStates(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
+  ExecuteGroupAngularJointStates(const ros::NodeHandle& node_handle,
+                                 const std::string& name,
+                                 const BT::NodeConfiguration& cfg)
       : RosServiceNode<roport::ExecuteGroupJointStates>(node_handle, name, cfg) {}
 
   static auto providedPorts() -> BT::PortsList {
@@ -318,12 +324,13 @@ class ExecuteGroupAngularJointStates : public RosServiceNode<roport::ExecuteGrou
     getInput<double>("tolerance", request.tolerance);
     ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
-
 };
 
 class ExecuteGroupLinearJointStates : public RosServiceNode<roport::ExecuteGroupJointStates> {
  public:
-  ExecuteGroupLinearJointStates(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
+  ExecuteGroupLinearJointStates(const ros::NodeHandle& node_handle,
+                                const std::string& name,
+                                const BT::NodeConfiguration& cfg)
       : RosServiceNode<roport::ExecuteGroupJointStates>(node_handle, name, cfg) {}
 
   static auto providedPorts() -> BT::PortsList {

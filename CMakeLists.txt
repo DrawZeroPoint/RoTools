@@ -203,15 +203,16 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/ClangTools.cmake OPTIONAL
   RESULT_VARIABLE CLANG_TOOLS
   )
 if (CLANG_TOOLS)
-  file(GLOB SOURCES
+  file(GLOB CPP_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/*.cpp
     )
   file(GLOB_RECURSE HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
     )
-  add_format_target(rotools FILES ${SOURCES} ${HEADERS})
+  add_format_target(rotools FILES ${CPP_SOURCES} ${HEADERS})
   add_tidy_target(rotools
-    FILES ${SOURCES}
+    FILES ${CPP_SOURCES}
     DEPENDS ${PROJECT_NAME}
     )
 endif ()

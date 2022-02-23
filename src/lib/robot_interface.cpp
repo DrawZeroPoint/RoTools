@@ -43,7 +43,8 @@ void RobotInterface::init() {
     ROS_ASSERT(raw_measured_joint_states_id[i].getType() == XmlRpc::XmlRpcValue::TypeString);
     std::string measured_topic = std::string(raw_measured_joint_states_id[i]);
     ros::Subscriber js_getter = nh_.subscribe<sensor_msgs::JointState>(
-        measured_topic, 1, [this, measured_topic](auto && ph1) { jointStatesCb(std::forward<decltype(ph1)>(ph1), measured_topic); });
+        measured_topic, 1,
+        [this, measured_topic](auto&& ph1) { jointStatesCb(std::forward<decltype(ph1)>(ph1), measured_topic); });
     js_getters_.insert({measured_topic, js_getter});
     ROS_INFO_STREAM("Get measured joint states from <- " << measured_topic);
   }
