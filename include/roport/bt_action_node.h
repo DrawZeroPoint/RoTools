@@ -63,7 +63,7 @@ class RosActionNode : public BT::ActionNodeBase {
   virtual auto onFailedRequest(FailureCause failure) -> NodeStatus {
     ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
     return NodeStatus::FAILURE;
- }
+  }
 
   /// If you override this method, you MUST call this implementation invoking:
   ///
