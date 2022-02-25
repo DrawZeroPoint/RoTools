@@ -96,6 +96,10 @@ class Test(unittest.TestCase):
         print(qm_left_new)
         print(np.rad2deg(transform.euler_from_matrix(qm_left_new)))
 
+        # FR Wheel joint axis
+        rotated_axis = np.dot(transform.euler_matrix(0, np.deg2rad(-30), np.deg2rad(-45), 'rxyz'), np.array([0., 1., 0., 0.]))
+        print(rotated_axis)
+
     def test_quaternion_multiply(self):
         """This example shows the usage of quaternion_multiply.
 
