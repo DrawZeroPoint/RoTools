@@ -1,5 +1,7 @@
 # RoTools
 
+<img alt="logo" height="100" src="/home/dongzhipeng/RoTools/misc/ms-icon-310x310.png" width="100"/>
+
 [![CI](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml/badge.svg)](
 https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml)
 
@@ -120,7 +122,7 @@ it is needed for proceeding the next steps.
    [Certain rules](https://advrhumanoids.github.io/CartesianInterface/quickstart.html#setting-up-the-robot-description) 
    should be followed.
    
-2. Create a launch file with the name <robot>_cartesio.launch.
+2. Create a launch file named as `<robot>_cartesio.launch`.
    
 After the preparations, you can
 
@@ -147,7 +149,7 @@ To establish the conversion:
    the streaming function.
    
 2. Make sure the publisher and receiver machines are in the same local network. From now on,
-   we assume the subscriber's network as:
+   we assume the receiver's network as:
    
    ```text
    inet 192.168.13.234  netmask 255.255.255.0  broadcast 192.168.13.255
@@ -174,7 +176,7 @@ By default, the server will publish poses on topics: `/xsens/all_poses`, `/xsens
 The former two are in `PoseArray` format, the latter ones are in `PoseStamped`.
 `body_poses` are the poses of body segments without hand segments; `left_tcp` is the left palm pose; 
 `right_tcp` is the right palm pose. `left_sole` is the left sole pose; `right_sole` is the right sole pose.
-When standing in N pose, the TCP poses and sole poses is illustrated as:
+When standing in N-pose, the TCP poses and sole poses are illustrated as:
 
 
 
