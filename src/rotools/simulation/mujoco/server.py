@@ -15,10 +15,10 @@ class MuJoCoServer(object):
     """
 
     def __init__(self, kwargs):
-        """
+        """Initialize the MuJoCoServer.
 
         Args:
-            kwargs:
+            kwargs: dict Configurations.
         """
         super(MuJoCoServer, self).__init__()
 
@@ -39,11 +39,15 @@ class MuJoCoServer(object):
             self.joint_state_publisher.publish(joint_state_msg)
 
     def joint_command_cb(self, cmd):
-        if not cmd.name:
-            rospy.logwarn_throttle(3, 'Joint command contains no name')
-        if len(cmd.position) != self.interface.actuator_num:
-            rospy.logerr('Joint command size {} and actuator number {} mismatch'.format(
-                len(cmd.position), self.interface.actuator_num))
+        if len(cmd.position) != len(cmd.velocity) or len(cmd.position) != len(cmd.effort):
+            rospy.logwarn_throttle(3, 'Joint command should contain position, velocity, and effort. '
+                                      'Their dimensions should be the same')
             return
+        if not cmd.name:
+            rospy.logwarn_throttle(3, 'Sending joint command with no name is highly discouraged')
+            if len(cmd.position) != self.interface.n_actuator:
+                rospy.logerr('Joint command size {} and actuator number {} mismatch, omitted.'.format(
+                    len(cmd.position), self.interface.n_actuator))
+                return
 
         self.interface.set_joint_commands(cmd)
