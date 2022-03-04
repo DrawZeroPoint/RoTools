@@ -1,17 +1,20 @@
 from __future__ import print_function
 
 import os
+import numpy as np
+import xml.etree.ElementTree as ElementTree
 
 from threading import Thread
 from mujoco_py import MjSim, MjViewer, load_model_from_path
 
+from rotools.utility.mjcf import find_elements, array_to_string
+
 try:
     import rospy
-    import tf2_ros
-    import tf2_geometry_msgs  # import this is mandatory to use PoseStamped msg
     from sensor_msgs.msg import JointState
 except ImportError:
-    pass
+    rospy = None
+    JointState = None
 
 
 class MuJoCoInterface(Thread):
@@ -19,8 +22,7 @@ class MuJoCoInterface(Thread):
     def __init__(
             self,
             model_path,
-            joint_names,
-            actuator_names,
+            actuator_path,
             enable_viewer=True,
             **kwargs
     ):
@@ -28,29 +30,39 @@ class MuJoCoInterface(Thread):
         Thread.__init__(self)
 
         if not os.path.exists(model_path):
-            raise FileNotFoundError("XML file '{}' does not exist".format(model_path))
+            raise FileNotFoundError("Model XML file '{}' does not exist".format(model_path))
 
         self.model = load_model_from_path(model_path)
         self.sim = MjSim(self.model)
 
-        if enable_viewer:
-            self.viewer = MjViewer(self.sim)
+        if not os.path.exists(actuator_path):
+            raise FileNotFoundError("Actuator XML file '{}' does not exist".format(actuator_path))
 
-        if not isinstance(joint_names, list) and not isinstance(joint_names, tuple):
-            raise TypeError('joint_names should be list or tuple, but got {}'.format(type(joint_names)))
+        tree = ElementTree.parse(actuator_path)
+        root = tree.getroot()
+        position_actuators = find_elements(root, 'position', return_first=False)
+        velocity_actuators = find_elements(root, 'velocity', return_first=False)
+        torque_actuators = find_elements(root, 'motor', return_first=False)
 
-        self.joint_names = joint_names
+        """
+        control_types: list[int] How the actuator is controlled.
+                       The value could be: position (0), velocity (1), torque (2).
+        """
+        self.joint_names = []
+        self.actuator_names = []
+        self.control_types = []
+        self._get_actuator_info(position_actuators, 0)
+        self._get_actuator_info(velocity_actuators, 1)
+        self._get_actuator_info(torque_actuators, 2)
+
         self.joint_num = len(self.joint_names)
-
-        if not isinstance(actuator_names, list) and not isinstance(actuator_names, tuple):
-            raise TypeError('actuator_names should be list or tuple, but got {}'.format(type(actuator_names)))
-
-        self.actuator_names = actuator_names
         self.actuator_num = len(self.actuator_names)
+        self.actuator_ids = [self.sim.model.actuator_name2id(actuator_name) for actuator_name in self.actuator_names]
 
-        if self.joint_num != self.actuator_num:
-            raise ValueError('joint_num {} and actuator_num {} should be the same'.format(
-                self.joint_num, self.actuator_num))
+        rospy.loginfo('Controlled joints #{}:\n{}'.format(self.joint_num, array_to_string(self.joint_names)))
+        rospy.loginfo('Control types:\n{}'.format(array_to_string(self.control_types)))
+
+        self.viewer = MjViewer(self.sim) if enable_viewer else None
 
         self._robot_states = None
 
@@ -61,14 +73,20 @@ class MuJoCoInterface(Thread):
             if self.viewer is not None:
                 self.viewer.render()
 
+    def _get_actuator_info(self, actuators, control_type):
+        if actuators is not None:
+            for actuator in actuators:
+                self.joint_names.append(actuator.attrib['joint'])
+                self.actuator_names.append(actuator.attrib['name'])
+                self.control_types.append(control_type)
+
     def _get_robot_states(self):
         """Get joint qpos and qvel in each step.
 
         Returns:
             [qpos, qvel] for each joint given by the name.
         """
-        self._robot_states = []
-
+        robot_states = []
         sim_state = self.sim.get_state()
         for joint_name in self.joint_names:
             joint_qpos_id = self.sim.model.get_joint_qpos_addr(joint_name)
@@ -76,40 +94,38 @@ class MuJoCoInterface(Thread):
             joint_qvel_id = self.sim.model.get_joint_qvel_addr(joint_name)
             joint_qvel = sim_state.qvel[joint_qvel_id]
             joint_state = [joint_qpos, joint_qvel]
-            self._robot_states.append(joint_state)
+            robot_states.append(joint_state)
+        self._robot_states = np.array(robot_states)
 
     def get_joint_states(self):
         """Convert the robot_states to ROS JointState message.
 
         Returns:
-
+            None if the robot_state is not available, otherwise return JointState
         """
-        if not self._robot_states:
+        if self._robot_states is None:
             return None
         joint_state_msg = JointState()
         joint_state_msg.name = self.joint_names
-        joint_state_msg.position = self._robot_states[:][0]
-        joint_state_msg.velocity = self._robot_states[:][1]
+        joint_state_msg.position = self._robot_states[:, 0].tolist()
+        joint_state_msg.velocity = self._robot_states[:, 1].tolist()
         return joint_state_msg
 
-    def set_joint_commands(self, cmd, control_types):
-        """
+    def set_joint_commands(self, cmd):
+        """Obtain joint commands according to the internally defined control types and apply the command to the robot.
 
         Args:
-            cmd: JointState Joint command message.
-            control_types: list[int] How the actuator is controlled.
-                           The value could be: position (0), velocity (1), torque (2).
-                           It's the user's responsibility to match the type with the actuator's type.
+            cmd: JointState Joint command message. It's the user's responsibility to match the command value's type
+                 with the actuator's type.
         Returns:
-
+            None
         """
-        for i, actuator_name in enumerate(self.actuator_names):
-            actuator_id = self.sim.model.actuator_name2id(actuator_name)
-            if control_types[i] == 0:
+        for i, actuator_id in enumerate(self.actuator_ids):
+            if self.control_types[i] == 0:
                 self.sim.data.ctrl[actuator_id] = cmd.position[i]
-            elif control_types[i] == 1:
+            elif self.control_types[i] == 1:
                 self.sim.data.ctrl[actuator_id] = cmd.velocity[i]
-            elif control_types[i] == 2:
+            elif self.control_types[i] == 2:
                 self.sim.data.ctrl[actuator_id] = cmd.effort[i]
             else:
-                raise TypeError('Unsupported type {}'.format(control_types[i]))
+                raise TypeError('Unsupported type {}'.format(self.control_types[i]))

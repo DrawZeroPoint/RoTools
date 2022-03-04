@@ -25,13 +25,6 @@ class MuJoCoServer(object):
         self.interface = interface.MuJoCoInterface(**kwargs)
         self.interface.start()
 
-        self.control_types = kwargs['control_types']
-        if not self.control_types:
-            self.control_types = np.zeros(self.interface.joint_num).tolist()
-        if len(self.control_types) != self.interface.joint_num:
-            raise ValueError('Control type size {} and joint number {} mismatch'.format(
-                len(self.control_types), self.interface.joint_num))
-
         command_topic_id = kwargs['command_topic_id']
         self.joint_command_subscriber = rospy.Subscriber(command_topic_id, JointState, self.joint_command_cb)
 
@@ -46,9 +39,11 @@ class MuJoCoServer(object):
             self.joint_state_publisher.publish(joint_state_msg)
 
     def joint_command_cb(self, cmd):
+        if not cmd.name:
+            rospy.logwarn_throttle(3, 'Joint command contains no name')
         if len(cmd.position) != self.interface.actuator_num:
             rospy.logerr('Joint command size {} and actuator number {} mismatch'.format(
                 len(cmd.position), self.interface.actuator_num))
             return
 
-        self.interface.set_joint_commands(cmd, self.control_types)
+        self.interface.set_joint_commands(cmd)
