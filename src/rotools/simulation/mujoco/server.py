@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-import numpy as np
 import rospy
 
 from sensor_msgs.msg import JointState
@@ -33,7 +32,7 @@ class MuJoCoServer(object):
         rate = kwargs['rate']
         self.publish_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.joint_state_handle)
 
-    def joint_state_handle(self, event):
+    def joint_state_handle(self, _):
         joint_state_msg = self.interface.get_joint_states()
         if joint_state_msg:
             self.joint_state_publisher.publish(joint_state_msg)
