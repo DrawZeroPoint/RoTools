@@ -28,13 +28,13 @@ class MuJoCoInterface(Thread):
             **kwargs
     ):
         """Initialize the MuJoCoInterface.
-        
+
         Args:
             model_path: str Path to the XML file containing the whole model of the robot.
             kinematics_path: str Path to the XML file containing the kinematic tree of the robot.
             actuator_path: str Path to the XML file containing the actuator and sensor definitions of the robot.
             enable_viewer: bool If true, the MuJoCo Viewer will be displayed.
-            **kwargs: 
+            **kwargs: DO NOT REMOVE!
         """
         super(MuJoCoInterface, self).__init__()
         Thread.__init__(self)
@@ -210,16 +210,16 @@ class MuJoCoInterface(Thread):
                 else:
                     raise TypeError('Unsupported type {}'.format(self.control_types[i]))
             return
-        for name in cmd.name:
+        for k, name in enumerate(cmd.name):
             try:
                 i = self._actuated_joint_names.index(name)
                 actuator_id = self.actuator_ids[i]
                 if self.control_types[i] == 0:
-                    self.sim.data.ctrl[actuator_id] = cmd.position[i]
+                    self.sim.data.ctrl[actuator_id] = cmd.position[k]
                 elif self.control_types[i] == 1:
-                    self.sim.data.ctrl[actuator_id] = cmd.velocity[i]
+                    self.sim.data.ctrl[actuator_id] = cmd.velocity[k]
                 elif self.control_types[i] == 2:
-                    self.sim.data.ctrl[actuator_id] = cmd.effort[i]
+                    self.sim.data.ctrl[actuator_id] = cmd.effort[k]
                 else:
                     raise TypeError('Unsupported type {}'.format(self.control_types[i]))
             except ValueError:
