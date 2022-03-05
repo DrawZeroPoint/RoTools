@@ -51,8 +51,8 @@ class MuJoCoInterface(Thread):
         if not os.path.exists(actuator_path):
             raise FileNotFoundError("Actuator XML file '{}' does not exist".format(actuator_path))
 
-        kinematics_tree = ElementTree.parse(kinematics_path)
-        kinematics_root = kinematics_tree.getroot()
+        kinematic_tree = ElementTree.parse(kinematics_path)
+        kinematics_root = kinematic_tree.getroot()
 
         actuator_tree = ElementTree.parse(actuator_path)
         actuator_root = actuator_tree.getroot()

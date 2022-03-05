@@ -10,7 +10,7 @@ auto main(int argc, char** argv) -> int {
 
   roport::MsgConverter converter(nh, pnh);
 
-  ROS_INFO("Roport msg converter ready.");
+  ROS_INFO("Roport Msg Converter ready.");
   ros::AsyncSpinner spinner(4);
   spinner.start();
   ros::waitForShutdown();
