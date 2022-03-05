@@ -7,13 +7,16 @@ import numpy as np
 
 try:
     import rospy
-    import geometry_msgs.msg as GeometryMsg
-    import moveit_msgs.msg as MoveItMsg
-    import trajectory_msgs.msg as TrajectoryMsg
-
+    import geometry_msgs.msg as geo_msg
+    import moveit_msgs.msg as moveit_msg
+    import trajectory_msgs.msg as traj_msg
     from moveit_commander.conversions import pose_to_list
 except ImportError:
-    pass
+    rospy = None
+    geo_msg = None
+    moveit_msg = None
+    traj_msg = None
+    pose_to_list = None
 
 from rotools.utility import transform
 
@@ -38,39 +41,68 @@ def print_error(content):
     print(''.join(['\033[1m\033[91m', content, '\033[0m']))
 
 
-def all_close(goal, actual, tolerance):
-    """Test if a list of values are within a tolerance of their counterparts in another list.
+def all_close(values_a, values_b, tolerance=1.e-8):
+    """Test if a series of values are all within a tolerance of their counterparts in another series.
 
-    :param goal: list/ndarray/Pose/PoseStamped
-    :param actual: list/ndarray/Pose/PoseStamped
-    :param tolerance: float
-    :returns: bool
+    Args:
+        values_a: list/ndarray/Pose/PoseStamped
+        values_b: list/ndarray/Pose/PoseStamped
+        tolerance: float
+
+    Returns:
+        True if two arrays are element-wise equal within a tolerance.
     """
-    goal = to_list(goal)
-    actual = to_list(actual)
-    return np.allclose(goal, actual, atol=tolerance)
+    return np.allclose(to_list(values_a), to_list(values_b), atol=tolerance)
 
 
 def to_list(values):
-    if isinstance(values, GeometryMsg.PoseStamped):
+    """Convert a series of values in various structure to a plain python list.
+
+    Args:
+        values: PoseStamped/Pose/list/tuple/ndarray
+
+    Returns:
+        A list of plain python number types.
+    """
+    if isinstance(values, geo_msg.PoseStamped):
         output = pose_to_list(values.pose)
-    elif isinstance(values, GeometryMsg.Pose):
+    elif isinstance(values, geo_msg.Pose):
         output = pose_to_list(values)
     elif isinstance(values, list) or isinstance(values, tuple):
         output = list(values)
     elif isinstance(values, np.ndarray):
-        output = list(values)
+        output = values.tolist()
     else:
         raise NotImplementedError('Type {} cannot be converted to list'.format(type(values)))
     return output
 
 
 def offset_ros_pose(pose, offset):
-    output = GeometryMsg.Pose()
-    output.position.x = pose.position.x + offset[0]
-    output.position.y = pose.position.y + offset[1]
-    output.position.z = pose.position.z + offset[2]
-    output.orientation = pose.orientation
+    """Translate the position of the given pose by offset.
+    The orientation will not be changed.
+
+    Args:
+        pose: Pose/PoseStamped
+        offset: list/tuple/ndarray
+
+    Returns:
+        Translated pose of the same type as the input pose.
+    """
+    if isinstance(pose, geo_msg.Pose):
+        output = geo_msg.Pose()
+        output.position.x = pose.position.x + offset[0]
+        output.position.y = pose.position.y + offset[1]
+        output.position.z = pose.position.z + offset[2]
+        output.orientation = pose.orientation
+    elif isinstance(pose, geo_msg.PoseStamped):
+        output = geo_msg.PoseStamped()
+        output.header = pose.header
+        output.pose.position.x = pose.pose.position.x + offset[0]
+        output.pose.position.y = pose.pose.position.y + offset[0]
+        output.pose.position.z = pose.pose.position.z + offset[0]
+        output.pose.orientation = pose.pose.orientation
+    else:
+        raise NotImplementedError('Type {} is not supported'.format(type(pose)))
     return output
 
 
@@ -111,11 +143,11 @@ def sd_pose(pose):
             raise NotImplementedError
     elif isinstance(pose, list):
         return sd_pose(np.array(pose))
-    elif isinstance(pose, GeometryMsg.Pose):
+    elif isinstance(pose, geo_msg.Pose):
         p = pose.position
         o = pose.orientation
         return sd_pose(np.array([p.x, p.y, p.z, o.x, o.y, o.z, o.w]))
-    elif isinstance(pose, GeometryMsg.PoseStamped):
+    elif isinstance(pose, geo_msg.PoseStamped):
         p = pose.pose.position
         o = pose.pose.orientation
         return sd_pose(np.array([p.x, p.y, p.z, o.x, o.y, o.z, o.w]))
@@ -130,7 +162,7 @@ def to_ros_pose(pose):
     :return: geometry_msgs.Pose
     """
     if isinstance(pose, np.ndarray):
-        msg = GeometryMsg.Pose()
+        msg = geo_msg.Pose()
         if pose.shape == (4, 4):
             t = transform.translation_from_matrix(pose)
             q = transform.quaternion_from_matrix(pose)
@@ -165,7 +197,16 @@ def to_ros_pose(pose):
 
 
 def to_ros_pose_stamped(pose, frame_id=''):
-    pose_stamped = GeometryMsg.PoseStamped()
+    """Convert a pose to PoseStamped.
+
+    Args:
+        pose: list/ndarray A 1-D array of a pose.
+        frame_id: str The pose's reference frame.
+
+    Returns:
+        PoseStamped.
+    """
+    pose_stamped = geo_msg.PoseStamped()
     ros_pose = to_ros_pose(pose)
     pose_stamped.pose = ros_pose
     pose_stamped.header.frame_id = frame_id
@@ -173,7 +214,15 @@ def to_ros_pose_stamped(pose, frame_id=''):
 
 
 def to_ros_poses(poses):
-    msg = GeometryMsg.PoseArray()
+    """Convert a series of poses into ROS PoseArray.
+
+    Args:
+        poses: ndarray A 2-D array containing poses.
+
+    Returns:
+        PoseArray.
+    """
+    msg = geo_msg.PoseArray()
     if isinstance(poses, np.ndarray):
         for pose in poses:
             ros_pose = to_ros_pose(pose)
@@ -191,7 +240,7 @@ def sd_position(position):
             raise NotImplementedError
     elif isinstance(position, list):
         return sd_position(np.array(position))
-    elif isinstance(position, GeometryMsg.Point):
+    elif isinstance(position, geo_msg.Point):
         return sd_position(np.array([position.x, position.y, position.z]))
     else:
         raise NotImplementedError
@@ -208,7 +257,7 @@ def sd_orientation(orientation):
             raise NotImplementedError
     elif isinstance(orientation, list):
         return sd_orientation(np.array(orientation))
-    elif isinstance(orientation, GeometryMsg.Quaternion):
+    elif isinstance(orientation, geo_msg.Quaternion):
         return sd_orientation(np.array([orientation.x, orientation.y, orientation.z, orientation.w]))
     else:
         raise NotImplementedError
@@ -221,7 +270,7 @@ def to_ros_orientation(orientation):
     :return: geometry_msgs.Quaternion
     """
     if isinstance(orientation, np.ndarray):
-        msg = GeometryMsg.Quaternion()
+        msg = geo_msg.Quaternion()
         if orientation.shape == (4, 4):
             q = transform.quaternion_from_matrix(orientation)
             msg.x = q[0]
@@ -255,7 +304,7 @@ def to_ros_plan(t, p, v=None, a=None):
     :param a: way point accelerations of shape [dim, N], could be all 0
     :return: MoveItMsg.RobotTrajectory with joint names be empty
     """
-    msg = MoveItMsg.RobotTrajectory()
+    msg = moveit_msg.RobotTrajectory()
     way_point_num = t.size
     dim = p.shape[0]
     zero_list = np.zeros(dim).tolist()
@@ -263,7 +312,7 @@ def to_ros_plan(t, p, v=None, a=None):
     for w in range(way_point_num):
         if w == 0:
             continue  # omit the starting point identical to the current pose
-        wpt = TrajectoryMsg.JointTrajectoryPoint()
+        wpt = traj_msg.JointTrajectoryPoint()
 
         wpt.positions = list(p[:, w])
         wpt.velocities = zero_list if v is None else list(v[:, w])
@@ -331,6 +380,14 @@ def get_param(name, value=None):
 
 
 def pretty_print_configs(configs):
+    """Print a dict of configurations in a visual friendly and organized way.
+
+    Args:
+        configs: dict A dict of configures. The items could be string, number, or a list/tuple.
+
+    Returns:
+        None
+    """
     max_key_len = 0
     max_value_len = 0
     for key, value in configs.items():
@@ -450,11 +507,18 @@ def byte_to_uint8(data):
 
 
 def play_hint_sound(enable):
+    """Play a hint sound according to if enabled.
+
+    Args:
+        enable: bool If true, play the sound 'Function activated'.
+                Otherwise, play 'Function deactivated'.
+
+    Returns:
+        None
+    """
     try:
         # TODO check playsound could work on Python 3
         from playsound import playsound
-        import os
-        import sys
         import os.path as osp
         misc_dir = osp.dirname(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__)))))
         if enable:
@@ -464,6 +528,64 @@ def play_hint_sound(enable):
         playsound(misc_path)  # Not support block=True on Ubuntu
     except ImportError as e:
         rospy.logdebug('Sound not played due to missing dependence: {}'.format(e))
+
+
+def wait_for_service(srv, time=0.2):
+    try:
+        rospy.wait_for_service(srv, time)
+    except rospy.ROSException:
+        rospy.logwarn("Waiting for service: {0}".format(srv))
+        rospy.wait_for_service(srv)
+        rospy.logwarn("Service {0} found.".format(srv))
+
+
+def create_publishers(namespace, topic_ids, topic_types, queue_size=1):
+    """Create Publishers to topics.
+
+    Args:
+        namespace: str Namespace of the topic_ids.
+        topic_ids: list[str] List containing the topic_ids.
+        topic_types: list[object] List containing the types of the topics.
+        queue_size: int
+
+    Returns:
+        Publishers in a dict indexed by topic_ids.
+    """
+    assert isinstance(topic_ids, list) or isinstance(topic_ids, str)
+    assert len(topic_ids) == len(topic_types)
+
+    if isinstance(topic_ids, list):
+        publishers = dict()
+        for topic_id, topic_type in zip(topic_ids, topic_types):
+            publishers[topic_id] = create_publishers(namespace, topic_id, topic_type, queue_size)
+        return publishers
+    else:
+        return rospy.Publisher(namespace + '/' + topic_ids, topic_types, queue_size=queue_size)
+
+
+def create_service_proxies(namespace, service_ids, service_types):
+    """Create a dict of ServiceProxy.
+
+    Args:
+        namespace: str
+        service_ids: list[str]
+        service_types: list[object]
+
+    Returns:
+        ServiceProxy in a dict indexed by service_ids.
+    """
+    assert isinstance(service_ids, list) or isinstance(service_ids, str)
+    assert len(service_ids) == len(service_types)
+
+    if isinstance(service_ids, list):
+        service_proxies = dict()
+        for service_id, service_type in zip(service_ids, service_types):
+            service_proxies[service_id] = create_service_proxies(namespace, service_id, service_type)
+        return service_proxies
+    else:
+        service_id = namespace + '/' + service_ids
+        wait_for_service(service_id)
+        return rospy.ServiceProxy(service_id, service_types)
 
 
 if __name__ == "__main__":
@@ -491,4 +613,3 @@ if __name__ == "__main__":
     else:
         cv2.imshow("Original Depth", depth)
     cv2.waitKey()
-
