@@ -220,9 +220,6 @@ void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
 bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg,
                                     sensor_msgs::JointState& filtered_msg,
                                     const std::vector<std::string>& source_names) {
-  filtered_msg.header = src_msg->header;
-  filtered_msg.name = source_names;
-
   if (src_msg->position.empty()) {
     ROS_ERROR_STREAM_THROTTLE(3, prefix << "Source JointState message defines no position");
     return false;
@@ -233,6 +230,9 @@ bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
                                         << ")");
     return false;
   }
+
+  filtered_msg.header = src_msg->header;
+  filtered_msg.name = source_names;
 
   size_t i = 0;
   for (const auto& name : source_names) {
@@ -269,15 +269,13 @@ bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
 auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
                                     rotools::RuckigOptimizer* oto,
                                     sensor_msgs::JointState& smoothed_msg) -> bool {
-  if (!oto->isInitialized()) {
-    return false;
-  }
-  smoothed_msg.header = msg.header;
-  smoothed_msg.name = msg.name;
-
   if (!oto->set(msg.position, msg.velocity)) {
     return false;
   }
+
+  smoothed_msg.header = msg.header;
+  smoothed_msg.name = msg.name;
+
   std::vector<double> q_cmd;
   std::vector<double> dq_cmd;
   oto->update(q_cmd, dq_cmd);

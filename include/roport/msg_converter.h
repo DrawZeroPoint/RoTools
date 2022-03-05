@@ -71,7 +71,7 @@ class MsgConverter {
   /**
    * Filter the source joint state message and only preserve the joints whose name are in source_names.
    * If no name is defined in src_msg, will map positions, velocities, and efforts to the filtered message if
-   * their size is the same as source_names.
+   * they have the same size as source_names.
    * @param src_msg Source joint state message.
    * @param filtered_msg Filtered joint state message.
    * @param source_names Names of the joints to be selected.
@@ -91,6 +91,13 @@ class MsgConverter {
                               const std::vector<std::string>& target_names,
                               std::vector<T>& param_out) -> bool;
 
+  /**
+   * This callback function constantly monitor the current joint states and compare them with the desired position,
+   * if they are close enough, set the smooth_started_flags for group of the given id to true.
+   * @param msg Measured joint state msg.
+   * @param group_id The id of the controlled group.
+   * @param q_d Desired joint positions.
+   */
   void startCb(const sensor_msgs::JointState::ConstPtr& msg, const int& group_id, const std::vector<double>& q_d);
 
   /**
