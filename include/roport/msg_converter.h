@@ -118,8 +118,12 @@ class MsgConverter {
    * @param msg Measured joint state msg.
    * @param group_id The id of the controlled group.
    * @param q_d Desired joint positions.
+   * @param source_names
    */
-  void startCb(const sensor_msgs::JointState::ConstPtr& msg, const int& group_id, const std::vector<double>& q_d);
+  void startCb(const sensor_msgs::JointState::ConstPtr& msg,
+               const int& group_id,
+               const std::vector<double>& q_d,
+               const std::vector<std::string>& source_names);
 
   /**
    *

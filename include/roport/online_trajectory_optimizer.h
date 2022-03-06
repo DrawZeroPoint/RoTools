@@ -46,11 +46,11 @@ class RuckigOptimizer {
   bool* initialized_;
 
   int* dof_;
-  std::chrono::steady_clock::time_point start_;
+  std::chrono::steady_clock::time_point* start_;
 
-  ruckig::Ruckig<19>* trajectory_generator_;
-  ruckig::InputParameter<19>* input_param_;
-  ruckig::OutputParameter<19>* output_param_;
+  ruckig::Ruckig<14>* trajectory_generator_;
+  ruckig::InputParameter<14>* input_param_;
+  ruckig::OutputParameter<14>* output_param_;
 };
 
 }  // namespace rotools

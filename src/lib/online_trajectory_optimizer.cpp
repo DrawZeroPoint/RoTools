@@ -12,16 +12,16 @@ RuckigOptimizer::RuckigOptimizer(int dof,
                                  const std::vector<double>& max_jerk,
                                  double frequency,
                                  double reduce_ratio) {
-  if (dof > 19) {
-    ROS_ERROR("RoTools: DOF %d exceed the capacity (19) of the online trajectory optimizer", dof);
+  if (dof > 14) {
+    ROS_ERROR("RoTools: DOF %d exceed the capacity (14) of the online trajectory optimizer", dof);
     return;
   }
   dof_ = new int(dof);
   initialized_ = new bool(false);
 
-  trajectory_generator_ = new ruckig::Ruckig<19>(1. / frequency);
-  input_param_ = new ruckig::InputParameter<19>();
-  output_param_ = new ruckig::OutputParameter<19>();
+  trajectory_generator_ = new ruckig::Ruckig<14>(1. / frequency);
+  input_param_ = new ruckig::InputParameter<14>();
+  output_param_ = new ruckig::OutputParameter<14>();
 
   if (!max_vel.empty() && !max_acc.empty() && !max_jerk.empty()) {
     for (size_t i = 0; i < dof; i += 1) {
@@ -41,20 +41,21 @@ RuckigOptimizer::~RuckigOptimizer() {
 }
 
 void RuckigOptimizer::init(const sensor_msgs::JointState& msg, const std::vector<double>& q_d) {
-  std::array<double, 19> position{};
-  std::array<double, 19> velocity{};
-  std::array<double, 19> acceleration{};
+  std::array<double, 14> position{};
+  std::array<double, 14> velocity{};
+  std::array<double, 14> acceleration{};
   std::copy(msg.position.begin(), msg.position.end(), position.begin());
   std::copy(msg.velocity.begin(), msg.velocity.end(), velocity.begin());
   input_param_->current_position = position;
   input_param_->current_velocity = velocity;
   input_param_->current_acceleration = acceleration;
 
-  std::array<double, 19> q_desired{};
+  std::array<double, 14> q_desired{};
   std::copy(q_d.begin(), q_d.end(), q_desired.begin());
   input_param_->target_position = q_desired;
 
-  start_ = std::chrono::steady_clock::now();
+  start_ = new std::chrono::steady_clock::time_point;
+  *start_ = std::chrono::steady_clock::now();
   *initialized_ = true;
 }
 
@@ -63,8 +64,8 @@ bool RuckigOptimizer::set(const std::vector<double>& target_position, const std:
     return false;
   }
 
-  std::array<double, 19> position{};
-  std::array<double, 19> velocity{};
+  std::array<double, 14> position{};
+  std::array<double, 14> velocity{};
   std::copy(target_position.begin(), target_position.end(), position.begin());
   std::copy(target_velocity.begin(), target_velocity.end(), velocity.begin());
   input_param_->target_position = position;
@@ -73,7 +74,7 @@ bool RuckigOptimizer::set(const std::vector<double>& target_position, const std:
 }
 
 void RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd) {
-  auto interval = std::chrono::steady_clock::now() - start_;
+  auto interval = std::chrono::steady_clock::now() - *start_;
   auto i_ms = std::chrono::duration_cast<std::chrono::milliseconds>(interval);
   const unsigned long steps = std::max<unsigned long>(i_ms.count(), 1);
   for (unsigned long i = 0; i < steps; i++) {
@@ -83,8 +84,9 @@ void RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq
     input_param_->current_velocity = output_param_->new_velocity;
     input_param_->current_acceleration = output_param_->new_acceleration;
   }
-  std::array<double, 19> new_position = output_param_->new_position;
-  std::array<double, 19> new_velocity = output_param_->new_velocity;
+  std::array<double, 14> new_position = output_param_->new_position;
+  std::array<double, 14> new_velocity = output_param_->new_velocity;
+
   assert(q_cmd.size() == *dof_ && dq_cmd.size() == *dof_);
   std::copy(new_position.begin(), new_position.begin() + *dof_, q_cmd.begin());
   std::copy(new_velocity.begin(), new_velocity.begin() + *dof_, dq_cmd.begin());

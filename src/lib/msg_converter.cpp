@@ -126,8 +126,8 @@ auto MsgConverter::init() -> bool {
     if (smooth_start_flag > 0) {
       enable_smooth_start_flags_.push_back(true);
       auto subscriber = nh_.subscribe<sensor_msgs::JointState>(
-          start_ref_topics[group_id], 1, [this, group_id, start_position](auto&& ph1) {
-            return startCb(std::forward<decltype(ph1)>(ph1), group_id, start_position);
+          start_ref_topics[group_id], 1, [this, group_id, start_position, source_names](auto&& ph1) {
+            return startCb(std::forward<decltype(ph1)>(ph1), group_id, start_position, source_names);
           });
       start_ref_subscribers_.push_back(subscriber);
       smooth_started_flags_.push_back(false);
@@ -281,18 +281,24 @@ auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
 
 void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg,
                            const int& group_id,
-                           const std::vector<double>& q_d) {
+                           const std::vector<double>& q_d,
+                           const std::vector<std::string>& source_names) {
   if (smooth_started_flags_[group_id]) {
     return;
   }
 
+  sensor_msgs::JointState filtered_msg;
+  if (!filterJointState(msg, filtered_msg, source_names)) {
+    return;
+  }
+
   if (!optimizers_[group_id]->isInitialized()) {
-    optimizers_[group_id]->init(*msg, q_d);
+    optimizers_[group_id]->init(filtered_msg, q_d);
     starts_[group_id] = std::chrono::steady_clock::now();
     return;
   }
 
-  if (allClose<double>(msg->position, q_d)) {
+  if (allClose<double>(filtered_msg.position, q_d)) {
     smooth_started_flags_[group_id] = true;
     ROS_INFO("Successfully moved group %d to the start configuration.", group_id);
   } else {
