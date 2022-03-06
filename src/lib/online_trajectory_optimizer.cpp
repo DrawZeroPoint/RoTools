@@ -21,7 +21,6 @@ RuckigOptimizer::RuckigOptimizer(int dof,
   assert(!max_vel.empty() && max_vel.size() == max_acc.size() && max_vel.size() == max_jerk.size());
 
   dof_ = new int(dof);
-  initialized_ = new bool(false);
   is_initial_state_set_ = new bool(false);
   is_target_state_set_ = new bool(false);
   start_ = new std::chrono::steady_clock::time_point;
@@ -45,30 +44,10 @@ RuckigOptimizer::RuckigOptimizer(int dof,
 }
 
 RuckigOptimizer::~RuckigOptimizer() {
-  delete dof_;
-  delete initialized_;
   delete trajectory_generator_;
   delete input_param_;
   delete output_param_;
   delete start_;
-}
-
-void RuckigOptimizer::init(const sensor_msgs::JointState& msg, const std::vector<double>& q_d) {
-  std::array<double, 32> position{};
-  std::array<double, 32> velocity{};
-  std::array<double, 32> acceleration{};
-  std::copy(msg.position.begin(), msg.position.end(), position.begin());
-  std::copy(msg.velocity.begin(), msg.velocity.end(), velocity.begin());
-  input_param_->current_position = position;
-  input_param_->current_velocity = velocity;
-  input_param_->current_acceleration = acceleration;
-
-  std::array<double, 32> q_desired{};
-  std::copy(q_d.begin(), q_d.end(), q_desired.begin());
-  input_param_->target_position = q_desired;
-
-  *start_ = std::chrono::steady_clock::now();
-  *initialized_ = true;
 }
 
 void RuckigOptimizer::setInitialState(const sensor_msgs::JointState& msg) {
@@ -98,20 +77,6 @@ void RuckigOptimizer::getTargetPosition(std::vector<double>& q_d) {
   assert(*is_target_state_set_);
   q_d.resize(*dof_);
   std::copy(input_param_->target_position.begin(), input_param_->target_position.begin() + *dof_, q_d.begin());
-}
-
-bool RuckigOptimizer::set(const std::vector<double>& target_position, const std::vector<double>& target_velocity) {
-  if (!*initialized_) {
-    return false;
-  }
-
-  std::array<double, 32> position{};
-  std::array<double, 32> velocity{};
-  std::copy(target_position.begin(), target_position.end(), position.begin());
-  std::copy(target_velocity.begin(), target_velocity.end(), velocity.begin());
-  input_param_->target_position = position;
-  input_param_->target_velocity = velocity;
-  return true;
 }
 
 void RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd) {

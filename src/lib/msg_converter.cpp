@@ -286,17 +286,19 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
 
   std::vector<double> q_desired;
   optimizers_[group_id]->getTargetPosition(q_desired);
-
-  if (allClose<double>(filtered_msg.position, q_desired)) {
+  size_t violated_i;
+  double residual;
+  if (allClose<double>(filtered_msg.position, q_desired, violated_i, residual)) {
     finished_smooth_start_flags_[group_id] = true;
-    ROS_INFO("Successfully moved group %d to the start configuration.", group_id);
+    ROS_INFO("Successfully moved group %d to the start position.", group_id);
   } else {
-    ROS_WARN_THROTTLE(1, "Smoothly moving group %d to the start configuration ...", group_id);
+    ROS_WARN_THROTTLE(1, "Smoothly moving group %d to the start position ...", group_id);
   }
 
   if (std::chrono::steady_clock::now() - starts_[group_id] > std::chrono::seconds(20)) {
     finished_smooth_start_flags_[group_id] = true;
-    ROS_WARN("Unable to smoothly move group %d to the start configuration in 20 sec. Aborted.", group_id);
+    ROS_WARN("Unable to move group %d to the start position in 20 sec due to joint #%zu: %s. Residual %f. Aborted.",
+             group_id, violated_i, source_names[violated_i].c_str(), residual);
   }
 }
 

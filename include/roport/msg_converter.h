@@ -106,6 +106,17 @@ class MsgConverter {
                                rotools::RuckigOptimizer* oto,
                                sensor_msgs::JointState& smoothed_msg) -> bool;
 
+  /**
+   * Get the map under the given param_name. Each element in the map is a pair <joint_name, value>.
+   * Get all values of specified joint names using this map. The joint names are defined by source_names
+   * or their analogues target_names.
+   * @tparam T Value type.
+   * @param param_name Name of the param containing a map.
+   * @param source_names Joint names.
+   * @param target_names Joint names.
+   * @param param_out Output values.
+   * @return True if got values. False if the param does not exist or cannot find source/target names in the map.
+   */
   template <class T>
   auto phaseJointParameterMap(const std::string& param_name,
                               const std::vector<std::string>& source_names,
@@ -172,16 +183,21 @@ class MsgConverter {
 
   /**
    * Judge if all corresponding elements in the two given vectors are close to each other under the tolerance.
-   * @tparam T
+   * @tparam T Value type.
    * @param first One vector.
    * @param second Other vector.
+   * @param violated_i The index of the first element that violates the tolerance.
+   * @param residual The residual of the first violation.
    * @param tol Tolerance.
    * @return True if close.
    */
   template <typename T>
-  auto allClose(std::vector<T> first, std::vector<T> second, T tol = 0.01) -> bool {
+  auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, T tol = 0.01) -> bool {
     for (size_t i = 0; i < first.size(); ++i) {
-      if (fabs(first[i] - second[i]) > tol) {
+      auto error = fabs(first[i] - second[i]);
+      if (error > tol) {
+        violated_i = i;
+        residual = error;
         return false;
       }
     }

@@ -25,22 +25,20 @@ class RuckigOptimizer {
                            const std::vector<double>& max_acc,
                            const std::vector<double>& max_jerk,
                            double frequency = 1000.,
-                           double reduce_ratio = 0.001);
+                           double reduce_ratio = 0.005);
   ~RuckigOptimizer();
 
-  void init(const sensor_msgs::JointState& msg, const std::vector<double>& q_d);
-
+  /**
+   * Set the initial position and velocity into the input_param.
+   * @param msg Measured msg containing the current state.
+   */
   void setInitialState(const sensor_msgs::JointState& msg);
-
-  void setTargetState(const sensor_msgs::JointState& msg);
 
   /**
    * Set the target position and velocity into the input_param of the optimizer.
-   * @param target_position Target joint position.
-   * @param target_velocity Target joint velocity.
-   * @return True if set, false if the optimizer has not been initialized.
+   * @param msg Control msg containing target position and velocity.
    */
-  auto set(const std::vector<double>& target_position, const std::vector<double>& target_velocity) -> bool;
+  void setTargetState(const sensor_msgs::JointState& msg);
 
   void update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd);
 
@@ -48,10 +46,13 @@ class RuckigOptimizer {
 
   auto isTargetStateSet() -> bool { return *is_target_state_set_; }
 
-  void getTargetPosition(std::vector<double> & q_d);
+  /**
+   * Get the target position stored in the input_param.
+   * @param q_d Output target position.
+   */
+  void getTargetPosition(std::vector<double>& q_d);
 
  private:
-  bool* initialized_;
   bool* is_initial_state_set_;
   bool* is_target_state_set_;
 
