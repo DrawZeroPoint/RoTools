@@ -32,11 +32,11 @@ class RuckigOptimizer {
 
   /**
    * Set the target position and velocity into the input_param of the optimizer.
-   * @param joint_position Target joint position.
-   * @param joint_velocity Target joint velocity.
+   * @param target_position Target joint position.
+   * @param target_velocity Target joint velocity.
    * @return True if set, false if the optimizer has not been initialized.
    */
-  auto set(const std::vector<double>& joint_position, const std::vector<double>& joint_velocity) -> bool;
+  auto set(const std::vector<double>& target_position, const std::vector<double>& target_velocity) -> bool;
 
   void update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd);
 
@@ -48,9 +48,9 @@ class RuckigOptimizer {
   int* dof_;
   std::chrono::steady_clock::time_point start_;
 
-  ruckig::Ruckig<28>* trajectory_generator_;
-  ruckig::InputParameter<28>* input_param_;
-  ruckig::OutputParameter<28>* output_param_;
+  ruckig::Ruckig<19>* trajectory_generator_;
+  ruckig::InputParameter<19>* input_param_;
+  ruckig::OutputParameter<19>* output_param_;
 };
 
 }  // namespace rotools

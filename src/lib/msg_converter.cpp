@@ -16,64 +16,55 @@ MsgConverter::MsgConverter(const ros::NodeHandle& node_handle, const ros::NodeHa
 
 auto MsgConverter::init() -> bool {
   XmlRpc::XmlRpcValue source_joint_groups;
-  if (!pnh_.getParam("source_joint_groups", source_joint_groups)) {
-    ROS_ERROR_STREAM(prefix << "Param 'source_joint_groups' is not defined");
+  if (!getParam("source_joint_groups", source_joint_groups)) {
     return false;
   }
   ROS_ASSERT(source_joint_groups.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue target_joint_groups;
-  if (!pnh_.getParam("target_joint_groups", target_joint_groups)) {
-    ROS_ERROR_STREAM(prefix << "Param 'target_joint_groups' is not defined");
+  if (!getParam("target_joint_groups", target_joint_groups)) {
     return false;
   }
   ROS_ASSERT(target_joint_groups.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue source_js_topics;
-  if (!pnh_.getParam("source_js_topics", source_js_topics)) {
-    ROS_ERROR_STREAM(prefix << "Param 'source_js_topics' is not defined");
+  if (!getParam("source_js_topics", source_js_topics)) {
     return false;
   }
   ROS_ASSERT(source_js_topics.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue target_js_topics;
-  if (!pnh_.getParam("target_js_topics", target_js_topics)) {
-    ROS_ERROR_STREAM(prefix << "Param 'target_js_topics' is not defined");
+  if (!getParam("target_js_topics", target_js_topics)) {
     return false;
   }
   ROS_ASSERT(target_js_topics.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue target_types;
-  if (!pnh_.getParam("target_types", target_types)) {
-    ROS_ERROR_STREAM(prefix << "Param 'target_types' is not defined");
+  if (!getParam("target_types", target_types)) {
     return false;
   }
   ROS_ASSERT(target_types.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue target_args;
-  if (!pnh_.getParam("target_args", target_args)) {
-    ROS_ERROR_STREAM(prefix << "Param 'target_args' is not defined");
+  if (!getParam("target_args", target_args)) {
     return false;
   }
   ROS_ASSERT(target_args.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue enable_smooth_start;
-  if (!pnh_.getParam("enable_smooth_start", enable_smooth_start)) {
-    ROS_ERROR_STREAM(prefix << "Param 'enable_smooth_start' is not defined");
+  if (!getParam("enable_smooth_start", enable_smooth_start)) {
     return false;
   }
   ROS_ASSERT(enable_smooth_start.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue start_ref_topics;
-  if (!pnh_.getParam("start_ref_topics", start_ref_topics)) {
-    ROS_ERROR_STREAM(prefix << "Param 'start_ref_topics' is not defined");
+  if (!getParam("start_ref_topics", start_ref_topics)) {
     return false;
   }
   ROS_ASSERT(start_ref_topics.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
   XmlRpc::XmlRpcValue start_positions;
-  if (!pnh_.getParam("start_positions", start_positions)) {
-    ROS_ERROR_STREAM(prefix << "Param 'start_positions' is not defined");
+  if (!getParam("start_positions", start_positions)) {
     return false;
   }
   ROS_ASSERT(start_positions.getType() == XmlRpc::XmlRpcValue::TypeArray);
@@ -278,9 +269,13 @@ auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
 
   std::vector<double> q_cmd;
   std::vector<double> dq_cmd;
+  q_cmd.resize(msg.name.size());
+  dq_cmd.resize(msg.name.size());
+
   oto->update(q_cmd, dq_cmd);
   smoothed_msg.position = q_cmd;
   smoothed_msg.velocity = dq_cmd;
+  smoothed_msg.effort = msg.effort;  // effort is not tackled
   return true;
 }
 
@@ -316,8 +311,7 @@ bool MsgConverter::phaseJointParameterMap(const std::string& param_name,
                                           const std::vector<std::string>& target_names,
                                           std::vector<T>& param_out) {
   std::map<std::string, T> param_map;
-  if (!pnh_.getParam(param_name, param_map)) {
-    ROS_ERROR_STREAM(prefix << ("Get param %s failed", param_name.c_str()));
+  if (!getParam(param_name, param_map)) {
     return false;
   }
   for (size_t n = 0; n < source_names.size(); ++n) {

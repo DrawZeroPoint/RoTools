@@ -58,6 +58,27 @@ class MsgConverter {
 
   std::vector<std::chrono::steady_clock::time_point> starts_;
 
+  bool getParam(const std::string& param_name, XmlRpc::XmlRpcValue& param_value) {
+    if (!pnh_.getParam(param_name, param_value)) {
+      if (!nh_.getParam(param_name, param_value)) {
+        ROS_ERROR_STREAM(prefix << "Param " << param_name << " is not defined");
+        return false;
+      }
+    }
+    return true;
+  }
+
+  template <class T>
+  bool getParam(const std::string& param_name, std::map<std::string, T>& param_value) {
+    if (!pnh_.getParam(param_name, param_value)) {
+      if (!nh_.getParam(param_name, param_value)) {
+        ROS_ERROR_STREAM(prefix << "Param " << param_name << " is not defined");
+        return false;
+      }
+    }
+    return true;
+  }
+
   auto init() -> bool;
 
   void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
