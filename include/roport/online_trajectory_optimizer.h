@@ -30,6 +30,10 @@ class RuckigOptimizer {
 
   void init(const sensor_msgs::JointState& msg, const std::vector<double>& q_d);
 
+  void setInitialState(const sensor_msgs::JointState& msg);
+
+  void setTargetState(const sensor_msgs::JointState& msg);
+
   /**
    * Set the target position and velocity into the input_param of the optimizer.
    * @param target_position Target joint position.
@@ -40,17 +44,23 @@ class RuckigOptimizer {
 
   void update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd);
 
-  auto isInitialized() -> bool { return *initialized_; }
+  auto isInitialStateSet() -> bool { return *is_initial_state_set_; }
+
+  auto isTargetStateSet() -> bool { return *is_target_state_set_; }
+
+  void getTargetPosition(std::vector<double> & q_d);
 
  private:
   bool* initialized_;
+  bool* is_initial_state_set_;
+  bool* is_target_state_set_;
 
   int* dof_;
   std::chrono::steady_clock::time_point* start_;
 
-  ruckig::Ruckig<14>* trajectory_generator_;
-  ruckig::InputParameter<14>* input_param_;
-  ruckig::OutputParameter<14>* output_param_;
+  ruckig::Ruckig<32>* trajectory_generator_;
+  ruckig::InputParameter<32>* input_param_;
+  ruckig::OutputParameter<32>* output_param_;
 };
 
 }  // namespace rotools

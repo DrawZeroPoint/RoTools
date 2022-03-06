@@ -126,17 +126,17 @@ auto MsgConverter::init() -> bool {
     if (smooth_start_flag > 0) {
       enable_smooth_start_flags_.push_back(true);
       auto subscriber = nh_.subscribe<sensor_msgs::JointState>(
-          start_ref_topics[group_id], 1, [this, group_id, start_position, source_names](auto&& ph1) {
-            return startCb(std::forward<decltype(ph1)>(ph1), group_id, start_position, source_names);
+          start_ref_topics[group_id], 1, [this, group_id, source_names](auto&& ph1) {
+            return startCb(std::forward<decltype(ph1)>(ph1), group_id, source_names);
           });
       start_ref_subscribers_.push_back(subscriber);
-      smooth_started_flags_.push_back(false);
+      finished_smooth_start_flags_.push_back(false);
       optimizer = new rotools::RuckigOptimizer(static_cast<int>(source_names.size()), max_vel, max_acc, max_jerk);
     } else {
       enable_smooth_start_flags_.push_back(false);
       ros::Subscriber dummy_subscriber;
       start_ref_subscribers_.push_back(dummy_subscriber);
-      smooth_started_flags_.push_back(true);
+      finished_smooth_start_flags_.push_back(true);
     }
     optimizers_.push_back(optimizer);
 
@@ -189,7 +189,7 @@ void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
   }
 
   sensor_msgs::JointState smoothed_msg;
-  if (enable_smooth_start_flags_[group_id] && !smooth_started_flags_[group_id]) {
+  if (enable_smooth_start_flags_[group_id] && !finished_smooth_start_flags_[group_id]) {
     if (!smoothJointState(filtered_msg, optimizers_[group_id], smoothed_msg)) {
       return;
     }
@@ -260,7 +260,8 @@ bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
 auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
                                     rotools::RuckigOptimizer* oto,
                                     sensor_msgs::JointState& smoothed_msg) -> bool {
-  if (!oto->set(msg.position, msg.velocity)) {
+  oto->setTargetState(msg);
+  if (!oto->isInitialStateSet()) {
     return false;
   }
 
@@ -269,9 +270,6 @@ auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
 
   std::vector<double> q_cmd;
   std::vector<double> dq_cmd;
-  q_cmd.resize(msg.name.size());
-  dq_cmd.resize(msg.name.size());
-
   oto->update(q_cmd, dq_cmd);
   smoothed_msg.position = q_cmd;
   smoothed_msg.velocity = dq_cmd;
@@ -281,9 +279,8 @@ auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
 
 void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg,
                            const int& group_id,
-                           const std::vector<double>& q_d,
                            const std::vector<std::string>& source_names) {
-  if (smooth_started_flags_[group_id]) {
+  if (finished_smooth_start_flags_[group_id] || !optimizers_[group_id]->isTargetStateSet()) {
     return;
   }
 
@@ -292,21 +289,24 @@ void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg,
     return;
   }
 
-  if (!optimizers_[group_id]->isInitialized()) {
-    optimizers_[group_id]->init(filtered_msg, q_d);
+  if (!optimizers_[group_id]->isInitialStateSet()) {
+    optimizers_[group_id]->setInitialState(filtered_msg);
     starts_[group_id] = std::chrono::steady_clock::now();
     return;
   }
 
-  if (allClose<double>(filtered_msg.position, q_d)) {
-    smooth_started_flags_[group_id] = true;
+  std::vector<double> q_desired;
+  optimizers_[group_id]->getTargetPosition(q_desired);
+
+  if (allClose<double>(filtered_msg.position, q_desired)) {
+    finished_smooth_start_flags_[group_id] = true;
     ROS_INFO("Successfully moved group %d to the start configuration.", group_id);
   } else {
     ROS_WARN_THROTTLE(1, "Smoothly moving group %d to the start configuration ...", group_id);
   }
 
   if (std::chrono::steady_clock::now() - starts_[group_id] > std::chrono::seconds(20)) {
-    smooth_started_flags_[group_id] = true;
+    finished_smooth_start_flags_[group_id] = true;
     ROS_WARN("Unable to smoothly move group %d to the start configuration in 20 sec. Aborted.", group_id);
   }
 }

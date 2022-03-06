@@ -47,7 +47,7 @@ class MsgConverter {
   std::vector<rotools::RuckigOptimizer*> optimizers_;
 
   std::vector<bool> enable_smooth_start_flags_;
-  std::vector<bool> smooth_started_flags_;
+  std::vector<bool> finished_smooth_start_flags_;
   std::vector<ros::Subscriber> start_ref_subscribers_;
 
   std::map<MsgTypes, std::string> msg_type_map_ = {
@@ -117,12 +117,10 @@ class MsgConverter {
    * if they are close enough, set the smooth_started_flags for group of the given id to true.
    * @param msg Measured joint state msg.
    * @param group_id The id of the controlled group.
-   * @param q_d Desired joint positions.
-   * @param source_names
+   * @param source_names Names of the joints to monitor.
    */
   void startCb(const sensor_msgs::JointState::ConstPtr& msg,
                const int& group_id,
-               const std::vector<double>& q_d,
                const std::vector<std::string>& source_names);
 
   /**
