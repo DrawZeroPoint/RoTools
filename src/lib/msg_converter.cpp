@@ -63,19 +63,13 @@ auto MsgConverter::init() -> bool {
   }
   ROS_ASSERT(start_ref_topics.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
-  XmlRpc::XmlRpcValue start_positions;
-  if (!getParam("start_positions", start_positions)) {
-    return false;
-  }
-  ROS_ASSERT(start_positions.getType() == XmlRpc::XmlRpcValue::TypeArray);
-
   ROS_ASSERT(source_joint_groups.size() > 0);
-  ROS_ASSERT(
-      source_joint_groups.size() == target_joint_groups.size() &&
-      source_joint_groups.size() == source_js_topics.size() && source_joint_groups.size() == target_js_topics.size() &&
-      source_joint_groups.size() == target_types.size() && source_joint_groups.size() == target_args.size() &&
-      source_joint_groups.size() == enable_smooth_start.size() &&
-      source_joint_groups.size() == start_ref_topics.size() && source_joint_groups.size() == start_positions.size());
+  ROS_ASSERT(source_joint_groups.size() == target_joint_groups.size() &&
+             source_joint_groups.size() == source_js_topics.size() &&
+             source_joint_groups.size() == target_js_topics.size() &&
+             source_joint_groups.size() == target_types.size() && source_joint_groups.size() == target_args.size() &&
+             source_joint_groups.size() == enable_smooth_start.size() &&
+             source_joint_groups.size() == start_ref_topics.size());
 
   // Subscribe source JointState topics and publish them to target topics.
   // If enable_reflex_ is set, the values to be published will first be smoothed.
@@ -117,17 +111,12 @@ auto MsgConverter::init() -> bool {
       ROS_ASSERT(!max_vel.empty() && max_vel.size() == max_acc.size() && max_vel.size() == max_jerk.size());
     }
 
-    std::vector<double> start_position;
-    start_position.reserve(source_names.size());
-    for (int j = 0; j < source_names.size(); ++j) {
-      start_position.push_back(start_positions[group_id][j]);
-    }
     rotools::RuckigOptimizer* optimizer;
     if (smooth_start_flag > 0) {
       enable_smooth_start_flags_.push_back(true);
       auto subscriber = nh_.subscribe<sensor_msgs::JointState>(
           start_ref_topics[group_id], 1, [this, group_id, source_names](auto&& ph1) {
-            return startCb(std::forward<decltype(ph1)>(ph1), group_id, source_names);
+            return smoothStartCb(std::forward<decltype(ph1)>(ph1), group_id, source_names);
           });
       start_ref_subscribers_.push_back(subscriber);
       finished_smooth_start_flags_.push_back(false);
@@ -277,9 +266,9 @@ auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
   return true;
 }
 
-void MsgConverter::startCb(const sensor_msgs::JointState::ConstPtr& msg,
-                           const int& group_id,
-                           const std::vector<std::string>& source_names) {
+void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
+                                 const int& group_id,
+                                 const std::vector<std::string>& source_names) {
   if (finished_smooth_start_flags_[group_id] || !optimizers_[group_id]->isTargetStateSet()) {
     return;
   }

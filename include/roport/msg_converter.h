@@ -119,9 +119,9 @@ class MsgConverter {
    * @param group_id The id of the controlled group.
    * @param source_names Names of the joints to monitor.
    */
-  void startCb(const sensor_msgs::JointState::ConstPtr& msg,
-               const int& group_id,
-               const std::vector<std::string>& source_names);
+  void smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
+                     const int& group_id,
+                     const std::vector<std::string>& source_names);
 
   /**
    *

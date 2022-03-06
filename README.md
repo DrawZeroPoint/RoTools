@@ -260,26 +260,33 @@ all names set in the parameter `joint_name_param_id`.
 
 ### roport_msg_converter
 
-This converter will convert `sensor_msgs::JointState` type message from one topic to another. Be different with `remap`,
-the name field could change during the convention. More importantly, it could also convert the message to other
-message types---even customized types.
+This converter will convert `sensor_msgs::JointState` type message from one topic (source) to another (target). 
+Be different with `remap` which only change the topic's id but not touching the contents, it could:
 
-To use this function, in the launch file, we need define the following parameters:
+1. Altering the `name` field. User can specify the names for the joints to care about and define the new names
+   of their correspondences in the converted msg.
+2. Smooth the start procedure. Usually for control commands, the target configurations are different with the
+   robot's current configuration. Directly apply the commands to the robot will cause hugh movement not safe
+   to constraints. User can specify which group to smooth during start, letting the group slowly reaching the
+   target configurations and then follow the commands.
+3. Convert joint state message from one type to another, including customized types, and providing arguments
+   to the costomized ones.
 
-| name                  | type               | explanations                                                                                                                                                                                                                                                                  |
-|-----------------------|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `source_joint_groups` | list[list[str]]    | The outer list is for all joint groups, each joint group is composed by several joint names that should be measured together or be controlled by a control topic.                                                                                                             |
-| `target_joint_groups` | list[list[str]]    | This field has one-on-one correspondence with source_joint_groups, the given joint values will be under the new names defined in target_joint_groups.                                                                                                                         |
-| `source_js_topics`    | list[str]          | Joint state topics that should be converted to the target_js_topics.                                                                                                                                                                                                          |
-| `target_js_topics`    | list[str]          | Topics converted from source_js_topics.                                                                                                                                                                                                                                       |
-| `target_types`        | list[str]          | Target topic types. By default, the target topics will have the type JointState, other types are also supported but need modifying the code. Here we support sensor_msgs/JointState and franka_core_msgs/JointCommand. If given, its size must be equal to target_js_topics_. |
-| `target_args`         | list[int]          | Give one argument for each target topic publishing. This argument often  defines the control type. If given, its size must be equal to target_js_topics.                                                                                                                      |
-| `enable_smooth_start` | list[int]          | If the value>0, Ruckig will be used to smoothly move the enabled groups  from the current configuration to that defined in `start_positions`.                                                                                                                                 |
-| `start_ref_topics`    | list[str]          | Reference topics for initializing the start configurations of smooth enabled groups.                                                                                                                                                                                          |
-| `start_positions`     | list[list[double]] | The smooth enabled groups will be moved to this configuration, which should be the start position for subsequent control.                                                                                                                                                     |
-| `max_vel`             | map[str, double]   | For each joint_name, define its maximum allowed velocity during smooth movement. The name could either be in source_joint_groups or target_joint_groups name (same for max_acc and max_jerk).                                                                                 |
-| `max_acc`             | map[str, double]   | For each joint_name, define its maximum acceleration during smooth movement.                                                                                                                                                                                                  |
-| `max_jerk`            | map[str, double]   | For each joint_name, define its maximum jerk during smooth movement.                                                                                                                                                                                                          |
+To use this function, we need define the following parameters in the launch file or load them from a yaml file:
+
+| Name                  | Type             | Explanations (the outer list is for joint groups, following we only explain the contents)                                                                                                    |
+|-----------------------|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `source_joint_groups` | list[list[str]]  | Joint names defined as a `group`. They are transmitted into the converter through `source_js_topics`.                                                                                        |
+| `target_joint_groups` | list[list[str]]  | Joint names having one-on-one correspondence with `source_joint_groups`. Target joint values will be under these new names.                                                                  |
+| `source_js_topics`    | list[str]        | Topic ids that should be converted to `target_js_topics`.                                                                                                                                    |
+| `target_js_topics`    | list[str]        | Topic ids converted from `source_js_topics`.                                                                                                                                                 |
+| `target_types`        | list[str]        | Target topic types. By default, the type string is `sensor_msgs/JointState`, other types are also supported by modifying the code. Its size must equal to `target_js_topics`.                |
+| `target_args`         | list[int]        | Arguments defining the customized control arg. For `sensor_msgs/JointState`, it is ignored. Its size must be equal to target_js_topics.                                                      |
+| `enable_smooth_start` | list[int]        | Flags for smooth start. If larger than 0, Ruckig will be used to smoothly move the enabled groups from the current configurations to the target. Its size euqals to `source_js_topics`.      |
+| `start_ref_topics`    | list[str]        | Topic ids for initializing the start configurations for smooth enabled groups.                                                                                                               |
+| `max_vel`             | map[str, double] | For each joint name, define its maximum allowed velocity during smooth movement. The name could be either in `source_joint_groups` or `target_joint_groups` (same for max_acc and max_jerk). |
+| `max_acc`             | map[str, double] | For each joint name, define its maximum acceleration during smooth movement.                                                                                                                 |
+| `max_jerk`            | map[str, double] | For each joint name, define its maximum jerk during smooth movement.                                                                                                                         |
 
 
 ## Coding Guide
