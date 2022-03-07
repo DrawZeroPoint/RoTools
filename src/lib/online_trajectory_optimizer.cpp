@@ -12,24 +12,26 @@ RuckigOptimizer::RuckigOptimizer(int dof,
                                  const std::vector<double>& max_jerk,
                                  double frequency,
                                  double reduce_ratio) {
-  const int capacity = 32;  // This value can be raised if needed
-  if (dof > capacity) {
-    ROS_ERROR("RoTools: DOF %d exceed the capacity (%d) of the online trajectory optimizer", dof, capacity);
+  if (dof > capacity_) {
+    // The capacity can be raised if needed
+    ROS_ERROR("RoTools: DOF %d exceed the capacity (%d) of the online trajectory optimizer", dof, capacity_);
     return;
   }
   assert(reduce_ratio > 0 && frequency > 0);
   assert(!max_vel.empty() && max_vel.size() == max_acc.size() && max_vel.size() == max_jerk.size());
 
   dof_ = new int(dof);
+  frequency_ = new double(frequency);
+
   is_initial_state_set_ = new bool(false);
   is_target_state_set_ = new bool(false);
   start_ = new std::chrono::steady_clock::time_point;
 
-  trajectory_generator_ = new ruckig::Ruckig<capacity>(1. / frequency);
-  input_param_ = new ruckig::InputParameter<capacity>();
-  output_param_ = new ruckig::OutputParameter<capacity>();
+  trajectory_generator_ = new ruckig::Ruckig<capacity_>(1. / *frequency_);
+  input_param_ = new ruckig::InputParameter<capacity_>();
+  output_param_ = new ruckig::OutputParameter<capacity_>();
 
-  for (size_t i = 0; i < capacity; i += 1) {
+  for (size_t i = 0; i < capacity_; i += 1) {
     if (i < *dof_) {
       input_param_->max_velocity[i] = reduce_ratio * max_vel[i];
       input_param_->max_acceleration[i] = reduce_ratio * max_acc[i];
@@ -51,9 +53,9 @@ RuckigOptimizer::~RuckigOptimizer() {
 }
 
 void RuckigOptimizer::setInitialState(const sensor_msgs::JointState& msg) {
-  std::array<double, 32> position{};
-  std::array<double, 32> velocity{};
-  std::array<double, 32> acceleration{};
+  std::array<double, capacity_> position{};
+  std::array<double, capacity_> velocity{};
+  std::array<double, capacity_> acceleration{};
   std::copy(msg.position.begin(), msg.position.end(), position.begin());
   std::copy(msg.velocity.begin(), msg.velocity.end(), velocity.begin());
   input_param_->current_position = position;
@@ -64,8 +66,8 @@ void RuckigOptimizer::setInitialState(const sensor_msgs::JointState& msg) {
 }
 
 void RuckigOptimizer::setTargetState(const sensor_msgs::JointState& msg) {
-  std::array<double, 32> position{};
-  std::array<double, 32> velocity{};
+  std::array<double, capacity_> position{};
+  std::array<double, capacity_> velocity{};
   std::copy(msg.position.begin(), msg.position.end(), position.begin());
   std::copy(msg.velocity.begin(), msg.velocity.end(), velocity.begin());
   input_param_->target_position = position;
@@ -92,13 +94,24 @@ void RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq
     input_param_->current_velocity = output_param_->new_velocity;
     input_param_->current_acceleration = output_param_->new_acceleration;
   }
-  std::array<double, 32> new_position = output_param_->new_position;
-  std::array<double, 32> new_velocity = output_param_->new_velocity;
+  std::array<double, capacity_> new_position = output_param_->new_position;
+  std::array<double, capacity_> new_velocity = output_param_->new_velocity;
 
   q_cmd.resize(*dof_);
   dq_cmd.resize(*dof_);
   std::copy(new_position.begin(), new_position.begin() + *dof_, q_cmd.begin());
   std::copy(new_velocity.begin(), new_velocity.begin() + *dof_, dq_cmd.begin());
+}
+
+void RuckigOptimizer::reset() {
+  trajectory_generator_ = new ruckig::Ruckig<capacity_>(1. / *frequency_);
+  input_param_ = new ruckig::InputParameter<capacity_>();
+  output_param_ = new ruckig::OutputParameter<capacity_>();
+
+  *is_initial_state_set_ = false;
+  *is_target_state_set_ = false;
+
+  *start_ = std::chrono::steady_clock::now();
 }
 
 }  // namespace rotools
