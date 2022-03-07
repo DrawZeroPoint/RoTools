@@ -29,7 +29,7 @@ class MuJoCoServer(object):
 
         state_topic_id = kwargs['state_topic_id']
         self.joint_state_publisher = rospy.Publisher(state_topic_id, JointState, queue_size=1)
-        rate = kwargs['rate']
+        rate = kwargs['state_publish_rate']
         self.publish_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.joint_state_handle)
 
     def joint_state_handle(self, _):
