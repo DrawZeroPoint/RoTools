@@ -81,6 +81,16 @@ class MsgConverter {
 
   auto init() -> bool;
 
+  /**
+   * Callback function for one of the source_js_topics.
+   * @param msg Source joint state msg.
+   * @param group_id The id of the joint group.
+   * @param publisher Publisher to target topic.
+   * @param type Target msg type.
+   * @param arg Target msg arg.
+   * @param source_names Cared joint names in the source joint state msg.
+   * @param target_names Correspondences of source_names in the target joint state msg.
+   */
   void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
                     const size_t& group_id,
                     const ros::Publisher& publisher,

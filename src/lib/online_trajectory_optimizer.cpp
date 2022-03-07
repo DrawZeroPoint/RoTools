@@ -53,6 +53,7 @@ RuckigOptimizer::~RuckigOptimizer() {
 }
 
 void RuckigOptimizer::setInitialState(const sensor_msgs::JointState& msg) {
+  assert(*is_target_state_set_);
   std::array<double, capacity_> position{};
   std::array<double, capacity_> velocity{};
   std::array<double, capacity_> acceleration{};

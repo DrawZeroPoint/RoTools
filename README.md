@@ -270,7 +270,11 @@ Be different with `remap` which only change the topic's id but not touching the 
    to constraints. User can specify which group to smooth during start, letting the group slowly reaching the
    target configurations and then follow the commands.
 3. Convert joint state message from one type to another, including customized types, and providing arguments
-   to the costomized ones.
+   to the customized ones.
+
+**Note**
+1. This converter cannot smooth effort commands. They are not changed during smooth.
+2. If the smooth has finished, no more smooth will happen unless rerun the program.
 
 To use this function, we need define the following parameters in the launch file or load them from a yaml file:
 
