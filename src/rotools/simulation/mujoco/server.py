@@ -4,6 +4,7 @@ from __future__ import print_function
 import rospy
 
 from sensor_msgs.msg import JointState
+from nav_msgs.msg import Odometry
 
 import rotools.simulation.mujoco.interface as interface
 
@@ -29,13 +30,23 @@ class MuJoCoServer(object):
 
         state_topic_id = kwargs['state_topic_id']
         self.joint_state_publisher = rospy.Publisher(state_topic_id, JointState, queue_size=1)
-        rate = kwargs['state_publish_rate']
-        self.publish_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.joint_state_handle)
+
+        odom_topic_id = kwargs['odom_topic_id']
+        self.odom_publisher = rospy.Publisher(odom_topic_id, Odometry, queue_size=1)
+
+        rate = kwargs['publish_rate']
+        self.js_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.joint_state_handle)
+        self.odom_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.odom_handle)
 
     def joint_state_handle(self, _):
         joint_state_msg = self.interface.get_joint_states()
         if joint_state_msg:
             self.joint_state_publisher.publish(joint_state_msg)
+
+    def odom_handle(self, _):
+        odom_msg = self.interface.get_odom()
+        if odom_msg:
+            self.odom_publisher.publish(odom_msg)
 
     def joint_command_cb(self, cmd):
         if len(cmd.position) != len(cmd.velocity) or len(cmd.position) != len(cmd.effort):

@@ -5,16 +5,18 @@ import numpy as np
 import xml.etree.ElementTree as ElementTree
 
 from threading import Thread
-from mujoco_py import MjSim, MjViewer, load_model_from_path
+from mujoco_py import MjSim, MjSimState, MjViewer, load_model_from_path
 
-from rotools.utility.mjcf import find_elements, find_parent, array_to_string
+from rotools.utility.mjcf import find_elements, find_parent, array_to_string, string_to_array
 
 try:
     import rospy
     from sensor_msgs.msg import JointState
+    from nav_msgs.msg import Odometry
 except ImportError:
     rospy = None
     JointState = None
+    Odometry = None
 
 
 class MuJoCoInterface(Thread):
@@ -57,12 +59,21 @@ class MuJoCoInterface(Thread):
         actuator_tree = ElementTree.parse(actuator_path)
         actuator_root = actuator_tree.getroot()
 
+        self.robot_name = find_elements(kinematics_root, 'body').attrib['name']
+        if self.robot_name is not None:
+            rospy.loginfo("Robot name: {}".format(self.robot_name))
+        else:
+            raise ValueError("Cannot find body in the kinematic tree")
+
         position_actuators = find_elements(actuator_root, 'position', return_first=False)
         velocity_actuators = find_elements(actuator_root, 'velocity', return_first=False)
         torque_actuators = find_elements(actuator_root, 'motor', return_first=False)
 
         torque_sensors = find_elements(actuator_root, 'torque', return_first=False)
         force_sensors = find_elements(actuator_root, 'force', return_first=False)
+
+        # Set the initial state of the simulation (t=0). Assume the keyframe tag is in the actuator xml
+        initial_keyframe = find_elements(actuator_root, 'key')
 
         """
         control_types: list[int] How the actuator is controlled.
@@ -90,6 +101,8 @@ class MuJoCoInterface(Thread):
 
         rospy.loginfo('Effort sensors:\n{}'.format(array_to_string(self.effort_sensor_names)))
 
+        self._set_initial_state(initial_keyframe)
+
         self.viewer = MjViewer(self.sim) if enable_viewer else None
 
         self._robot_states = None
@@ -104,6 +117,22 @@ class MuJoCoInterface(Thread):
             self.sim.step()
             if self.viewer is not None:
                 self.viewer.render()
+
+    def _set_initial_state(self, initial_keyframe):
+        if initial_keyframe is not None:
+            qpos_str = ' '.join(initial_keyframe.attrib['qpos'].split())
+            qpos = string_to_array(qpos_str)
+            if len(qpos) != self.model.nq:
+                rospy.logwarn('Keyframe qpos size {} does not match internal state {}'.format(len(qpos), self.model.nq))
+                return
+            qvel = np.zeros(self.model.nv)
+            old_state = self.sim.get_state()
+            new_state = MjSimState(0, qpos, qvel, old_state.act, old_state.udd_state)
+            self.sim.set_state(new_state)
+            self.sim.forward()
+            rospy.loginfo('Set initial state with keyframe values')
+        else:
+            rospy.loginfo('No initial state from keyframe values')
 
     def _get_actuator_info(self, actuators, control_type):
         if actuators is not None:
@@ -140,7 +169,7 @@ class MuJoCoInterface(Thread):
         """Get robot joint states for each step.
 
         Returns:
-            [qpos, qvel, q_tau_j] for each joint given by the name.
+            [qpos, qvel, qtau] for each joint given by the name.
         """
         robot_states = []
         sim_state = self.sim.get_state()
@@ -191,6 +220,28 @@ class MuJoCoInterface(Thread):
         joint_state_msg.velocity = self._robot_states[:, 1].tolist()
         joint_state_msg.effort = self._robot_states[:, 2].tolist()
         return joint_state_msg
+
+    def get_odom(self):
+        odom = Odometry()
+        xpos = self.sim.data.get_body_xpos(self.robot_name)
+        xquat = self.sim.data.get_body_xquat(self.robot_name)
+        xvelp = self.sim.data.get_body_xvelp(self.robot_name)
+        xvelr = self.sim.data.get_body_xvelr(self.robot_name)
+        odom.header.stamp = rospy.Time().now()
+        odom.pose.pose.position.x = xpos[0]
+        odom.pose.pose.position.y = xpos[1]
+        odom.pose.pose.position.z = xpos[2]
+        odom.pose.pose.orientation.w = xquat[0]
+        odom.pose.pose.orientation.x = xquat[1]
+        odom.pose.pose.orientation.y = xquat[2]
+        odom.pose.pose.orientation.z = xquat[3]
+        odom.twist.twist.linear.x = xvelp[0]
+        odom.twist.twist.linear.y = xvelp[1]
+        odom.twist.twist.linear.z = xvelp[2]
+        odom.twist.twist.angular.x = xvelr[0]
+        odom.twist.twist.angular.x = xvelr[1]
+        odom.twist.twist.angular.x = xvelr[2]
+        return odom
 
     def set_joint_commands(self, cmd):
         """Obtain joint commands according to the internally defined control types and apply the command to the robot.
