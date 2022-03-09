@@ -27,26 +27,30 @@ class MuJoCoServer(object):
         self.interface = interface.MuJoCoInterface(**kwargs)
         self.interface.start()
 
+        # Received msgs
         joint_command_topic_id = kwargs['joint_command_topic_id']
         self.joint_command_subscriber = rospy.Subscriber(joint_command_topic_id, JointState, self.joint_command_cb)
 
-        base_command_topic_id = kwargs['base_command_topic_id']
-        self.base_command_subscriber = rospy.Subscriber(base_command_topic_id, Twist, self.base_command_cb)
+        if 'base_command_topic_id' in kwargs.keys():
+            base_command_topic_id = kwargs['base_command_topic_id']
+            self.base_command_subscriber = rospy.Subscriber(base_command_topic_id, Twist, self.base_command_cb)
+
+        # Published msgs
+        rate = kwargs['publish_rate']
 
         joint_state_topic_id = kwargs['joint_state_topic_id']
         self.joint_state_publisher = rospy.Publisher(joint_state_topic_id, JointState, queue_size=1)
-
-        odom_topic_id = kwargs['odom_topic_id']
-        self.odom_publisher = rospy.Publisher(odom_topic_id, Odometry, queue_size=1)
-
-        rate = kwargs['publish_rate']
         self.js_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.joint_state_handle)
-        self.odom_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.odom_handle)
 
-        # Get robot base params
-        self.wheel_radius = kwargs['wheel_radius']
-        self.base_width = kwargs['base_width']
-        self.base_length = kwargs['base_length']
+        if 'odom_topic_id' in kwargs.keys():
+            odom_topic_id = kwargs['odom_topic_id']
+            self.odom_publisher = rospy.Publisher(odom_topic_id, Odometry, queue_size=1)
+            self.odom_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.odom_handle)
+
+        # Get robot base params if available
+        self.wheel_radius = kwargs['wheel_radius'] if 'wheel_radius' in kwargs.keys() else None
+        self.base_width = kwargs['base_width'] if 'base_width' in kwargs.keys() else None
+        self.base_length = kwargs['base_length'] if 'base_length' in kwargs.keys() else None
 
     def joint_state_handle(self, _):
         joint_state_msg = self.interface.get_joint_states()
@@ -73,5 +77,9 @@ class MuJoCoServer(object):
         self.interface.set_joint_command(cmd)
 
     def base_command_cb(self, cmd):
+        if self.wheel_radius is None or self.base_width is None or self.base_length is None:
+            rospy.logwarn_throttle(1, 'Base param not set: wheel_radius {}, base_width {}, base_length {}'.format(
+                self.wheel_radius, self.base_width, self.base_length))
+            return
         vel = mecanum_base_get_wheel_velocities(cmd, self.wheel_radius, self.base_width, self.base_length)
         self.interface.set_base_command(vel)
