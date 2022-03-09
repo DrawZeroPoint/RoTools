@@ -5,8 +5,10 @@ import rospy
 
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Twist
 
 import rotools.simulation.mujoco.interface as interface
+from rotools.utility.kinematics import mecanum_base_get_wheel_velocities
 
 
 class MuJoCoServer(object):
@@ -25,11 +27,14 @@ class MuJoCoServer(object):
         self.interface = interface.MuJoCoInterface(**kwargs)
         self.interface.start()
 
-        command_topic_id = kwargs['command_topic_id']
-        self.joint_command_subscriber = rospy.Subscriber(command_topic_id, JointState, self.joint_command_cb)
+        joint_command_topic_id = kwargs['joint_command_topic_id']
+        self.joint_command_subscriber = rospy.Subscriber(joint_command_topic_id, JointState, self.joint_command_cb)
 
-        state_topic_id = kwargs['state_topic_id']
-        self.joint_state_publisher = rospy.Publisher(state_topic_id, JointState, queue_size=1)
+        base_command_topic_id = kwargs['base_command_topic_id']
+        self.base_command_subscriber = rospy.Subscriber(base_command_topic_id, Twist, self.base_command_cb)
+
+        joint_state_topic_id = kwargs['joint_state_topic_id']
+        self.joint_state_publisher = rospy.Publisher(joint_state_topic_id, JointState, queue_size=1)
 
         odom_topic_id = kwargs['odom_topic_id']
         self.odom_publisher = rospy.Publisher(odom_topic_id, Odometry, queue_size=1)
@@ -37,6 +42,11 @@ class MuJoCoServer(object):
         rate = kwargs['publish_rate']
         self.js_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.joint_state_handle)
         self.odom_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.odom_handle)
+
+        # Get robot base params
+        self.wheel_radius = kwargs['wheel_radius']
+        self.base_width = kwargs['base_width']
+        self.base_length = kwargs['base_length']
 
     def joint_state_handle(self, _):
         joint_state_msg = self.interface.get_joint_states()
@@ -60,4 +70,8 @@ class MuJoCoServer(object):
                     len(cmd.position), self.interface.n_actuator))
                 return
 
-        self.interface.set_joint_commands(cmd)
+        self.interface.set_joint_command(cmd)
+
+    def base_command_cb(self, cmd):
+        vel = mecanum_base_get_wheel_velocities(cmd, self.wheel_radius, self.base_width, self.base_length)
+        self.interface.set_base_command(vel)

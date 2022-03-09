@@ -2,6 +2,8 @@ from __future__ import print_function
 
 import numpy as np
 
+from geometry_msgs.msg import Twist
+
 
 def near_zero(z):
     """Determines whether a scalar is small enough to be treated as zero
@@ -15,17 +17,17 @@ def near_zero(z):
     return abs(z) < 1e-6
 
 
-def normalize_vector(V):
+def normalize_vector(v):
     """Normalizes a vector.
 
-    :param V: ndarray A vector
+    :param v: ndarray A vector
     :return: A unit vector pointing in the same direction as z
     Example Input:
         V = np.array([1, 2, 3])
     Output:
         np.array([0.26726124, 0.53452248, 0.80178373])
     """
-    return V / np.linalg.norm(V)
+    return v / np.linalg.norm(v)
 
 
 def rot_inv(R):
@@ -47,7 +49,7 @@ def rot_inv(R):
 
 def vector_to_so3(omega):
     """Converts a 3-vector to an so(3) representation.
-    
+
     :param omega: A 3-vector
     :return: The skew symmetric representation of omg
     Example Input:
@@ -610,7 +612,7 @@ def JacobianBody(Blist, thetalist):
     Jb = np.array(Blist).copy().astype(np.float)
     T = np.eye(4)
     for i in range(len(thetalist) - 2, -1, -1):
-        T = np.dot(T, MatrixExp6(vector_to_se3(np.array(Blist)[:, i + 1] \
+        T = np.dot(T, MatrixExp6(vector_to_se3(np.array(Blist)[:, i + 1]
                                                * -thetalist[i + 1])))
         Jb[:, i] = np.dot(Adjoint(T), np.array(Blist)[:, i])
     return Jb
@@ -641,7 +643,7 @@ def JacobianSpace(Slist, thetalist):
     Js = np.array(Slist).copy().astype(np.float)
     T = np.eye(4)
     for i in range(1, len(thetalist)):
-        T = np.dot(T, MatrixExp6(vector_to_se3(np.array(Slist)[:, i - 1] \
+        T = np.dot(T, MatrixExp6(vector_to_se3(np.array(Slist)[:, i - 1]
                                                * thetalist[i - 1])))
         Js[:, i] = np.dot(Adjoint(T), np.array(Slist)[:, i])
     return Js
@@ -698,17 +700,17 @@ def IKinBody(Blist, M, T, thetalist0, eomg, ev):
     thetalist = np.array(thetalist0).copy()
     i = 0
     maxiterations = 20
-    Vb = se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(FKinBody(M, Blist, \
+    Vb = se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(FKinBody(M, Blist,
                                                               thetalist)), T)))
     err = np.linalg.norm([Vb[0], Vb[1], Vb[2]]) > eomg \
           or np.linalg.norm([Vb[3], Vb[4], Vb[5]]) > ev
     while err and i < maxiterations:
         thetalist = thetalist \
-                    + np.dot(np.linalg.pinv(JacobianBody(Blist, \
+                    + np.dot(np.linalg.pinv(JacobianBody(Blist,
                                                          thetalist)), Vb)
         i = i + 1
         Vb \
-            = se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(FKinBody(M, Blist, \
+            = se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(FKinBody(M, Blist,
                                                                    thetalist)), T)))
         err = np.linalg.norm([Vb[0], Vb[1], Vb[2]]) > eomg \
               or np.linalg.norm([Vb[3], Vb[4], Vb[5]]) > ev
@@ -762,17 +764,17 @@ def IKinSpace(Slist, M, T, thetalist0, eomg, ev):
     i = 0
     maxiterations = 20
     Tsb = fk_in_space(M, Slist, thetalist)
-    Vs = np.dot(Adjoint(Tsb), \
+    Vs = np.dot(Adjoint(Tsb),
                 se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(Tsb), T))))
     err = np.linalg.norm([Vs[0], Vs[1], Vs[2]]) > eomg \
           or np.linalg.norm([Vs[3], Vs[4], Vs[5]]) > ev
     while err and i < maxiterations:
         thetalist = thetalist \
-                    + np.dot(np.linalg.pinv(JacobianSpace(Slist, \
+                    + np.dot(np.linalg.pinv(JacobianSpace(Slist,
                                                           thetalist)), Vs)
         i = i + 1
         Tsb = fk_in_space(M, Slist, thetalist)
-        Vs = np.dot(Adjoint(Tsb), \
+        Vs = np.dot(Adjoint(Tsb),
                     se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(Tsb), T))))
         err = np.linalg.norm([Vs[0], Vs[1], Vs[2]]) > eomg \
               or np.linalg.norm([Vs[3], Vs[4], Vs[5]]) > ev
@@ -804,7 +806,7 @@ def ad(V):
                  np.c_[vector_to_so3([V[3], V[4], V[5]]), omgmat]]
 
 
-def InverseDynamics(thetalist, dthetalist, ddthetalist, g, Ftip, Mlist, \
+def InverseDynamics(thetalist, dthetalist, ddthetalist, g, Ftip, Mlist,
                     Glist, Slist):
     """Computes inverse dynamics in the space frame for an open chain robot
     :param thetalist: n-vector of joint variables
@@ -869,8 +871,8 @@ def InverseDynamics(thetalist, dthetalist, ddthetalist, g, Ftip, Mlist, \
     for i in range(n):
         Mi = np.dot(Mi, Mlist[i])
         Ai[:, i] = np.dot(Adjoint(homo_trans_inv(Mi)), np.array(Slist)[:, i])
-        AdTi[i] = Adjoint(np.dot(MatrixExp6(vector_to_se3(Ai[:, i] * \
-                                                          -thetalist[i])), \
+        AdTi[i] = Adjoint(np.dot(MatrixExp6(vector_to_se3(Ai[:, i] *
+                                                          -thetalist[i])),
                                  homo_trans_inv(Mlist[i])))
         Vi[:, i + 1] = np.dot(AdTi[i], Vi[:, i]) + Ai[:, i] * dthetalist[i]
         Vdi[:, i + 1] = np.dot(AdTi[i], Vdi[:, i]) \
@@ -879,7 +881,7 @@ def InverseDynamics(thetalist, dthetalist, ddthetalist, g, Ftip, Mlist, \
     for i in range(n - 1, -1, -1):
         Fi = np.dot(np.array(AdTi[i + 1]).T, Fi) \
              + np.dot(np.array(Glist[i]), Vdi[:, i + 1]) \
-             - np.dot(np.array(ad(Vi[:, i + 1])).T, \
+             - np.dot(np.array(ad(Vi[:, i + 1])).T,
                       np.dot(np.array(Glist[i]), Vi[:, i + 1]))
         taulist[i] = np.dot(np.array(Fi).T, Ai[:, i])
     return taulist
@@ -936,13 +938,13 @@ def MassMatrix(thetalist, Mlist, Glist, Slist):
     for i in range(n):
         ddthetalist = [0] * n
         ddthetalist[i] = 1
-        M[:, i] = InverseDynamics(thetalist, [0] * n, ddthetalist, \
-                                  [0, 0, 0], [0, 0, 0, 0, 0, 0], Mlist, \
+        M[:, i] = InverseDynamics(thetalist, [0] * n, ddthetalist,
+                                  [0, 0, 0], [0, 0, 0, 0, 0, 0], Mlist,
                                   Glist, Slist)
     return M
 
 
-def VelQuadraticForces(thetalist, dthetalist, Mlist, Glist, Slist):
+def vel_quadratic_forces(thetalist, dthetalist, Mlist, Glist, Slist):
     """Computes the Coriolis and centripetal terms in the inverse dynamics of
     an open chain robot
     :param thetalist: A list of joint variables,
@@ -985,8 +987,8 @@ def VelQuadraticForces(thetalist, dthetalist, Mlist, Glist, Slist):
     Output:
         np.array([0.26453118, -0.05505157, -0.00689132])
     """
-    return InverseDynamics(thetalist, dthetalist, [0] * len(thetalist), \
-                           [0, 0, 0], [0, 0, 0, 0, 0, 0], Mlist, Glist, \
+    return InverseDynamics(thetalist, dthetalist, [0] * len(thetalist),
+                           [0, 0, 0], [0, 0, 0, 0, 0, 0], Mlist, Glist,
                            Slist)
 
 
@@ -1034,7 +1036,7 @@ def GravityForces(thetalist, g, Mlist, Glist, Slist):
         np.array([28.40331262, -37.64094817, -5.4415892])
     """
     n = len(thetalist)
-    return InverseDynamics(thetalist, [0] * n, [0] * n, g, \
+    return InverseDynamics(thetalist, [0] * n, [0] * n, g,
                            [0, 0, 0, 0, 0, 0], Mlist, Glist, Slist)
 
 
@@ -1083,11 +1085,11 @@ def EndEffectorForces(thetalist, Ftip, Mlist, Glist, Slist):
         np.array([1.40954608, 1.85771497, 1.392409])
     """
     n = len(thetalist)
-    return InverseDynamics(thetalist, [0] * n, [0] * n, [0, 0, 0], Ftip, \
+    return InverseDynamics(thetalist, [0] * n, [0] * n, [0, 0, 0], Ftip,
                            Mlist, Glist, Slist)
 
 
-def ForwardDynamics(thetalist, dthetalist, taulist, g, Ftip, Mlist, \
+def ForwardDynamics(thetalist, dthetalist, taulist, g, Ftip, Mlist,
                     Glist, Slist):
     """Computes forward dynamics in the space frame for an open chain robot
     :param thetalist: A list of joint variables
@@ -1137,13 +1139,13 @@ def ForwardDynamics(thetalist, dthetalist, taulist, g, Ftip, Mlist, \
     Output:
         np.array([-0.97392907, 25.58466784, -32.91499212])
     """
-    return np.dot(np.linalg.inv(MassMatrix(thetalist, Mlist, Glist, \
-                                           Slist)), \
-                  np.array(taulist) \
-                  - VelQuadraticForces(thetalist, dthetalist, Mlist, \
-                                       Glist, Slist) \
-                  - GravityForces(thetalist, g, Mlist, Glist, Slist) \
-                  - EndEffectorForces(thetalist, Ftip, Mlist, Glist, \
+    return np.dot(np.linalg.inv(MassMatrix(thetalist, Mlist, Glist,
+                                           Slist)),
+                  np.array(taulist)
+                  - vel_quadratic_forces(thetalist, dthetalist, Mlist,
+                                         Glist, Slist)
+                  - GravityForces(thetalist, g, Mlist, Glist, Slist)
+                  - EndEffectorForces(thetalist, Ftip, Mlist, Glist,
                                       Slist))
 
 
@@ -1173,7 +1175,7 @@ def EulerStep(thetalist, dthetalist, ddthetalist, dt):
            dthetalist + dt * np.array(ddthetalist)
 
 
-def InverseDynamicsTrajectory(thetamat, dthetamat, ddthetamat, g, \
+def InverseDynamicsTrajectory(thetamat, dthetamat, ddthetamat, g,
                               Ftipmat, Mlist, Glist, Slist):
     """Calculates the joint forces/torques required to move the serial chain
     along the given trajectory using inverse dynamics
@@ -1267,8 +1269,8 @@ def InverseDynamicsTrajectory(thetamat, dthetamat, ddthetamat, g, \
     taumat = np.array(thetamat).copy()
     for i in range(np.array(thetamat).shape[1]):
         taumat[:, i] \
-            = InverseDynamics(thetamat[:, i], dthetamat[:, i], \
-                              ddthetamat[:, i], g, Ftipmat[:, i], Mlist, \
+            = InverseDynamics(thetamat[:, i], dthetamat[:, i],
+                              ddthetamat[:, i], g, Ftipmat[:, i], Mlist,
                               Glist, Slist)
     taumat = np.array(taumat).T
     return taumat
@@ -1382,9 +1384,9 @@ def ForwardDynamicsTrajectory(thetalist, dthetalist, taumat, g, Ftipmat,
     for i in range(np.array(taumat).shape[1] - 1):
         for j in range(intRes):
             ddthetalist \
-                = ForwardDynamics(thetalist, dthetalist, taumat[:, i], g, \
+                = ForwardDynamics(thetalist, dthetalist, taumat[:, i], g,
                                   Ftipmat[:, i], Mlist, Glist, Slist)
-            thetalist, dthetalist = EulerStep(thetalist, dthetalist, \
+            thetalist, dthetalist = EulerStep(thetalist, dthetalist,
                                               ddthetalist, 1.0 * dt / intRes)
         thetamat[:, i + 1] = thetalist
         dthetamat[:, i + 1] = dthetalist
@@ -1658,12 +1660,13 @@ def ComputedTorque(thetalist, dthetalist, eint, g, Mlist, Glist, Slist,
     return np.dot(MassMatrix(thetalist, Mlist, Glist, Slist),
                   Kp * e + Ki * (np.array(eint) + e)
                   + Kd * np.subtract(dthetalistd, dthetalist)) + InverseDynamics(thetalist, dthetalist, ddthetalistd, g,
-                  [0, 0, 0, 0, 0, 0], Mlist, Glist, Slist)
+                                                                                 [0, 0, 0, 0, 0, 0], Mlist, Glist,
+                                                                                 Slist)
 
 
-def SimulateControl(thetalist, dthetalist, g, Ftipmat, Mlist, Glist,
-                    Slist, thetamatd, dthetamatd, ddthetamatd, gtilde,
-                    Mtildelist, Gtildelist, Kp, Ki, Kd, dt, intRes):
+def simulate_control(thetalist, dthetalist, g, Ftipmat, Mlist, Glist,
+                     Slist, thetamatd, dthetamatd, ddthetamatd, gtilde,
+                     Mtildelist, Gtildelist, Kp, Ki, Kd, dt, intRes):
     """Simulates the computed torque controller over a given desired
     trajectory.
 
@@ -1795,15 +1798,15 @@ def SimulateControl(thetalist, dthetalist, g, Ftipmat, Mlist, Glist,
     thetamat = np.zeros(np.array(thetamatd).shape)
     for i in range(n):
         taulist \
-            = ComputedTorque(thetacurrent, dthetacurrent, eint, gtilde, \
-                             Mtildelist, Gtildelist, Slist, thetamatd[:, i], \
+            = ComputedTorque(thetacurrent, dthetacurrent, eint, gtilde,
+                             Mtildelist, Gtildelist, Slist, thetamatd[:, i],
                              dthetamatd[:, i], ddthetamatd[:, i], Kp, Ki, Kd)
         for j in range(intRes):
             ddthetalist \
-                = ForwardDynamics(thetacurrent, dthetacurrent, taulist, g, \
+                = ForwardDynamics(thetacurrent, dthetacurrent, taulist, g,
                                   Ftipmat[:, i], Mlist, Glist, Slist)
             thetacurrent, dthetacurrent \
-                = EulerStep(thetacurrent, dthetacurrent, ddthetalist, \
+                = EulerStep(thetacurrent, dthetacurrent, ddthetalist,
                             1.0 * dt / intRes)
         taumat[:, i] = taulist
         thetamat[:, i] = thetacurrent
@@ -1811,7 +1814,7 @@ def SimulateControl(thetalist, dthetalist, g, Ftipmat, Mlist, Glist,
     # Output using matplotlib to plot
     try:
         import matplotlib.pyplot as plt
-    except:
+    except BaseException:
         print('The result will not be plotted due to a lack of package matplotlib')
     else:
         links = np.array(thetamat).shape[0]
@@ -1833,3 +1836,44 @@ def SimulateControl(thetalist, dthetalist, g, Ftipmat, Mlist, Glist,
     taumat = np.array(taumat).T
     thetamat = np.array(thetamat).T
     return taumat, thetamat
+
+
+def mecanum_base_get_wheel_velocities(base_vel, wheel_radius, width, length):
+    """Convert a velocity command to the base to velocities on the wheels
+
+    Args:
+        base_vel: Twist
+        wheel_radius: float Wheel radius.
+        width: float Width between left and right wheels.
+        length: float Length between front and back wheels.
+
+    Returns:
+        ndarray [vel_fl, vel_fr, vel_bl, vel_br]
+    """
+    vel_fl = (1. / wheel_radius) * (base_vel.linear.x - base_vel.linear.y - (width + length) / 2. * base_vel.angular.z)
+    vel_fr = (1. / wheel_radius) * (base_vel.linear.x + base_vel.linear.y + (width + length) / 2. * base_vel.angular.z)
+    vel_bl = (1. / wheel_radius) * (base_vel.linear.x + base_vel.linear.y - (width + length) / 2. * base_vel.angular.z)
+    vel_br = (1. / wheel_radius) * (base_vel.linear.x - base_vel.linear.y + (width + length) / 2. * base_vel.angular.z)
+    return np.array([vel_fl, vel_fr, vel_bl, vel_br])
+
+
+def mecanum_base_get_base_vel(vel_fl, vel_fr, vel_bl, vel_br, wheel_radius, width, length):
+    """Given velocities for the four wheels, get the base velocity.
+
+    Args:
+        vel_fl: float Front left wheel velocity.
+        vel_fr: float Front right wheel velocity.
+        vel_bl:
+        vel_br:
+        wheel_radius: float Wheel radius.
+        width: float Width between left and right wheels.
+        length: float Length between front and back wheels.
+
+    Returns:
+        Base velocity in Twist.
+    """
+    twist = Twist()
+    twist.linear.x = (vel_fl + vel_fr + vel_bl + vel_br) * (wheel_radius / 4.)
+    twist.linear.y = (-vel_fl + vel_fr + vel_bl - vel_br) * (wheel_radius / 4.)
+    twist.angular.z = (-vel_fl + vel_fr - vel_bl + vel_br) * (wheel_radius / (2. * (width + length)))
+    return twist

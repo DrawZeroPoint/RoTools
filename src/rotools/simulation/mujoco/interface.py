@@ -87,7 +87,9 @@ class MuJoCoInterface(Thread):
         self._get_actuator_info(torque_actuators, 2)
 
         self._actuator_num = len(self.actuator_names)
-        self.actuator_ids = [self.sim.model.actuator_name2id(actuator_name) for actuator_name in self.actuator_names]
+        self._actuator_ids = [self.sim.model.actuator_name2id(actuator_name) for actuator_name in self.actuator_names]
+
+        self._wheel_actuator_ids = self._get_wheel_actuator_info()
 
         rospy.loginfo('Controlled joints #{}:\n{}'.format(
             self._actuator_num, array_to_string(self._actuated_joint_names))
@@ -135,11 +137,29 @@ class MuJoCoInterface(Thread):
             rospy.loginfo('No initial state from keyframe values')
 
     def _get_actuator_info(self, actuators, control_type):
+        """Given actuator XML elements, get their names and corresponding joint attributes and control types,
+        and set member variables.
+
+        Args:
+            actuators: list of ET.Element Actuator elements.
+            control_type: int Control type.
+
+        Returns:
+            None
+        """
         if actuators is not None:
             for actuator in actuators:
                 self._actuated_joint_names.append(actuator.attrib['joint'])
                 self.actuator_names.append(actuator.attrib['name'])
                 self.control_types.append(control_type)
+
+    def _get_wheel_actuator_info(self):
+        wheel_actuator_ids = {'WHEEL_FR': -1, 'WHEEL_FL': -1, 'WHEEL_BL': -1, 'WHEEL_BR': -1}
+        for i, name in enumerate(self.actuator_names):
+            if name in wheel_actuator_ids.keys():
+                wheel_actuator_ids[name] = self._actuator_ids[i]
+        assert -1 not in wheel_actuator_ids.items(), rospy.logwarn(1, 'Not all wheel actuator found')
+        return wheel_actuator_ids
 
     def _get_effort_sensor_info(self, kinematics_root, sensors):
         if sensors is not None:
@@ -243,7 +263,7 @@ class MuJoCoInterface(Thread):
         odom.twist.twist.angular.x = xvelr[2]
         return odom
 
-    def set_joint_commands(self, cmd):
+    def set_joint_command(self, cmd):
         """Obtain joint commands according to the internally defined control types and apply the command to the robot.
 
         Args:
@@ -253,7 +273,7 @@ class MuJoCoInterface(Thread):
             None
         """
         if not cmd.name:
-            for i, actuator_id in enumerate(self.actuator_ids):
+            for i, actuator_id in enumerate(self._actuator_ids):
                 if self.control_types[i] == 0:
                     self.sim.data.ctrl[actuator_id] = cmd.position[i]
                 elif self.control_types[i] == 1:
@@ -266,7 +286,7 @@ class MuJoCoInterface(Thread):
         for k, name in enumerate(cmd.name):
             try:
                 i = self._actuated_joint_names.index(name)
-                actuator_id = self.actuator_ids[i]
+                actuator_id = self._actuator_ids[i]
                 if self.control_types[i] == 0:
                     self.sim.data.ctrl[actuator_id] = cmd.position[k]
                 elif self.control_types[i] == 1:
@@ -278,3 +298,13 @@ class MuJoCoInterface(Thread):
             except ValueError:
                 # We allow the name in cmd not present in _actuated_joint_names
                 pass
+
+    def set_base_command(self, vel):
+        if len(vel) != 4:
+            rospy.logwarn('Only support 4 velocity commands for wheels')
+            return
+
+        self.sim.data.ctrl[[
+            self._wheel_actuator_ids['WHEEL_FL'], self._wheel_actuator_ids['WHEEL_FR'],
+            self._wheel_actuator_ids['WHEEL_BL'], self._wheel_actuator_ids['WHEEL_BR']
+        ]] = vel
