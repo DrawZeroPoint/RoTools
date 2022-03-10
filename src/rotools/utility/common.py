@@ -1,3 +1,4 @@
+import os
 import cv2
 import json
 import base64
@@ -377,6 +378,29 @@ def get_param(name, value=None):
         return rospy.get_param(name)
     else:
         return value
+
+
+def get_path(param_name, value=None):
+    """Get an absolute path str from the given ROS param.
+    If the param provides a relative path, will find it under ~
+
+    Args:
+        param_name: str ROS param name.
+        value: str Default value if param does not exist.
+
+    Returns:
+        str Got absolute path.
+    """
+    path = get_param(param_name, value)
+    if path is None:
+        raise FileNotFoundError('Failed to get the path from {}'.format(param_name))
+    if path.startswith('/'):
+        abs_path = path
+    else:
+        abs_path = os.path.join(os.path.join(os.path.expanduser('~'), path))
+    if os.path.exists(abs_path):
+        return abs_path
+    raise FileNotFoundError('Path {} does not exist'.format(abs_path))
 
 
 def pretty_print_configs(configs):
