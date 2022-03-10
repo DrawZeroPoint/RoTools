@@ -1,0 +1,22 @@
+# Execute whole-body collision aware path planning using HPP
+
+# Requests
+# goal_type: GLOBAL: The goal location is an absolute location wrt the global frame (world frame)
+#            LOCAL_ALIGNED: The goal location is relative to the world frame aligned with the robot base frame
+#            LOCAL: The goal location is relative to the robot base frame
+# goal_state: Goal joint state
+# goal_location: Robot base goal location
+# tolerance [opt]: Tolerance for considering the goal location has been reached, default 0.01 m/rad
+
+std_msgs/Header header
+uint8 GLOBAL=0
+uint8 LOCAL_ALIGNED=1
+uint8 LOCAL=2
+bool goal_type
+sensor_msgs/JointState goal_state
+geometry_msgs/Pose goal_location
+float64 tolerance
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

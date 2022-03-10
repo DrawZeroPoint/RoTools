@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(roport)
 
-#Comment this if don't want debug
+# Comment this if don't want debug
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
@@ -11,14 +11,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 ## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
   geometry_msgs
   sensor_msgs
+  nav_msgs
   message_generation
   moveit_core
   moveit_ros_planning
@@ -29,6 +28,7 @@ find_package(catkin REQUIRED COMPONENTS
   behaviortree_cpp_v3
   )
 
+# Optionally build with non ROS pre-installed msgs
 find_package(franka_core_msgs)
 
 if (${franka_core_msgs_FOUND})
@@ -49,9 +49,21 @@ else (${ubt_core_msgs_FOUND})
   MESSAGE(STATUS "NOT FOUND ubt_core_msgs")
 endif (${ubt_core_msgs_FOUND})
 
-## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+# Optionally locate Humanoid Path Planner
+find_library(HPP_CORE_LIB hpp-core HINTS /opt/openrobots/lib)
+if (HPP_CORE_LIB)
+  include_directories(/opt/openrobots/include)
+  message(STATUS "Found HPP_CORE_LIB ${HPP_CORE_LIB}")
+else ()
+  message(WARNING "Not Found HPP_CORE_LIB")
+endif ()
 
+find_library(HPP_FCL_LIB hpp-fcl HINTS /opt/openrobots/lib)
+if (HPP_FCL_LIB)
+  message(STATUS "Found HPP_FCL_LIB ${HPP_FCL_LIB}")
+else ()
+  message(WARNING "Not Found HPP_FCL_LIB")
+endif ()
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -69,7 +81,10 @@ add_message_files(
   TreeNode.msg
 )
 
-## Generate services in the 'srv' folder
+###########################################
+## Generate services in the 'srv' folder ##
+###########################################
+
 add_service_files(
   FILES
   ExecuteAddCollisionBox.srv
@@ -86,6 +101,7 @@ add_service_files(
   ExecuteGroupPosition.srv
   ExecuteGroupShift.srv
   ExecuteMirroredPose.srv
+  ExecutePathPlanning.srv
   ExecuteRemoveCollision.srv
   GetAllNames.srv
   GetGroupJointStates.srv
@@ -110,6 +126,7 @@ generate_messages(
   std_msgs
   geometry_msgs
   sensor_msgs
+  nav_msgs
 )
 
 ################################################
@@ -146,7 +163,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-# Declare a C++ library
+###########################
+## Declare C++ libraries ##
+###########################
+
 add_library(${PROJECT_NAME}
   src/lib/rosout_logger.cpp
   src/lib/robot_interface.cpp
@@ -159,6 +179,35 @@ target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   rotools_ruckig
   )
+
+if (HPP_CORE_LIB AND HPP_FCL_LIB)
+  # These two definitions solve the pinocchio import issue
+  add_definitions(-DPINOCCHIO_WITH_HPP_FCL)
+  ADD_DEFINITIONS(-DBOOST_MPL_LIMIT_LIST_SIZE=30)
+
+  find_package(pinocchio REQUIRED)
+
+  include_directories(/opt/openrobots/include ${pinocchio_INCLUDE_DIRS})
+
+  find_library(OMNI_THREAD_LIB omnithread HINTS /opt/openrobots/lib)
+  find_library(OMNI_ORB4_LIB omniORB4 HINTS /opt/openrobots/lib)
+
+  add_library(${PROJECT_NAME}_HPP_ADDON
+    src/lib/hpp_interface.cpp
+    )
+  target_link_libraries(${PROJECT_NAME}_HPP_ADDON
+    ${catkin_LIBRARIES}
+    ${HPP_CORE_LIB}
+    ${HPP_FCL_LIB}
+    ${OMNI_THREAD_LIB}
+    ${OMNI_ORB4_LIB}
+    ${pinocchio_LIBRARIES}
+    )
+endif ()
+
+#####################
+## Add executables ##
+#####################
 
 add_executable(roport_task_scheduler src/roport_task_scheduler.cpp)
 add_dependencies(roport_task_scheduler ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -188,6 +237,18 @@ target_link_libraries(roport_msg_converter
   ${PROJECT_NAME}
   )
 
+if (HPP_CORE_LIB AND HPP_FCL_LIB)
+  add_executable(roport_hpp_interface src/roport_hpp_interface.cpp)
+  add_dependencies(roport_hpp_interface ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+  target_link_libraries(roport_hpp_interface
+    ${catkin_LIBRARIES}
+    ${PROJECT_NAME}
+    ${PROJECT_NAME}_HPP_ADDON
+    )
+endif ()
+
+# Install
+
 file(GLOB_RECURSE PY_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.py)
 catkin_install_python(PROGRAMS
   ${PY_SOURCES}
@@ -198,6 +259,10 @@ install(DIRECTORY
   tree
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   )
+
+##################
+## Format check ##
+##################
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/ClangTools.cmake OPTIONAL
   RESULT_VARIABLE CLANG_TOOLS
