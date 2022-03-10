@@ -1,8 +1,8 @@
 //
 // Created by dzp on 2020/10/14.
 //
-#ifndef SRC_CONTROLSERVER_H
-#define SRC_CONTROLSERVER_H
+#ifndef MOVEIT_CPP_SERVER_H
+#define MOVEIT_CPP_SERVER_H
 
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
@@ -100,4 +100,4 @@ class ControlServer {
 
 }  // namespace roport
 
-#endif  // SRC_CONTROLSERVER_H
+#endif  // MOVEIT_CPP_SERVER_H
