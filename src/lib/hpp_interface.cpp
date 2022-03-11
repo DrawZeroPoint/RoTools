@@ -67,6 +67,11 @@ HumanoidPathPlannerInterface::HumanoidPathPlannerInterface(const ros::NodeHandle
   }
   joint_command_publisher_ = nh_.advertise<sensor_msgs::JointState>(joint_command_topic_id, 1);
 
+  XmlRpc::XmlRpcValue base_vel_cmd_topic_id;
+  if (!getParam(nh_, pnh_, "base_vel_cmd_topic_id", base_vel_cmd_topic_id)) {
+    return;
+  }
+  base_vel_cmd_publisher_ = nh_.advertise<geometry_msgs::Twist>(base_vel_cmd_topic_id, 1);
   ROS_INFO("Robot HPP interface ready");
 }
 
@@ -265,6 +270,7 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
 
   int intervals = static_cast<int>(path_length / time_step_);
   std::vector<sensor_msgs::JointState> joint_states;
+  std::vector<geometry_msgs::Twist> vel_cmd;
   for (int i = 0; i <= intervals; i += 1) {
     double t = i * time_step_;
     q = optimized_path->eval(t, success);
@@ -275,14 +281,23 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
     sensor_msgs::JointState state;
     extractJointCommand(q, dq, state);
     joint_states.push_back(state);
+
+    geometry_msgs::Twist twist;
+    extractBaseVelocityCommand(dq, twist);
+    vel_cmd.push_back(twist);
   }
-  sensor_msgs::JointState state;
   q = optimized_path->eval(path_length, success);
   optimized_path->derivative(dq, path_length, 1);
+
+  sensor_msgs::JointState state;
   extractJointCommand(q, dq, state);
   joint_states.push_back(state);
 
-  publishPlanningResults(joint_states);
+  geometry_msgs::Twist twist;
+  extractBaseVelocityCommand(dq, twist);
+  vel_cmd.push_back(twist);
+
+  publishPlanningResults(joint_states, vel_cmd);
   ROS_INFO("Path execution finished.");
   return true;
 }
@@ -299,10 +314,18 @@ void HumanoidPathPlannerInterface::extractJointCommand(const Configuration_t& q,
   }
 }
 
-void HumanoidPathPlannerInterface::publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states) {
+void HumanoidPathPlannerInterface::extractBaseVelocityCommand(const vector_t& dq, geometry_msgs::Twist& twist) {
+  twist.linear.x = dq[0];
+  twist.linear.y = dq[1];
+  twist.angular.z = dq[2];
+}
+
+void HumanoidPathPlannerInterface::publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states,
+                                                          const std::vector<geometry_msgs::Twist>& vel_cmd) {
   ros::Duration d(time_step_);
-  for (auto& state : joint_states) {
-    joint_command_publisher_.publish(state);
+  for (size_t i = 0; i < joint_states.size(); ++i) {
+    joint_command_publisher_.publish(joint_states[i]);
+    base_vel_cmd_publisher_.publish(vel_cmd[i]);
     d.sleep();
   }
 }

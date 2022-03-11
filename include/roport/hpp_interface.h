@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <roport/ExecutePathPlanning.h>
 #include <sensor_msgs/JointState.h>
@@ -47,6 +48,7 @@ class HumanoidPathPlannerInterface {
   ros::ServiceServer execute_path_planning_srv_;
 
   ros::Publisher joint_command_publisher_;
+  ros::Publisher base_vel_cmd_publisher_;
 
   bool is_initial_state_set_;
   bool is_initial_location_set_;
@@ -89,7 +91,10 @@ class HumanoidPathPlannerInterface {
    */
   void extractJointCommand(const Configuration_t& q, const vector_t& dq, sensor_msgs::JointState& state);
 
-  void publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states);
+  static void extractBaseVelocityCommand(const vector_t& dq, geometry_msgs::Twist& twist);
+
+  void publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states,
+                              const std::vector<geometry_msgs::Twist>& vel_cmd);
 };
 
 }  // namespace roport
