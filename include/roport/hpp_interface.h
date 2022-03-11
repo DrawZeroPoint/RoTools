@@ -46,8 +46,15 @@ class HumanoidPathPlannerInterface {
   ros::ServiceServer set_initial_srv_;
   ros::ServiceServer execute_path_planning_srv_;
 
+  ros::Publisher joint_command_publisher_;
+
   bool is_initial_state_set_;
   bool is_initial_location_set_;
+
+  // Configuration
+  std::map<std::string, std::pair<int, int>> joint_names_;
+
+  double time_step_;
 
   bool createRobot();
   bool setBound();
@@ -62,14 +69,27 @@ class HumanoidPathPlannerInterface {
 
   void initialLocationCb(const nav_msgs::Odometry::ConstPtr& msg);
 
+  /**
+   * Check whether the provided config will cause collision.
+   * @param config Configuration vector.
+   * @return True if detected collision, false if passed the test.
+   */
+  auto detectCollision(const Configuration_t& config) -> bool;
+
   auto setInitialSrvCb(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& resp) -> bool;
 
   auto executePathPlanningSrvCb(roport::ExecutePathPlanning::Request& req, roport::ExecutePathPlanning::Response& resp)
       -> bool;
 
-  // Configuration
-  std::vector<std::string> joint_names_;
-  std::size_t num_joints_;
+  /**
+   * Extract joint command from the planning results: the configuration and velocity at time t.
+   * @param q Configuration vector.
+   * @param dq Joint velocity vector.
+   * @param state Output joint state.
+   */
+  void extractJointCommand(const Configuration_t& q, const vector_t& dq, sensor_msgs::JointState& state);
+
+  void publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states);
 };
 
 }  // namespace roport
