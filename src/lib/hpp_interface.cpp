@@ -328,6 +328,8 @@ void HumanoidPathPlannerInterface::publishPlanningResults(const std::vector<sens
     base_vel_cmd_publisher_.publish(vel_cmd[i]);
     d.sleep();
   }
+  geometry_msgs::Twist zero;
+  base_vel_cmd_publisher_.publish(zero);
 }
 
 }  // namespace roport
