@@ -203,6 +203,7 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB)
     ${OMNI_ORB4_LIB}
     ${pinocchio_LIBRARIES}
     )
+  add_dependencies(${PROJECT_NAME}_HPP_ADDON ${PROJECT_NAME}_generate_messages_cpp)
 endif ()
 
 #####################
