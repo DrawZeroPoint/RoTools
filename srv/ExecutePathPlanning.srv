@@ -12,7 +12,7 @@ std_msgs/Header header
 uint8 GLOBAL=0
 uint8 LOCAL_ALIGNED=1
 uint8 LOCAL=2
-bool goal_type
+uint8 goal_type
 sensor_msgs/JointState goal_state
 geometry_msgs/Pose goal_location
 float64 tolerance

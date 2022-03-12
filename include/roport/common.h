@@ -86,9 +86,22 @@ void localPoseToGlobalPose(const geometry_msgs::Pose& pose_local_to_target,
   Eigen::Matrix4d mat_local_to_target;
   geometryPoseToEigenMatrix(pose_local_to_target, mat_local_to_target);
   Eigen::Matrix4d mat_global_to_local;
-  geometryPoseToEigenMatrix(pose_local_to_target, mat_global_to_local);
+  geometryPoseToEigenMatrix(pose_global_to_local, mat_global_to_local);
   Eigen::Matrix4d mat_global_to_target = mat_global_to_local * mat_local_to_target;
   eigenMatrixToGeometryPose(mat_global_to_target, pose_global_to_target);
+}
+
+auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
+  if (pose.orientation.w == 0 && pose.orientation.x == 0 && pose.orientation.y == 0 && pose.orientation.z == 0) {
+    ROS_ERROR("The pose is empty");
+    return false;
+  }
+  if (fabs(std::pow(pose.orientation.w, 2) + std::pow(pose.orientation.x, 2) + std::pow(pose.orientation.y, 2) +
+           std::pow(pose.orientation.z, 2) - 1.) > 1e-3) {
+    ROS_WARN("The pose has un-normalized orientation");
+    return false;
+  }
+  return true;
 }
 
 }  // namespace roport
