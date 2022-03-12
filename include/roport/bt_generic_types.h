@@ -7,6 +7,7 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/PoseArray.h>
+#include <sensor_msgs/JointState.h>
 
 #include <behaviortree_cpp_v3/bt_factory.h>
 
@@ -33,6 +34,42 @@ struct Header {
     this->stamp_ = ros_header.stamp;
     this->frame_id_ = ros_header.frame_id;
   }
+};
+
+// sensor_msgs/JointState
+struct JointState {
+ private:
+  std::vector<std::string> name_;
+  std::vector<double> position_;
+  std::vector<double> velocity_;
+  std::vector<double> effort_;
+
+ public:
+  [[nodiscard]] inline auto toROS() const -> sensor_msgs::JointState {
+    sensor_msgs::JointState ros_joint_state;
+    ros_joint_state.name = this->name_;
+    ros_joint_state.position = this->position_;
+    ros_joint_state.velocity = this->velocity_;
+    ros_joint_state.effort = this->effort_;
+    return ros_joint_state;
+  }
+
+  inline void fromROS(const sensor_msgs::JointState& ros_joint_state) {
+    this->name_ = ros_joint_state.name;
+    this->position_ = ros_joint_state.position;
+    this->velocity_ = ros_joint_state.velocity;
+    this->effort_ = ros_joint_state.effort;
+  }
+
+  [[nodiscard]] auto getName() const -> std::vector<std::string> { return name_; }
+  [[nodiscard]] auto getPosition() const -> std::vector<double> { return position_; }
+  [[nodiscard]] auto getVelocity() const -> std::vector<double> { return velocity_; }
+  [[nodiscard]] auto getEffort() const -> std::vector<double> { return effort_; }
+
+  void setName(const std::string& name) { name_.push_back(name); }
+  void setPosition(double position) { position_.push_back(position); }
+  void setVelocity(double velocity) { velocity_.push_back(velocity); }
+  void setEffort(double effort) { effort_.push_back(effort); }
 };
 
 // geometry_msgs/Pose2D
@@ -256,6 +293,35 @@ struct StringArray {
  * so we use double for all the float values.
  */
 namespace BT {
+template <>
+inline auto convertFromString(StringView str) -> JointState {
+  // We expect real numbers separated by spaces
+  auto parts = splitString(str, ';');
+  JointState joint_state{};
+  for (auto& part : parts) {
+    auto values = splitString(part, ' ');
+    if (values.size() == 2) {
+      joint_state.setName(convertFromString<std::string>(values[0]));
+      joint_state.setPosition(convertFromString<double>(values[1]));
+      joint_state.setVelocity(0.);
+      joint_state.setEffort(0.);
+    } else if (values.size() == 3) {
+      joint_state.setName(convertFromString<std::string>(values[0]));
+      joint_state.setPosition(convertFromString<double>(values[1]));
+      joint_state.setVelocity(convertFromString<double>(values[2]));
+      joint_state.setEffort(0.);
+    } else if (values.size() == 4) {
+      joint_state.setName(convertFromString<std::string>(values[0]));
+      joint_state.setPosition(convertFromString<double>(values[1]));
+      joint_state.setVelocity(convertFromString<double>(values[2]));
+      joint_state.setEffort(convertFromString<double>(values[3]));
+    } else {
+      throw RuntimeError("Invalid input '%s' for JointState", str);
+    }
+  }
+  return joint_state;
+}
+
 template <>
 inline auto convertFromString(StringView str) -> Pose2D {
   // We expect real numbers separated by spaces

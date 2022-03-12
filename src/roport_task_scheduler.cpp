@@ -21,6 +21,7 @@
 #include <roport/ExecuteGroupPosition.h>
 #include <roport/ExecuteGroupShift.h>
 #include <roport/ExecuteMirroredPose.h>
+#include <roport/ExecutePathPlanning.h>
 #include <roport/ExecuteRemoveCollision.h>
 #include <roport/GetPreparePose.h>
 #include <roport/GetTransformedPose.h>
@@ -434,6 +435,34 @@ class ExecuteGroupPose : public RosServiceNode<roport::ExecuteGroupPose> {
   }
 };
 
+class ExecutePathPlanning : public RosServiceNode<roport::ExecutePathPlanning> {
+ public:
+  ExecutePathPlanning(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecutePathPlanning>(node_handle, name, cfg) {}
+
+  static auto providedPorts() -> BT::PortsList {
+    return {InputPort<Header>("header"), InputPort<int>("goal_type"), InputPort<JointState>("goal_state"),
+            InputPort<Pose>("goal_location"), InputPort<double>("tolerance")};
+  }
+
+  void onSendRequest(RequestType& request) override {
+    int goal_type;
+    getInput<int>("goal_type", goal_type);
+    request.goal_type = goal_type;
+
+    Pose goal_location{};
+    getInput<Pose>("goal_location", goal_location);
+    request.goal_location = goal_location.toROS();
+
+    JointState goal_state{};
+    getInput<JointState>("goal_state", goal_state);
+    request.goal_state = goal_state.toROS();
+
+    getInput<double>("tolerance", request.tolerance);
+    ROS_INFO("RoPort: %s sending request.", getName().c_str());
+  }
+};
+
 class ExecuteGroupPosition : public RosServiceNode<roport::ExecuteGroupPosition> {
  public:
   ExecuteGroupPosition(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
@@ -662,6 +691,7 @@ auto main(int argc, char** argv) -> int {
   BT::registerRosService<BT::ExecuteGroupNamedStates>(factory, "ExecuteGroupNamedStates", node_handle);
   BT::registerRosService<BT::ExecuteGroupPlan>(factory, "ExecuteGroupPlan", node_handle);
   BT::registerRosService<BT::ExecuteGroupPose>(factory, "ExecuteGroupPose", node_handle);
+  BT::registerRosService<BT::ExecutePathPlanning>(factory, "ExecutePathPlanning", node_handle);
   BT::registerRosService<BT::ExecuteGroupPosition>(factory, "ExecuteGroupPosition", node_handle);
   BT::registerRosService<BT::ExecuteGroupShift>(factory, "ExecuteGroupShift", node_handle);
   BT::registerRosService<BT::ExecuteRemoveCollision>(factory, "ExecuteRemoveCollision", node_handle);
