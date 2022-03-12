@@ -65,6 +65,13 @@ else ()
   message(WARNING "Not Found HPP_FCL_LIB")
 endif ()
 
+find_library(HPP_MANIPULATION_LIB NAMES hpp-manipulation HINTS /opt/openrobots/lib)
+if (HPP_MANIPULATION_LIB)
+  message(STATUS "Found HPP_MANIPULATION_LIB ${HPP_MANIPULATION_LIB}")
+else ()
+  message(WARNING "Not Found HPP_MANIPULATION_LIB")
+endif ()
+
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -180,15 +187,14 @@ target_link_libraries(${PROJECT_NAME}
   rotools_ruckig
   )
 
-if (HPP_CORE_LIB AND HPP_FCL_LIB)
+if (HPP_CORE_LIB AND HPP_FCL_LIB AND HPP_MANIPULATION_LIB)
   # These two definitions solve the pinocchio import issue
   add_definitions(-DPINOCCHIO_WITH_HPP_FCL)
   ADD_DEFINITIONS(-DBOOST_MPL_LIMIT_LIST_SIZE=30)
 
-  find_package(pinocchio REQUIRED)
-
-  include_directories(/opt/openrobots/include ${pinocchio_INCLUDE_DIRS})
-
+  include_directories(/opt/openrobots/include /usr/local/include)
+  
+  find_library(PINOCCHIO_LIBRARIES pinocchio HINTS /usr/local/lib)
   find_library(OMNI_THREAD_LIB omnithread HINTS /opt/openrobots/lib)
   find_library(OMNI_ORB4_LIB omniORB4 HINTS /opt/openrobots/lib)
 
@@ -199,9 +205,10 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB)
     ${catkin_LIBRARIES}
     ${HPP_CORE_LIB}
     ${HPP_FCL_LIB}
+    ${HPP_MANIPULATION_LIB}
     ${OMNI_THREAD_LIB}
     ${OMNI_ORB4_LIB}
-    ${pinocchio_LIBRARIES}
+    ${PINOCCHIO_LIBRARIES}
     )
   add_dependencies(${PROJECT_NAME}_HPP_ADDON ${PROJECT_NAME}_generate_messages_cpp)
 endif ()

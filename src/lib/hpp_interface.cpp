@@ -6,7 +6,9 @@ namespace roport {
 HumanoidPathPlannerInterface::HumanoidPathPlannerInterface(const ros::NodeHandle& node_handle,
                                                            const ros::NodeHandle& pnh)
     : nh_(node_handle), pnh_(pnh), is_initial_state_set_(false), is_initial_location_set_(false), time_step_(0.01) {
-  solver_ = ProblemSolver::create();
+  path_planning_solver_ = ProblemSolver::create();
+  manipulation_solver_ = hpp_m::ProblemSolver::create();
+
   if (!createRobot()) {
     return;
   }
@@ -22,16 +24,16 @@ HumanoidPathPlannerInterface::HumanoidPathPlannerInterface(const ros::NodeHandle
   bool loaded;
   try {
     std::string filename = plugin::findPluginLibrary("spline-gradient-based.so");
-    loaded = plugin::loadPlugin(filename, solver_);
+    loaded = plugin::loadPlugin(filename, path_planning_solver_);
   } catch (const std::invalid_argument&) {
     loaded = false;
   }
   if (loaded) {
     ROS_INFO("Using path optimizer: SplineGradientBased_bezier1");
-    solver_->addPathOptimizer("SplineGradientBased_bezier1");
+    path_planning_solver_->addPathOptimizer("SplineGradientBased_bezier1");
   } else {
     ROS_WARN("Could not load spline-gradient-based.so, using path optimizer: RandomShortcut");
-    solver_->addPathOptimizer("RandomShortcut");
+    path_planning_solver_->addPathOptimizer("RandomShortcut");
   }
 
   XmlRpc::XmlRpcValue state_topic_id;
@@ -93,7 +95,7 @@ bool HumanoidPathPlannerInterface::createRobot() {
   // Only support planar root
   hpp::pinocchio::urdf::loadRobotModel(robot_, "planar", robot_pkg_name, model_name, "", "");
   robot_->controlComputation((Computation_t)(JOINT_POSITION | JACOBIAN));
-  solver_->robot(robot_);
+  path_planning_solver_->robot(robot_);
   q_init_ = robot_->currentConfiguration();
   return true;
 }
@@ -115,12 +117,10 @@ bool HumanoidPathPlannerInterface::setBound() {
   if (!getParam(nh_, pnh_, "y_upper", y_upper)) {
     return false;
   }
-
   robot_->rootJoint()->lowerBound(0, x_lower);
   robot_->rootJoint()->upperBound(0, x_upper);
   robot_->rootJoint()->lowerBound(1, y_lower);
   robot_->rootJoint()->upperBound(1, y_upper);
-
   return true;
 }
 
@@ -141,7 +141,7 @@ bool HumanoidPathPlannerInterface::createObstacle() {
   obstacle_ = Device::create(obstacle_name);
   hpp::pinocchio::urdf::loadUrdfModel(obstacle_, "anchor", obstacle_pkg_name, obstacle_model_name);
   obstacle_->controlComputation(JOINT_POSITION);
-  solver_->addObstacle(obstacle_, true, true);
+  path_planning_solver_->addObstacle(obstacle_, true, true);
   return true;
 }
 
@@ -237,7 +237,7 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
     resp.result_status = resp.FAILED;
     return false;
   }
-  solver_->initConfig(std::make_shared<Configuration_t>(q_init_));
+  path_planning_solver_->initConfig(std::make_shared<Configuration_t>(q_init_));
 
   Configuration_t q_goal(q_init_);
   //  if (!setLocation(req.goal_location, req.goal_type, q_goal)) {
@@ -256,12 +256,12 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
     resp.result_status = resp.FAILED;
     return false;
   }
-  solver_->addGoalConfig(std::make_shared<Configuration_t>(q_goal));
-  solver_->solve();
+  path_planning_solver_->addGoalConfig(std::make_shared<Configuration_t>(q_goal));
+  path_planning_solver_->solve();
   ROS_INFO("Path planning finished. Sending command ...");
 
   // Get the last path from paths, which is an optimized one
-  PathPtr_t optimized_path(solver_->paths().back());
+  PathPtr_t optimized_path(path_planning_solver_->paths().back());
   value_type path_length(optimized_path->length());
 
   bool success;

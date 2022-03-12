@@ -20,10 +20,14 @@
 #include <hpp/core/plugin.hh>
 #include <hpp/core/problem-solver.hh>
 
+#include <hpp/manipulation/problem-solver.hh>
+
 #include "common.h"
 
 using namespace hpp::pinocchio;
 using namespace hpp::core;
+
+namespace hpp_m = hpp::manipulation;
 
 namespace roport {
 class HumanoidPathPlannerInterface {
@@ -35,7 +39,9 @@ class HumanoidPathPlannerInterface {
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
 
-  ProblemSolverPtr_t solver_;
+  ProblemSolverPtr_t path_planning_solver_;
+  hpp_m::ProblemSolverPtr_t manipulation_solver_;
+
   DevicePtr_t robot_;
   DevicePtr_t obstacle_;
 
