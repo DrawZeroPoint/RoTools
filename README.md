@@ -14,7 +14,7 @@ robot and the high level task scheduler.
 *Here the hardware interface is called fake since it does not actually connect with the real hardware.
 Instead, the communication is via ROS topics.*
 
-## Contents
+## :orange_book: Contents
 
 The packages compose of two components: roport and rotools.
 
@@ -44,7 +44,7 @@ This Python package hosted under `src/` is a versatile robotic tool-box aimed fo
 It includes foundational modules for robotic problems including path & trajectory planning, kinematics
 & dynamics calculation, sensing, transformation calculation, and so forth.
 
-## Prerequisite
+## :hammer: Prerequisite
 
 ### System
 
@@ -84,7 +84,7 @@ sudo pip install playsound pynput requests
 Not supported.
 
 
-## Use with MoveIt!
+## :running: Use with MoveIt!
 
 The pipeline of using RoTools for a particular robot involves:
 
@@ -112,7 +112,7 @@ After finishing these preparations, you can run the demo by
 3. Launch `<robot>_roport.launch`.
 4. Launch `<robot>_task.launch`.
 
-## Use with CartesI/O
+## :running: Use with CartesI/O
 
 CartesI/O is a whole-body motion planning software developed in [ADVR, Istituto Italiano di Tecnologia](https://advr.iit.it/). 
 It has not been added to the ROS distribution and hence [install](https://advrhumanoids.github.io/CartesianInterface/index.html) 
@@ -136,7 +136,7 @@ After the preparations, you can
 2. In RViz, right-click the interactive marker (IM) in scene, choose `continous control`, then you can control
    the robot by dragging the IM.
    
-## Xsens Motion Capture Applications
+## :running: Use with Xsens Motion Capture
 
 ### Launch process
 
@@ -210,7 +210,7 @@ rosservice call /xsens/enable "data: true"
 ```
 The initial state is in deactivate state, to disable conversion, set `data` as false.
 
-## API reference
+## :page_facing_up: API reference
 
 ### roport_robot_interface
 
@@ -293,7 +293,7 @@ To use this function, we need define the following parameters in the launch file
 | `max_jerk`            | map[str, double] | For each joint name, define its maximum jerk during smooth movement.                                                                                                                         |
 
 
-## Coding Guide
+## :memo: Coding Guide
 
 ### The services
 
