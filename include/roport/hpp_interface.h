@@ -20,14 +20,13 @@
 #include <hpp/core/plugin.hh>
 #include <hpp/core/problem-solver.hh>
 
-#include <hpp/manipulation/problem-solver.hh>
-
 #include "common.h"
 
 using namespace hpp::pinocchio;
 using namespace hpp::core;
 
-namespace hpp_m = hpp::manipulation;
+namespace hpp_core = hpp::core;
+namespace hpp_pin = hpp::pinocchio;
 
 namespace roport {
 class HumanoidPathPlannerInterface {
@@ -39,13 +38,12 @@ class HumanoidPathPlannerInterface {
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
 
-  ProblemSolverPtr_t path_planning_solver_;
-  hpp_m::ProblemSolverPtr_t manipulation_solver_;
+  hpp_core::ProblemSolverPtr_t path_planning_solver_;
 
-  DevicePtr_t robot_;
-  DevicePtr_t obstacle_;
+  hpp_core::DevicePtr_t robot_;
+  hpp_core::DevicePtr_t obstacle_;
 
-  Configuration_t q_init_;
+  hpp_core::Configuration_t q_init_;
 
   ros::Subscriber state_subscriber_;
   ros::Subscriber location_subscriber_;
@@ -62,16 +60,20 @@ class HumanoidPathPlannerInterface {
   // Configuration
   std::map<std::string, std::pair<int, int>> joint_names_;
 
+  static constexpr int kPlannerDim = 6;
+  static constexpr double kDefaultStep = 0.01;
+
   double time_step_;
 
-  bool createRobot();
-  bool setBound();
-  bool createObstacle();
-  bool setJointConfig(const std::string& joint_name, const double& joint_value, Configuration_t& config);
+  auto createRobot() -> bool;
+  auto setBound() -> bool;
+  auto createObstacle() -> bool;
+
+  auto setJointConfig(const std::string& joint_name, const double& joint_value, Configuration_t& config) -> bool;
 
   static void setLocation(const nav_msgs::Odometry::ConstPtr& msg, Configuration_t& config);
 
-  static bool setLocation(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config);
+  static auto setLocation(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config) -> bool;
 
   void initialJointStateCb(const sensor_msgs::JointState::ConstPtr& msg);
 
@@ -91,13 +93,13 @@ class HumanoidPathPlannerInterface {
 
   /**
    * Extract joint command from the planning results: the configuration and velocity at time t.
-   * @param q Configuration vector.
-   * @param dq Joint velocity vector.
+   * @param j_q Configuration vector.
+   * @param j_dq Joint velocity vector.
    * @param state Output joint state.
    */
-  void extractJointCommand(const Configuration_t& q, const vector_t& dq, sensor_msgs::JointState& state);
+  void extractJointCommand(const Configuration_t& j_q, const vector_t& j_dq, sensor_msgs::JointState& state);
 
-  static void extractBaseVelocityCommand(const vector_t& dq, geometry_msgs::Twist& twist);
+  static void extractBaseVelocityCommand(const vector_t& j_dq, geometry_msgs::Twist& twist);
 
   void publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states,
                               const std::vector<geometry_msgs::Twist>& vel_cmd);
