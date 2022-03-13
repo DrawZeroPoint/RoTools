@@ -6,13 +6,9 @@
 https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml)
 
 RoTools is an all-in-one ROS package for high-level robotic task scheduling,
-visual perception, direct and tele-manipulation control. It leverages BehaviorTree to
-deliver fast task construction and coordination, and uses MoveIt
-and *fake hardware_interface* to bridge the gap between real/simulated
+visual perception, path planning, simulation, and direct-/tele-manipulation control. It leverages BehaviorTree to
+deliver fast task construction and coordination, and provides various utilities to bridge the gap between real/simulated
 robot and the high level task scheduler.
-
-*Here the hardware interface is called fake since it does not actually connect with the real hardware.
-Instead, the communication is via ROS topics.*
 
 ## :orange_book: Contents
 
@@ -20,18 +16,19 @@ The packages compose of two components: roport and rotools.
 
 ### roport
 
-This module provides the entrance ports of the RoTools package. It is a middleware that allows using 
-rotools python interface in ROS environment. It provides: 
+This module provides the application level entrance ports of the RoTools package. It is a middleware that allows using 
+rotools cpp/python interfaces in ROS environment. It provides: 
 
 - [MoveIt Python Server](scripts/roport_moveit_py_server.py) for controlling the robot's single kinematic chain using the Python interface.
 - [MoveIt CPP Server](src/roport_moveit_cpp_server.cpp) simultaneously controlling multiple kinematic chains of a robot.
-  To do so, MoveIt configuration is needed.
 - [Sensing Server](scripts/roport_sensing_server.py) that bridges the perception modules outside the ROS environment 
   (like those run in Python3) to ROS via HTTP.
 - [Planner Server](scripts/roport_planner_server.py) bridges ROS modules with the planning algorithm outside the ROS
   environment (running in Python3 or on another server on the local network) via HTTP. This server is designed for 
   online control, that given the current state, it will query the algorithm for the next state. For now, the states
   are Cartesian poses.
+- [Path Planning Interface](src/roport_hpp_interface.cpp) utilize Humanoid Path Planner to plan whole-body collision
+  free paths for high-dof robots.
 - [Task Scheduler](src/roport_task_scheduler.cpp) using behavior tree for task scheduling. 
   A bunch of general purpose services are provided for building the task map fast.
 - [Xsens Server](scripts/roport_xsens_server.py) converting the live stream from Xsens's MVN Awinda motion capture
@@ -40,9 +37,9 @@ rotools python interface in ROS environment. It provides:
 
 ### rotools
 
-This Python package hosted under `src/` is a versatile robotic tool-box aimed for fast prototyping.
+This Python package hosted under `src/` is a versatile robotic toolbox aimed for fast prototyping.
 It includes foundational modules for robotic problems including path & trajectory planning, kinematics
-& dynamics calculation, sensing, transformation calculation, and so forth.
+& dynamics calculation, sensing, transformation calculation, simulation, and so forth.
 
 ## :hammer: Prerequisite
 
@@ -73,16 +70,24 @@ ros-$ROS_DISTRO-webots-ros ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs ros-$
 ros-$ROS_DISTRO-eigen-conversions
 ```
 
-Optionally you can install the following Python packages to use some utilities.
+#### Indigo
+
+Not supported.
+
+Optionally, you can install the following Python packages to activate helper utilities.
 
 ```shell
 sudo pip install playsound pynput requests
 ```
 
-#### Indigo
+If the HPP interface is needed, you can install HPP and Pinocchio by:
 
-Not supported.
+1. Install [HPP](https://humanoid-path-planner.github.io/hpp-doc/download.html). It is recommended to install with binary distributed with `robotpkg`.
+2. Install Pinocchio [from source](https://stack-of-tasks.github.io/pinocchio/download.html). Note that you need to 
+   modify the cloned CMakeLists.txt and change the option `BUILD_WITH_COLLISION_SUPPORT` from `OFF` to `ON`.
 
+The interface will not be built if `hpp-core`, `hpp-fcl`, and `hpp-manipulation` libraries were not found. You should
+have these libs if HPP is properly installed.
 
 ## :running: Use with MoveIt!
 
