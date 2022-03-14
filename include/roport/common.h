@@ -11,10 +11,12 @@
 
 namespace roport {
 
-bool getParam(const ros::NodeHandle& node_handle,
+constexpr double kOrientationTolerance = 0.01;
+
+auto getParam(const ros::NodeHandle& node_handle,
               const ros::NodeHandle& private_node_handle,
               const std::string& param_name,
-              XmlRpc::XmlRpcValue& param_value) {
+              XmlRpc::XmlRpcValue& param_value) -> bool {
   if (!private_node_handle.getParam(param_name, param_value)) {
     if (!node_handle.getParam(param_name, param_value)) {
       ROS_ERROR_STREAM("Param " << param_name << " is not defined");
@@ -93,11 +95,11 @@ void localPoseToGlobalPose(const geometry_msgs::Pose& pose_local_to_target,
 
 auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
   if (pose.orientation.w == 0 && pose.orientation.x == 0 && pose.orientation.y == 0 && pose.orientation.z == 0) {
-    ROS_ERROR("The pose is empty");
+    ROS_ERROR("The pose is empty (all orientation coefficients are zero)");
     return false;
   }
   if (fabs(std::pow(pose.orientation.w, 2) + std::pow(pose.orientation.x, 2) + std::pow(pose.orientation.y, 2) +
-           std::pow(pose.orientation.z, 2) - 1.) > 1e-3) {
+           std::pow(pose.orientation.z, 2) - 1.) > kOrientationTolerance) {
     ROS_WARN("The pose has un-normalized orientation");
     return false;
   }

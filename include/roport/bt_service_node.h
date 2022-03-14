@@ -49,15 +49,13 @@ class RosServiceNode : public BT::SyncActionNode {
     if (response.result_status == response.SUCCEEDED) {
       return NodeStatus::SUCCESS;
     }
-    ROS_INFO("RoPort: %s responded FAILURE.", name_.c_str());
     return NodeStatus::FAILURE;
   }
 
   enum FailureCause { kMissingServer = 0, kFailedCall = 1 };
 
   /// Called when a service call failed. Can be override by the user.
-  virtual auto onFailedRequest(FailureCause failure) -> NodeStatus {
-    ROS_ERROR("RoPort: %s request failed %d.", name_.c_str(), static_cast<int>(failure));
+  virtual auto onFailedRequest(FailureCause /*failure*/) -> NodeStatus {
     return NodeStatus::FAILURE;
   }
 

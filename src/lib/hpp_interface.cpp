@@ -143,7 +143,7 @@ auto HumanoidPathPlannerInterface::createObstacle() -> bool {
   }
 
   obstacle_ = Device::create(obstacle_name);
-  hpp::pinocchio::urdf::loadUrdfModel(obstacle_, "anchor", obstacle_pkg_name, obstacle_model_name);
+  hpp_pin::urdf::loadUrdfModel(obstacle_, "anchor", obstacle_pkg_name, obstacle_model_name);
   obstacle_->controlComputation(JOINT_POSITION);
   path_planning_solver_->addObstacle(obstacle_, true, true);
   return true;
@@ -233,10 +233,11 @@ auto HumanoidPathPlannerInterface::detectCollision(const Configuration_t& config
   return dummy_robot->collisionTest();
 }
 
-auto HumanoidPathPlannerInterface::setInitialSrvCb(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& resp)
-    -> bool {
+auto HumanoidPathPlannerInterface::setInitialSrvCb(roport::ExecuteBinaryAction::Request& /*req*/,
+                                                   roport::ExecuteBinaryAction::Response& resp) -> bool {
   is_initial_state_set_ = false;
   is_initial_location_set_ = false;
+  resp.result_status = resp.SUCCEEDED;
   return true;
 }
 
@@ -259,16 +260,6 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
   Configuration_t q_goal(q_init_);
   setLocation(req.goal_location, req.goal_type, q_goal);
 
-  q_goal.head<2>() << -3.5, -4;
-  q_goal[robot_->getJointByName("panda_left_joint1")->rankInConfiguration()] = 1;
-  q_goal[robot_->getJointByName("panda_left_joint2")->rankInConfiguration()] = 1;
-  q_goal[robot_->getJointByName("panda_left_joint4")->rankInConfiguration()] = -1.5;
-  q_goal[robot_->getJointByName("panda_left_joint6")->rankInConfiguration()] = 0;
-  q_goal[robot_->getJointByName("panda_right_joint1")->rankInConfiguration()] = -1;
-  q_goal[robot_->getJointByName("panda_right_joint2")->rankInConfiguration()] = 1;
-  q_goal[robot_->getJointByName("panda_right_joint4")->rankInConfiguration()] = -1.5;
-  q_goal[robot_->getJointByName("panda_right_joint6")->rankInConfiguration()] = 0;
-  //  }
   if (detectCollision(q_goal)) {
     ROS_WARN("Goal state is in collision, aborted");
     resp.result_status = resp.FAILED;
@@ -327,7 +318,6 @@ void HumanoidPathPlannerInterface::extractJointCommand(const Configuration_t& j_
     state.name.push_back(element.first);
     state.position.push_back(j_q[element.second.first]);
     state.velocity.push_back(j_dq[element.second.second]);
-    // TODO add non-0
     state.effort.push_back(0);
   }
 }

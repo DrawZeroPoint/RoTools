@@ -6,9 +6,9 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
+#include <roport/ExecuteBinaryAction.h>
 #include <roport/ExecutePathPlanning.h>
 #include <sensor_msgs/JointState.h>
-#include <std_srvs/SetBool.h>
 
 #include <hpp/pinocchio/configuration.hh>
 #include <hpp/pinocchio/device.hh>
@@ -86,7 +86,7 @@ class HumanoidPathPlannerInterface {
    */
   auto detectCollision(const Configuration_t& config) -> bool;
 
-  auto setInitialSrvCb(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& resp) -> bool;
+  auto setInitialSrvCb(roport::ExecuteBinaryAction::Request& req, roport::ExecuteBinaryAction::Response& resp) -> bool;
 
   auto executePathPlanningSrvCb(roport::ExecutePathPlanning::Request& req, roport::ExecutePathPlanning::Response& resp)
       -> bool;

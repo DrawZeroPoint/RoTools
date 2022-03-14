@@ -60,7 +60,6 @@ class ExecuteAddCollisionBox : public RosServiceNode<roport::ExecuteAddCollision
     int auto_suffix;
     getInput<int>("auto_suffix", auto_suffix);
     request.auto_suffix = bool(auto_suffix);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -90,7 +89,6 @@ class ExecuteAddCollisionPlane : public RosServiceNode<roport::ExecuteAddCollisi
     int auto_suffix;
     getInput<int>("auto_suffix", auto_suffix);
     request.auto_suffix = bool(auto_suffix);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -127,8 +125,6 @@ class ExecuteAllPlans : public RosServiceNode<roport::ExecuteAllPlans> {
     int allow_collision;
     getInput<int>("allow_collision", allow_collision);
     request.allow_collision = bool(allow_collision);
-
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -169,8 +165,6 @@ class ExecuteAllPoses : public RosServiceNode<roport::ExecuteAllPoses> {
     int allow_collision;
     getInput<int>("allow_collision", allow_collision);
     request.allow_collision = bool(allow_collision);
-
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -218,8 +212,6 @@ class ExecuteMirroredPose : public RosServiceNode<roport::ExecuteMirroredPose> {
     int allow_collision;
     getInput<int>("allow_collision", allow_collision);
     request.allow_collision = bool(allow_collision);
-
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -251,7 +243,6 @@ class ExecuteAttachCollisionBox : public RosServiceNode<roport::ExecuteAttachCol
     Point box_size{};
     getInput<Point>("box_size", box_size);
     request.box_size = box_size.toROS();
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -277,7 +268,6 @@ class ExecuteBinaryAction : public RosServiceNode<roport::ExecuteBinaryAction> {
     getInput<int>("enable", enable);
     request.enable = bool(enable);
     getInput<double>("value", request.value);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -297,7 +287,6 @@ class ExecuteDetachCollision : public RosServiceNode<roport::ExecuteDetachCollis
   void onSendRequest(RequestType& request) override {
     getInput<std::string>("group_name", request.group_name);
     getInput<std::string>("obj_name", request.obj_name);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -323,7 +312,6 @@ class ExecuteGroupAngularJointStates : public RosServiceNode<roport::ExecuteGrou
     getInput<DoubleArray>("goal", goal);
     request.goal = goal.degToROS();
     getInput<double>("tolerance", request.tolerance);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -349,7 +337,6 @@ class ExecuteGroupLinearJointStates : public RosServiceNode<roport::ExecuteGroup
     getInput<DoubleArray>("goal", goal);
     request.goal = goal.plainToROS();
     getInput<double>("tolerance", request.tolerance);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -369,7 +356,6 @@ class ExecuteGroupNamedStates : public RosServiceNode<roport::ExecuteGroupNamedS
   void onSendRequest(RequestType& request) override {
     getInput<std::string>("group_name", request.group_name);
     getInput<std::string>("state_name", request.state_name);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -401,8 +387,6 @@ class ExecuteGroupPlan : public RosServiceNode<roport::ExecuteGroupPlan> {
     int allow_collision;
     getInput<int>("allow_collision", allow_collision);
     request.allow_collision = bool(allow_collision);
-
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -431,7 +415,6 @@ class ExecuteGroupPose : public RosServiceNode<roport::ExecuteGroupPose> {
 
     getInput<double>("tolerance", request.tolerance);
     getInput<std::string>("constraint", request.constraint);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -459,7 +442,6 @@ class ExecutePathPlanning : public RosServiceNode<roport::ExecutePathPlanning> {
     request.goal_state = goal_state.toROS();
 
     getInput<double>("tolerance", request.tolerance);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -487,7 +469,6 @@ class ExecuteGroupPosition : public RosServiceNode<roport::ExecuteGroupPosition>
     request.goal = goal.toROS();
 
     getInput<double>("tolerance", request.tolerance);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -515,7 +496,6 @@ class ExecuteGroupShift : public RosServiceNode<roport::ExecuteGroupShift> {
     getInput<double>("goal", request.goal);
 
     getInput<double>("tolerance", request.tolerance);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -537,7 +517,6 @@ class ExecuteRemoveCollision : public RosServiceNode<roport::ExecuteRemoveCollis
     int is_exact;
     getInput<int>("is_exact", is_exact);
     request.is_exact = bool(is_exact);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 
@@ -561,7 +540,6 @@ class GetPreparePose : public RosServiceNode<roport::GetPreparePose> {
     Point shift{};
     getInput<Point>("shift", shift);
     request.shift = shift.toROS();
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 
   auto onResponse(const ResponseType& response) -> BT::NodeStatus override {
@@ -571,7 +549,6 @@ class GetPreparePose : public RosServiceNode<roport::GetPreparePose> {
       setOutput("pre_pose", pre_pose);
       return NodeStatus::SUCCESS;
     }
-    ROS_INFO("RoPort: %s response FAILURE.", getName().c_str());
     return NodeStatus::FAILURE;
   }
 };
@@ -592,7 +569,6 @@ class GetTransformedPose : public RosServiceNode<roport::GetTransformedPose> {
     request.pose = pose.toROS();
     getInput<std::string>("source_frame", request.source_frame);
     getInput<std::string>("target_frame", request.target_frame);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 
   auto onResponse(const ResponseType& response) -> BT::NodeStatus override {
@@ -602,7 +578,6 @@ class GetTransformedPose : public RosServiceNode<roport::GetTransformedPose> {
       setOutput("trans_pose", trans_pose);
       return NodeStatus::SUCCESS;
     }
-    ROS_INFO("RoPort: %s response FAILURE.", getName().c_str());
     return NodeStatus::FAILURE;
   }
 };
@@ -624,7 +599,6 @@ class SenseManipulationPoses : public RosServiceNode<roport::SenseManipulationPo
     int algorithm_id;
     getInput<int>("algorithm_id", algorithm_id);
     request.algorithm_id = static_cast<uint8_t>(algorithm_id);
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 
   auto onResponse(const ResponseType& response) -> BT::NodeStatus override {
@@ -637,7 +611,6 @@ class SenseManipulationPoses : public RosServiceNode<roport::SenseManipulationPo
       setOutput("best_pose", best_pose);
       return NodeStatus::SUCCESS;
     }
-    ROS_INFO("RoPort: %s response FAILURE.", getName().c_str());
     return NodeStatus::FAILURE;
   }
 };
@@ -660,7 +633,6 @@ class VisualizePose : public RosServiceNode<roport::VisualizePose> {
     Pose pose{};
     getInput<Pose>("pose", pose);
     request.pose = pose.toROS();
-    ROS_INFO("RoPort: %s sending request.", getName().c_str());
   }
 };
 }  // namespace BT

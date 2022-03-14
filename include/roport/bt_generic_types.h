@@ -11,6 +11,8 @@
 
 #include <behaviortree_cpp_v3/bt_factory.h>
 
+#include <sstream>
+#include <iostream>
 #include <utility>
 
 // std_msgs/Header
@@ -137,9 +139,9 @@ struct Point {
 // geometry_msgs/Pose
 struct Pose {
  private:
-  double pose_x_;
-  double pose_y_;
-  double pose_z_;
+  double p_x_;
+  double p_y_;
+  double p_z_;
   double ori_x_;
   double ori_y_;
   double ori_z_;
@@ -148,9 +150,9 @@ struct Pose {
  public:
   [[nodiscard]] inline auto toROS() const -> geometry_msgs::Pose {
     geometry_msgs::Pose ros_pose;
-    ros_pose.position.x = this->pose_x_;
-    ros_pose.position.y = this->pose_y_;
-    ros_pose.position.z = this->pose_z_;
+    ros_pose.position.x = this->p_x_;
+    ros_pose.position.y = this->p_y_;
+    ros_pose.position.z = this->p_z_;
     ros_pose.orientation.x = this->ori_x_;
     ros_pose.orientation.y = this->ori_y_;
     ros_pose.orientation.z = this->ori_z_;
@@ -159,22 +161,22 @@ struct Pose {
   }
 
   inline void fromROS(geometry_msgs::Pose ros_pose) {
-    this->pose_x_ = ros_pose.position.x;
-    this->pose_y_ = ros_pose.position.y;
-    this->pose_z_ = ros_pose.position.z;
+    this->p_x_ = ros_pose.position.x;
+    this->p_y_ = ros_pose.position.y;
+    this->p_z_ = ros_pose.position.z;
     this->ori_x_ = ros_pose.orientation.x;
     this->ori_y_ = ros_pose.orientation.y;
     this->ori_z_ = ros_pose.orientation.z;
     this->ori_w_ = ros_pose.orientation.w;
   }
 
-  void setPoseX(double pose_x) { pose_x_ = pose_x; }
-  void setPoseY(double pose_y) { pose_y_ = pose_y; }
-  void setPoseZ(double pose_z) { pose_z_ = pose_z; }
-  void setOriX(double ori_x) { ori_x_ = ori_x; }
-  void setOriY(double ori_y) { pose_x_ = ori_y; }
-  void setOriZ(double ori_z) { pose_x_ = ori_z; }
-  void setOriW(double ori_w) { pose_x_ = ori_w; }
+  void setPX(double p_x) { this->p_x_ = p_x; }
+  void setPY(double p_y) { this->p_y_ = p_y; }
+  void setPZ(double p_z) { this->p_z_ = p_z; }
+  void setOriX(double ori_x) { this->ori_x_ = ori_x; }
+  void setOriY(double ori_y) { this->ori_y_ = ori_y; }
+  void setOriZ(double ori_z) { this->ori_z_ = ori_z; }
+  void setOriW(double ori_w) { this->ori_w_ = ori_w; }
 };
 
 // geometry_msgs/PoseArray
@@ -359,9 +361,9 @@ inline auto convertFromString(StringView str) -> Pose {
     throw RuntimeError("Invalid input %s for Pose)", str);
   }
   Pose output{};
-  output.setPoseX(convertFromString<double>(parts[0]));
-  output.setPoseY(convertFromString<double>(parts[1]));
-  output.setPoseZ(convertFromString<double>(parts[2]));
+  output.setPX(convertFromString<double>(parts[0]));
+  output.setPY(convertFromString<double>(parts[1]));
+  output.setPZ(convertFromString<double>(parts[2]));
   output.setOriX(convertFromString<double>(parts[3]));
   output.setOriY(convertFromString<double>(parts[4]));
   output.setOriZ(convertFromString<double>(parts[5]));
