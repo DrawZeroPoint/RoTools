@@ -8,6 +8,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 
+#include "roport/common.h"
 #include "roport/online_trajectory_optimizer.h"
 #include "ruckig/ruckig.hpp"
 
@@ -189,29 +190,6 @@ class MsgConverter {
       result.second = -1;
     }
     return result;
-  }
-
-  /**
-   * Judge if all corresponding elements in the two given vectors are close to each other under the tolerance.
-   * @tparam T Value type.
-   * @param first One vector.
-   * @param second Other vector.
-   * @param violated_i The index of the first element that violates the tolerance.
-   * @param residual The residual of the first violation.
-   * @param tol Tolerance.
-   * @return True if close.
-   */
-  template <typename T>
-  auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, T tol = 0.01) -> bool {
-    for (size_t i = 0; i < first.size(); ++i) {
-      auto error = fabs(first[i] - second[i]);
-      if (error > tol) {
-        violated_i = i;
-        residual = error;
-        return false;
-      }
-    }
-    return true;
   }
 };
 }  // namespace roport

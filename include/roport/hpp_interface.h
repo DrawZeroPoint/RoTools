@@ -20,6 +20,8 @@
 #include <hpp/core/plugin.hh>
 #include <hpp/core/problem-solver.hh>
 
+#include <mutex>
+
 #include "common.h"
 
 using namespace hpp::pinocchio;
@@ -59,22 +61,29 @@ class HumanoidPathPlannerInterface {
   // Configuration
   std::map<std::string, std::pair<int, int>> joint_names_;
 
-  static constexpr int kPlannerDim = 6;
+  static constexpr int kPlanarJointConfigDim = 6;
   static constexpr double kDefaultStep = 0.01;
 
   double time_step_;
+
+  std::mutex init_mutex_;
 
   auto createRobot() -> bool;
   auto setBound() -> bool;
   auto createObstacle() -> bool;
 
+  /**
+   * Set the config for HPP with the position information from msg.
+   * @param msg Msg containing joint names and positions.
+   * @param config Output config.
+   * @param update_names If true, will update internal joint names, these names will be controlled by the planner.
+   *                     Always be true for initial config, false for goal config.
+   */
   void setJointConfig(const sensor_msgs::JointState& msg, hpp_core::Configuration_t& config, const bool& update_names);
 
-  static void setLocation(const nav_msgs::Odometry::ConstPtr& msg, Configuration_t& config);
+  static auto setLocationConfig(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config) -> bool;
 
-  static auto setLocation(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config) -> bool;
-
-  void initialJointStateCb(const sensor_msgs::JointState::ConstPtr& msg);
+  void initialJointConfigCb(const sensor_msgs::JointState::ConstPtr& msg);
 
   void initialLocationCb(const nav_msgs::Odometry::ConstPtr& msg);
 
@@ -102,6 +111,8 @@ class HumanoidPathPlannerInterface {
 
   void publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states,
                               const std::vector<geometry_msgs::Twist>& vel_cmd);
+
+  auto checkGoalReached(const hpp_core::Configuration_t& goal, const double& tolerance) -> bool;
 };
 
 }  // namespace roport

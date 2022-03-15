@@ -7,11 +7,14 @@
 
 #include <ros/ros.h>
 
+#include <Eigen/Eigen>
+
 #include <geometry_msgs/PoseStamped.h>
 
 namespace roport {
 
-constexpr double kOrientationTolerance = 0.01;
+constexpr double kQuaternionOrientationTolerance = 0.01;
+constexpr double kTolerance = 0.01;
 
 auto getParam(const ros::NodeHandle& node_handle,
               const ros::NodeHandle& private_node_handle,
@@ -99,13 +102,39 @@ auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
     return false;
   }
   if (fabs(std::pow(pose.orientation.w, 2) + std::pow(pose.orientation.x, 2) + std::pow(pose.orientation.y, 2) +
-           std::pow(pose.orientation.z, 2) - 1.) > kOrientationTolerance) {
+           std::pow(pose.orientation.z, 2) - 1.) > kQuaternionOrientationTolerance) {
     ROS_WARN("The pose has un-normalized orientation");
     return false;
   }
   return true;
 }
 
+/**
+ * Judge if all corresponding elements in the two given vectors are close to each other under the tolerance.
+ * @tparam T Value type.
+ * @param first One vector.
+ * @param second Other vector.
+ * @param violated_i The index of the first element that violates the tolerance.
+ * @param residual The residual of the first violation.
+ * @param tol Tolerance.
+ * @return True if close.
+ */
+template <typename T>
+auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, T tol = kTolerance)
+    -> bool {
+  if (tol <= 0) {
+    tol = kTolerance;
+  }
+  for (size_t i = 0; i < first.size(); ++i) {
+    auto error = fabs(first[i] - second[i]);
+    if (error > tol) {
+      violated_i = i;
+      residual = error;
+      return false;
+    }
+  }
+  return true;
+}
 }  // namespace roport
 
 #endif  // ROPORT_COMMON_H

@@ -46,7 +46,7 @@ HumanoidPathPlannerInterface::HumanoidPathPlannerInterface(const ros::NodeHandle
     return;
   }
   state_subscriber_ = nh_.subscribe<sensor_msgs::JointState>(
-      state_topic_id, 1, [this](auto&& ph1) { return initialJointStateCb(std::forward<decltype(ph1)>(ph1)); });
+      state_topic_id, 1, [this](auto&& ph1) { return initialJointConfigCb(std::forward<decltype(ph1)>(ph1)); });
 
   XmlRpc::XmlRpcValue location_topic_id;
   if (!getParam(nh_, pnh_, "location_topic_id", location_topic_id)) {
@@ -168,17 +168,14 @@ void HumanoidPathPlannerInterface::setJointConfig(const sensor_msgs::JointState&
   ROS_INFO("%lu joint state updated. Robot dof (except base): %ld", valid, robot_->numberDof() - 3);
 }
 
-void HumanoidPathPlannerInterface::setLocation(const nav_msgs::Odometry::ConstPtr& msg, Configuration_t& config) {
-  setLocation(msg->pose.pose, 0, config);
-}
-
-auto HumanoidPathPlannerInterface::setLocation(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config)
-    -> bool {
+auto HumanoidPathPlannerInterface::setLocationConfig(const geometry_msgs::Pose& msg,
+                                                     const int& type,
+                                                     Configuration_t& config) -> bool {
   if (!isPoseLegal(msg)) {
     return false;
   }
   if (type == 0) {
-    config.head<kPlannerDim>() << msg.position.x, msg.position.y, msg.orientation.w, msg.orientation.x,
+    config.head<kPlanarJointConfigDim>() << msg.position.x, msg.position.y, msg.orientation.w, msg.orientation.x,
         msg.orientation.y, msg.orientation.z;
     return true;
   }
@@ -197,15 +194,16 @@ auto HumanoidPathPlannerInterface::setLocation(const geometry_msgs::Pose& msg, c
 
     geometry_msgs::Pose global_to_target;
     localPoseToGlobalPose(msg, global_to_local, global_to_target);
-    return setLocation(global_to_target, 0, config);
+    return setLocationConfig(global_to_target, 0, config);
   }
   return false;
 }
 
-void HumanoidPathPlannerInterface::initialJointStateCb(const sensor_msgs::JointState::ConstPtr& msg) {
+void HumanoidPathPlannerInterface::initialJointConfigCb(const sensor_msgs::JointState::ConstPtr& msg) {
   if (is_initial_state_set_) {
     return;
   }
+  std::lock_guard<std::mutex> lock(init_mutex_);
   setJointConfig(*msg, q_init_, true);
   is_initial_state_set_ = true;
 }
@@ -214,7 +212,9 @@ void HumanoidPathPlannerInterface::initialLocationCb(const nav_msgs::Odometry::C
   if (is_initial_location_set_) {
     return;
   }
-  setLocation(msg, q_init_);
+  std::lock_guard<std::mutex> lock(init_mutex_);
+  // The pose from odom msg is considered as global
+  setLocationConfig(msg->pose.pose, 0, q_init_);
   ROS_INFO("Initial location updated");
   is_initial_location_set_ = true;
 }
@@ -229,7 +229,6 @@ auto HumanoidPathPlannerInterface::detectCollision(const Configuration_t& config
 void HumanoidPathPlannerInterface::resetInitialConfig() {
   is_initial_state_set_ = false;
   is_initial_location_set_ = false;
-  path_planning_solver_->resetGoalConfigs();
 }
 
 auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathPlanning::Request& req,
@@ -241,45 +240,58 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
     resp.result_status = resp.FAILED;
     return false;
   }
-  if (detectCollision(q_init_)) {
-    ROS_WARN("Initial state is in collision, aborted");
-    resp.result_status = resp.FAILED;
-    return false;
-  }
-  path_planning_solver_->initConfig(std::make_shared<Configuration_t>(q_init_));
 
   Configuration_t q_goal(q_init_);
-  setLocation(req.goal_location, req.goal_type, q_goal);
+  setLocationConfig(req.goal_location, req.goal_type, q_goal);
   setJointConfig(req.goal_state, q_goal, false);
-
   if (detectCollision(q_goal)) {
     ROS_WARN("Goal state is in collision, aborted");
     resp.result_status = resp.FAILED;
     return false;
   }
   path_planning_solver_->addGoalConfig(std::make_shared<Configuration_t>(q_goal));
-  path_planning_solver_->solve();
 
-  // Get the last path from paths, which is an optimized one
-  PathPtr_t optimized_path(path_planning_solver_->paths().back());
-  value_type path_length(optimized_path->length());
-
-  bool success;
-  Configuration_t j_q;
-  vector_t j_dq = vector_t(optimized_path->outputDerivativeSize());
-
-  int intervals = static_cast<int>(path_length / time_step_);
-  ROS_INFO("Planning finished. Path time duration: %f, waypoints #%i, Sending command ...", path_length, intervals);
-
-  std::vector<sensor_msgs::JointState> joint_states;
-  std::vector<geometry_msgs::Twist> vel_cmd;
-  for (int i = 0; i <= intervals; i += 1) {
-    double stamp = i * time_step_;
-    j_q = optimized_path->eval(stamp, success);
-    optimized_path->derivative(j_dq, stamp, 1);
-    if (!success) {
+  do {
+    if (detectCollision(q_init_)) {
+      ROS_WARN("Initial state is in collision, aborted");
+      resp.result_status = resp.FAILED;
       return false;
     }
+    path_planning_solver_->initConfig(std::make_shared<Configuration_t>(q_init_));
+
+    path_planning_solver_->solve();
+
+    // Get the last path from paths, which is an optimized one
+    PathPtr_t optimized_path(path_planning_solver_->paths().back());
+    value_type path_length(optimized_path->length());
+
+    bool success;
+    Configuration_t j_q;
+    vector_t j_dq = vector_t(optimized_path->outputDerivativeSize());
+
+    int intervals = static_cast<int>(path_length / time_step_);
+    ROS_INFO("Planning finished. Path time duration: %f, waypoints #%i, Sending command ...", path_length, intervals);
+
+    std::vector<sensor_msgs::JointState> joint_states;
+    std::vector<geometry_msgs::Twist> vel_cmd;
+    for (int i = 0; i <= intervals; i += 1) {
+      double stamp = i * time_step_;
+      j_q = optimized_path->eval(stamp, success);
+      optimized_path->derivative(j_dq, stamp, 1);
+      if (!success) {
+        return false;
+      }
+      sensor_msgs::JointState state;
+      extractJointCommand(j_q, j_dq, state);
+      joint_states.push_back(state);
+
+      geometry_msgs::Twist twist;
+      extractBaseVelocityCommand(j_dq, twist);
+      vel_cmd.push_back(twist);
+    }
+    j_q = optimized_path->eval(path_length, success);
+    optimized_path->derivative(j_dq, path_length, 1);
+
     sensor_msgs::JointState state;
     extractJointCommand(j_q, j_dq, state);
     joint_states.push_back(state);
@@ -287,22 +299,15 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
     geometry_msgs::Twist twist;
     extractBaseVelocityCommand(j_dq, twist);
     vel_cmd.push_back(twist);
-  }
-  j_q = optimized_path->eval(path_length, success);
-  optimized_path->derivative(j_dq, path_length, 1);
 
-  sensor_msgs::JointState state;
-  extractJointCommand(j_q, j_dq, state);
-  joint_states.push_back(state);
+    publishPlanningResults(joint_states, vel_cmd);
 
-  geometry_msgs::Twist twist;
-  extractBaseVelocityCommand(j_dq, twist);
-  vel_cmd.push_back(twist);
+    resetInitialConfig();
+  } while (!checkGoalReached(q_goal, req.tolerance));
 
-  publishPlanningResults(joint_states, vel_cmd);
+  // Necessary for using the last goal
+  path_planning_solver_->resetGoalConfigs();
   ROS_INFO("Path execution finished.");
-
-  resetInitialConfig();
   return true;
 }
 
@@ -333,6 +338,24 @@ void HumanoidPathPlannerInterface::publishPlanningResults(const std::vector<sens
   }
   geometry_msgs::Twist zero;
   base_vel_cmd_publisher_.publish(zero);
+}
+
+auto HumanoidPathPlannerInterface::checkGoalReached(const hpp_core::Configuration_t& goal, const double& tolerance)
+    -> bool {
+  while (!is_initial_state_set_ || !is_initial_state_set_) {
+    ROS_INFO_THROTTLE(3, "Waiting for initial config update ...");
+  }
+  std::vector<double> goal_location;
+  for (int i = 0; i < kPlanarJointConfigDim; ++i) {
+    goal_location.push_back(goal[i]);
+  }
+  std::vector<double> current_location;
+  for (int i = 0; i < kPlanarJointConfigDim; ++i) {
+    current_location.push_back(q_init_[i]);
+  }
+  size_t violated_i;
+  double error;
+  return allClose<double>(current_location, goal_location, violated_i, error, tolerance);
 }
 
 }  // namespace roport
