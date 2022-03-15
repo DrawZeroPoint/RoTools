@@ -64,10 +64,10 @@ class RosServiceNode : public BT::SyncActionNode {
       service_client_ = node_.serviceClient<ServiceT>(server);
     }
 
-    unsigned msec;
-    getInput("timeout", msec);
+    unsigned milli_sec;
+    getInput("timeout", milli_sec);
     const double kMultiplier = 1e-3;
-    ros::Duration timeout(static_cast<double>(msec) * kMultiplier);
+    ros::Duration timeout(static_cast<double>(milli_sec) * kMultiplier);
 
     bool connected = service_client_.waitForExistence(timeout);
     if (!connected) {

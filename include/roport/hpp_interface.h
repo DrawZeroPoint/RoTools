@@ -48,7 +48,6 @@ class HumanoidPathPlannerInterface {
   ros::Subscriber state_subscriber_;
   ros::Subscriber location_subscriber_;
 
-  ros::ServiceServer set_initial_srv_;
   ros::ServiceServer execute_path_planning_srv_;
 
   ros::Publisher joint_command_publisher_;
@@ -69,7 +68,7 @@ class HumanoidPathPlannerInterface {
   auto setBound() -> bool;
   auto createObstacle() -> bool;
 
-  auto setJointConfig(const std::string& joint_name, const double& joint_value, Configuration_t& config) -> bool;
+  void setJointConfig(const sensor_msgs::JointState& msg, hpp_core::Configuration_t& config, const bool& update_names);
 
   static void setLocation(const nav_msgs::Odometry::ConstPtr& msg, Configuration_t& config);
 
@@ -86,7 +85,7 @@ class HumanoidPathPlannerInterface {
    */
   auto detectCollision(const Configuration_t& config) -> bool;
 
-  auto setInitialSrvCb(roport::ExecuteBinaryAction::Request& req, roport::ExecuteBinaryAction::Response& resp) -> bool;
+  void resetInitialConfig();
 
   auto executePathPlanningSrvCb(roport::ExecutePathPlanning::Request& req, roport::ExecutePathPlanning::Response& resp)
       -> bool;
