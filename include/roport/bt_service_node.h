@@ -55,9 +55,7 @@ class RosServiceNode : public BT::SyncActionNode {
   enum FailureCause { kMissingServer = 0, kFailedCall = 1 };
 
   /// Called when a service call failed. Can be override by the user.
-  virtual auto onFailedRequest(FailureCause /*failure*/) -> NodeStatus {
-    return NodeStatus::FAILURE;
-  }
+  virtual auto onFailedRequest(FailureCause /*failure*/) -> NodeStatus { return NodeStatus::FAILURE; }
 
  protected:
   auto tick() -> BT::NodeStatus override {

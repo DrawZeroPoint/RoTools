@@ -11,8 +11,6 @@
 
 #include <behaviortree_cpp_v3/bt_factory.h>
 
-#include <sstream>
-#include <iostream>
 #include <utility>
 
 // std_msgs/Header

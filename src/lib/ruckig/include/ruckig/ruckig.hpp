@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cmath>
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <limits>
 #include <numeric>

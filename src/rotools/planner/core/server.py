@@ -17,6 +17,7 @@ class PlannerServer(EStop):
     Note that the control is done in a best-effort way, that there is no guarantee that the
     robot will physically visit every state.
     """
+
     def __init__(self, kwargs):
         super(PlannerServer, self).__init__(function_name='Planner execution')
         modes = {0: 'step once', 1: 'loop once', 2: 'infinite loop'}

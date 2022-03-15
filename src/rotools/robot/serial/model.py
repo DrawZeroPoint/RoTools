@@ -35,7 +35,7 @@ def _joint_vel_limits_factory(robot):
         dof = len(robot.kinematic_chain)
     else:
         dof = robot.screw_axes.shape[0]
-    return np.repeat((-np.pi/2, np.pi/2), dof).reshape((2, -1))
+    return np.repeat((-np.pi / 2, np.pi / 2), dof).reshape((2, -1))
 
 
 def _joint_limits_factory(robot):
@@ -43,7 +43,7 @@ def _joint_limits_factory(robot):
         dof = len(robot.kinematic_chain)
     else:
         dof = robot.screw_axes.shape[0]
-    return np.repeat((-2*np.pi, 2*np.pi), dof).reshape((2, -1))
+    return np.repeat((-2 * np.pi, 2 * np.pi), dof).reshape((2, -1))
 
 
 @attrs

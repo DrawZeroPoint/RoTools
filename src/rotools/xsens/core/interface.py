@@ -38,8 +38,8 @@ class Header:
     def __repr__(self):
         s = 'Header {}: \nsample_counter {}, datagram_counter {},\n' \
             'item #{}, body segment #{}, prop #{}, finger segment #{}\n'.format(
-                self.ID_str, self.sample_counter, self.datagram_counter, self.item_counter,
-                self.body_segments_num, self.props_num, self.finger_segments_num)
+            self.ID_str, self.sample_counter, self.datagram_counter, self.item_counter,
+            self.body_segments_num, self.props_num, self.finger_segments_num)
         return s
 
     @property

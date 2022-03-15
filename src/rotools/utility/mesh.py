@@ -53,7 +53,7 @@ class WebotsConverter(object):
             sz = len(c_list)
             point_list = []
             for i in range(0, sz, 3):
-                point_list.append("{} {} {}".format(c_list[i], c_list[i+1], c_list[i+2]))
+                point_list.append("{} {} {}".format(c_list[i], c_list[i + 1], c_list[i + 2]))
             print('Total vertexes #', len(point_list))
             return point_list
 
@@ -96,4 +96,3 @@ class WebotsConverter(object):
                 s_file.write('endloop\n')
                 s_file.write('endfacet\n')
             s_file.write('endsolid Exported from RoTools')
-

@@ -9,6 +9,7 @@ class PlannerInterface(object):
     """
 
     """
+
     def __init__(
             self,
             algorithm_port,

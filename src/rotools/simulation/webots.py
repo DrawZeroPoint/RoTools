@@ -118,4 +118,3 @@ class WebotsInterfaceUR(object):
                     motor.setVelocity(velocity)
                 except ValueError:
                     pass
-

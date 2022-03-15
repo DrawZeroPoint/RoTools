@@ -9,6 +9,7 @@ class DMPInterface(object):
     """
 
     """
+
     def __init__(self, n_dim, k, **kwargs):
         """
         :param n_dim: int

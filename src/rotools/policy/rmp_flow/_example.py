@@ -19,7 +19,6 @@ r = RMPRoot('root')
 leaf1 = CollisionAvoidance('collision_avoidance', r, None, c=x_o, R=r_o, epsilon=0.2)
 leaf2 = GoalAttractorUni('goal_attractor', r, x_g)
 
-
 x = np.array([2.5, -2, -1])  # init position
 x_dot = np.array([0, 0, 0])  # init velocity
 

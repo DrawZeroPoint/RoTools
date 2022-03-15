@@ -92,12 +92,14 @@ class Test(unittest.TestCase):
         print(np.linalg.norm(np.subtract(g_vector_t, g_vector)))
 
         # Calculate the orientation of the CURI arms regarding the base frame
-        qm_left_new = transform.quaternion_matrix([-0.5824349629454723, 0.3718840519259553, 0.2206752352096998, 0.688312549534299])
+        qm_left_new = transform.quaternion_matrix(
+            [-0.5824349629454723, 0.3718840519259553, 0.2206752352096998, 0.688312549534299])
         print(qm_left_new)
         print(np.rad2deg(transform.euler_from_matrix(qm_left_new)))
 
         # FR Wheel joint axis
-        rotated_axis = np.dot(transform.euler_matrix(0, np.deg2rad(-30), np.deg2rad(-45), 'rxyz'), np.array([0., 1., 0., 0.]))
+        rotated_axis = np.dot(transform.euler_matrix(0, np.deg2rad(-30), np.deg2rad(-45), 'rxyz'),
+                              np.array([0., 1., 0., 0.]))
         print(rotated_axis)
 
     def test_quaternion_multiply(self):
