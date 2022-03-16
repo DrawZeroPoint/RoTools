@@ -319,14 +319,14 @@ void HumanoidPathPlannerInterface::extractJointCommand(const Configuration_t& j_
 }
 
 void HumanoidPathPlannerInterface::extractBaseVelocityCommand(const vector_t& j_dq, geometry_msgs::Twist& twist) {
-  twist.linear.x = j_dq[0];
-  twist.linear.y = j_dq[1];
-  twist.angular.z = j_dq[2];
+  twist.linear.x = j_dq[0] * kReductionRatio;
+  twist.linear.y = j_dq[1] * kReductionRatio;
+  twist.angular.z = j_dq[2] * kReductionRatio;
 }
 
 void HumanoidPathPlannerInterface::publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states,
                                                           const std::vector<geometry_msgs::Twist>& vel_cmd) {
-  ros::Duration duration(time_step_);
+  ros::Duration duration(time_step_ / kReductionRatio);
   for (size_t i = 0; i < joint_states.size(); ++i) {
     joint_command_publisher_.publish(joint_states[i]);
     base_vel_cmd_publisher_.publish(vel_cmd[i]);

@@ -63,6 +63,7 @@ class HumanoidPathPlannerInterface {
 
   static constexpr int kPlanarJointConfigDim = 6;
   static constexpr double kDefaultStep = 0.01;  // Time for one step, in second
+  static constexpr double kReductionRatio = 0.2;  // Time for one step, in second
 
   double time_step_;
 
