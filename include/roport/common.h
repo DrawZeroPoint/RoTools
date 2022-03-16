@@ -138,7 +138,7 @@ auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T
 
 template <typename T>
 auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, std::vector<T> tol)
--> bool {
+    -> bool {
   if (tol.size() != first.size() || tol.size() != second.size()) {
     throw std::runtime_error("Vector size mismatch");
   }
