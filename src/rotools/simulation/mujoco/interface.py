@@ -242,6 +242,11 @@ class MuJoCoInterface(Thread):
         return joint_state_msg
 
     def get_odom(self):
+        """Get the robot base's pose wrt the world frame.
+
+        Returns:
+            Odometry
+        """
         odom = Odometry()
         xpos = self.sim.data.get_body_xpos(self.robot_name)
         xquat = self.sim.data.get_body_xquat(self.robot_name)
@@ -259,8 +264,8 @@ class MuJoCoInterface(Thread):
         odom.twist.twist.linear.y = xvelp[1]
         odom.twist.twist.linear.z = xvelp[2]
         odom.twist.twist.angular.x = xvelr[0]
-        odom.twist.twist.angular.x = xvelr[1]
-        odom.twist.twist.angular.x = xvelr[2]
+        odom.twist.twist.angular.y = xvelr[1]
+        odom.twist.twist.angular.z = xvelr[2]
         return odom
 
     def set_joint_command(self, cmd):
