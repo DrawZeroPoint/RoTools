@@ -135,6 +135,23 @@ auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T
   }
   return true;
 }
+
+template <typename T>
+auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, std::vector<T> tol)
+-> bool {
+  if (tol.size() != first.size() || tol.size() != second.size()) {
+    throw std::runtime_error("Vector size mismatch");
+  }
+  for (size_t i = 0; i < first.size(); ++i) {
+    auto error = fabs(first[i] - second[i]);
+    if (error > tol[i]) {
+      violated_i = i;
+      residual = error;
+      return false;
+    }
+  }
+  return true;
+}
 }  // namespace roport
 
 #endif  // ROPORT_COMMON_H

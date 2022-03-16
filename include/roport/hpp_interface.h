@@ -62,7 +62,7 @@ class HumanoidPathPlannerInterface {
   std::map<std::string, std::pair<int, int>> joint_names_;
 
   static constexpr int kPlanarJointConfigDim = 6;
-  static constexpr double kDefaultStep = 0.01;
+  static constexpr double kDefaultStep = 0.01;  // Time for one step, in second
 
   double time_step_;
 
@@ -113,6 +113,10 @@ class HumanoidPathPlannerInterface {
                               const std::vector<geometry_msgs::Twist>& vel_cmd);
 
   auto checkGoalReached(const hpp_core::Configuration_t& goal, const double& tolerance) -> bool;
+
+  void getBaseVelocity(const hpp_core::Configuration_t& j_q,
+                       const hpp_core::Configuration_t& j_q_0,
+                       hpp_core::vector_t& j_dq);
 };
 
 }  // namespace roport

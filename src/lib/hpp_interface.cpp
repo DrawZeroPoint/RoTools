@@ -174,9 +174,14 @@ auto HumanoidPathPlannerInterface::setLocationConfig(const geometry_msgs::Pose& 
   if (!isPoseLegal(msg)) {
     return false;
   }
+  Eigen::Vector4d quat_original(config[3], config[4], config[5], config[2]);
+  Eigen::Vector4d quat_new(msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w);
+  if (quat_original.dot(quat_new) < 0.) {
+    quat_new = -quat_new;
+  }
   if (type == 0) {
-    config.head<kPlanarJointConfigDim>() << msg.position.x, msg.position.y, msg.orientation.w, msg.orientation.x,
-        msg.orientation.y, msg.orientation.z;
+    config.head<kPlanarJointConfigDim>() << msg.position.x, msg.position.y, quat_new.w(), quat_new.x(), quat_new.y(),
+        quat_new.z();
     return true;
   }
   if (type == 1) {
@@ -187,10 +192,10 @@ auto HumanoidPathPlannerInterface::setLocationConfig(const geometry_msgs::Pose& 
     geometry_msgs::Pose global_to_local;
     global_to_local.position.x = config[0];
     global_to_local.position.y = config[1];
-    global_to_local.orientation.w = config[2];
-    global_to_local.orientation.x = config[3];
-    global_to_local.orientation.y = config[4];
-    global_to_local.orientation.z = config[5];
+    global_to_local.orientation.w = quat_original.w();
+    global_to_local.orientation.x = quat_original.x();
+    global_to_local.orientation.y = quat_original.y();
+    global_to_local.orientation.z = quat_original.z();
 
     geometry_msgs::Pose global_to_target;
     localPoseToGlobalPose(msg, global_to_local, global_to_target);
@@ -267,6 +272,7 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
 
     bool success;
     Configuration_t j_q;
+    // j_dq 's size equals the dof
     vector_t j_dq = vector_t(optimized_path->outputDerivativeSize());
 
     int intervals = static_cast<int>(path_length / time_step_);
@@ -289,16 +295,6 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
       extractBaseVelocityCommand(j_dq, twist);
       vel_cmd.push_back(twist);
     }
-    j_q = optimized_path->eval(path_length, success);
-    optimized_path->derivative(j_dq, path_length, 1);
-
-    sensor_msgs::JointState state;
-    extractJointCommand(j_q, j_dq, state);
-    joint_states.push_back(state);
-
-    geometry_msgs::Twist twist;
-    extractBaseVelocityCommand(j_dq, twist);
-    vel_cmd.push_back(twist);
 
     publishPlanningResults(joint_states, vel_cmd);
 
@@ -355,7 +351,20 @@ auto HumanoidPathPlannerInterface::checkGoalReached(const hpp_core::Configuratio
   }
   size_t violated_i;
   double error;
-  return allClose<double>(current_location, goal_location, violated_i, error, tolerance);
+  std::vector<double> tol;
+  tol.resize(current_location.size());
+  std::fill(tol.begin(), tol.begin() + 2, tolerance);
+  std::fill(tol.begin() + 2, tol.end(), kQuaternionOrientationTolerance);
+  return allClose<double>(current_location, goal_location, violated_i, error, tol);
+}
+
+void HumanoidPathPlannerInterface::getBaseVelocity(const hpp_core::Configuration_t& j_q,
+                                                   const hpp_core::Configuration_t& j_q_0,
+                                                   hpp_core::vector_t& j_dq) {
+  double vel_x = (j_q[0] - j_q_0[0]) / kDefaultStep;
+  double vel_y = (j_q[1] - j_q_0[1]) / kDefaultStep;
+  j_dq[0] = fabs(vel_x) > fabs(j_dq[0]) ? j_dq[0] : vel_x;
+  j_dq[1] = fabs(vel_y) > fabs(j_dq[1]) ? j_dq[1] : vel_y;
 }
 
 }  // namespace roport
