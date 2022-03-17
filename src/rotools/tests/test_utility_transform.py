@@ -58,10 +58,11 @@ class Test(unittest.TestCase):
         Commonly used rotation quaternions along z axis
         45 deg: [0.         0.         0.38268343 0.92387953]
         90 deg: [0.         0.         0.70710678 0.70710678]
+        135 deg: [0.         0.         0.92387953 0.38268343]
         180 deg: [0.000000e+00 0.000000e+00 1.000000e+00 6.123234e-17]
         270 deg: [ 0.          0.         -0.70710678  0.70710678]
         """
-        R1 = transform.rotation_matrix(45 * np.pi / 180., (0, 0, 1))
+        R1 = transform.rotation_matrix(135 * np.pi / 180., (0, 0, 1))
         q1 = transform.quaternion_from_matrix(R1)
         print('q1\n', q1)
 

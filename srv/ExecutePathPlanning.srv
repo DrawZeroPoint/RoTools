@@ -6,7 +6,8 @@
 #            LOCAL: The goal location is relative to the robot base frame
 # goal_state: Goal joint state
 # goal_location: Robot base goal location
-# tolerance [opt]: Tolerance for considering the goal location has been reached, default 0.01 m/rad
+# pos_tolerance [opt]: Position tolerance for considering the goal location has been reached, default 0.01 m
+# ori_tolerance [opt]: Orientation (in quaternion) tolerance, default 0.02 for all coefficients
 
 std_msgs/Header header
 uint8 GLOBAL=0
@@ -15,7 +16,8 @@ uint8 LOCAL=2
 uint8 goal_type
 sensor_msgs/JointState goal_state
 geometry_msgs/Pose goal_location
-float64 tolerance
+float64 pos_tolerance
+float64 ori_tolerance
 ---
 uint8 SUCCEEDED=0
 uint8 FAILED=1

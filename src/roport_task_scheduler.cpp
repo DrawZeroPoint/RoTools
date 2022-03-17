@@ -424,8 +424,8 @@ class ExecutePathPlanning : public RosServiceNode<roport::ExecutePathPlanning> {
       : RosServiceNode<roport::ExecutePathPlanning>(node_handle, name, cfg) {}
 
   static auto providedPorts() -> BT::PortsList {
-    return {InputPort<Header>("header"), InputPort<int>("goal_type"), InputPort<JointState>("goal_state"),
-            InputPort<Pose>("goal_location"), InputPort<double>("tolerance")};
+    return {InputPort<Header>("header"),      InputPort<int>("goal_type"),        InputPort<JointState>("goal_state"),
+            InputPort<Pose>("goal_location"), InputPort<double>("pos_tolerance"), InputPort<double>("ori_tolerance")};
   }
 
   void onSendRequest(RequestType& request) override {
@@ -441,7 +441,8 @@ class ExecutePathPlanning : public RosServiceNode<roport::ExecutePathPlanning> {
     getInput<JointState>("goal_state", goal_state);
     request.goal_state = goal_state.toROS();
 
-    getInput<double>("tolerance", request.tolerance);
+    getInput<double>("pos_tolerance", request.pos_tolerance);
+    getInput<double>("ori_tolerance", request.ori_tolerance);
   }
 };
 

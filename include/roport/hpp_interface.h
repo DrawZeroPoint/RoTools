@@ -31,6 +31,41 @@ namespace hpp_core = hpp::core;
 namespace hpp_pin = hpp::pinocchio;
 
 namespace roport {
+
+struct RootJoint {
+  static constexpr int kPlanarDOF = 3;
+  static constexpr int kPlanarConfigDim = 4;
+  static constexpr int kPlanarPositionConfigDim = 2;     // p_x, p_y
+  static constexpr int kPlanarOrientationConfigDim = 2;  // ori_w, ori_z
+
+  auto getDOF(const std::string& name) -> int {
+    if (name == planar_joint_name) {
+      return kPlanarDOF;
+    }
+  }
+
+  auto getConfigDim(const std::string& name) -> int {
+    if (name == planar_joint_name) {
+      return kPlanarConfigDim;
+    }
+  }
+  auto getPositionConfigDim(const std::string& name) -> int {
+    if (name == planar_joint_name) {
+      return kPlanarPositionConfigDim;
+    }
+  }
+  auto getOrientationConfigDim(const std::string& name) -> int {
+    if (name == planar_joint_name) {
+      return kPlanarOrientationConfigDim;
+    }
+  }
+
+ private:
+  const std::string fixed_joint_name = "anchor";
+  const std::string planar_joint_name = "planar";
+  const std::string float_joint_name = "freeflyer";
+};
+
 class HumanoidPathPlannerInterface {
  public:
   HumanoidPathPlannerInterface(const ros::NodeHandle& node_handle, const ros::NodeHandle& pnh);
@@ -44,6 +79,9 @@ class HumanoidPathPlannerInterface {
 
   hpp_core::DevicePtr_t robot_;
   hpp_core::DevicePtr_t obstacle_;
+
+  RootJoint root_joint_;
+  std::string root_joint_type_;
 
   hpp_core::Configuration_t q_init_;
 
@@ -61,9 +99,16 @@ class HumanoidPathPlannerInterface {
   // Configuration
   std::map<std::string, std::pair<int, int>> joint_names_;
 
-  static constexpr int kPlanarJointConfigDim = 6;
+  static constexpr int kRootJointConfigDim = 4;
+  static constexpr int kRootJointPositionConfigDim = 2;
+  static constexpr int kRootJointOrientationConfigDim = 2;
+
   static constexpr double kDefaultStep = 0.01;  // Time for one step, in second
-  static constexpr double kReductionRatio = 0.2;  // Time for one step, in second
+  static constexpr double kReductionRatio = 0.4;
+
+  static constexpr double kOrientationTolerance = 0.015;
+
+  static constexpr int kInitializeTimes = 10;
 
   double time_step_;
 
@@ -82,7 +127,7 @@ class HumanoidPathPlannerInterface {
    */
   void setJointConfig(const sensor_msgs::JointState& msg, hpp_core::Configuration_t& config, const bool& update_names);
 
-  static auto setLocationConfig(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config) -> bool;
+  auto setLocationConfig(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config) -> bool;
 
   void initialJointConfigCb(const sensor_msgs::JointState::ConstPtr& msg);
 
@@ -113,11 +158,8 @@ class HumanoidPathPlannerInterface {
   void publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states,
                               const std::vector<geometry_msgs::Twist>& vel_cmd);
 
-  auto checkGoalReached(const hpp_core::Configuration_t& goal, const double& tolerance) -> bool;
-
-  void getBaseVelocity(const hpp_core::Configuration_t& j_q,
-                       const hpp_core::Configuration_t& j_q_0,
-                       hpp_core::vector_t& j_dq);
+  auto checkGoalReached(const hpp_core::Configuration_t& goal, const double& pos_tolerance, const double& ori_tolerance)
+      -> bool;
 };
 
 }  // namespace roport

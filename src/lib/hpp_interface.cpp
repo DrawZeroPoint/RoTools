@@ -81,18 +81,25 @@ auto HumanoidPathPlannerInterface::createRobot() -> bool {
   if (!getParam(nh_, pnh_, "robot_name", robot_name)) {
     return false;
   }
+
+  XmlRpc::XmlRpcValue root_joint;
+  if (!getParam(nh_, pnh_, "root_joint", root_joint)) {
+    return false;
+  }
+  root_joint_type_ = std::string(root_joint);
+
   XmlRpc::XmlRpcValue robot_pkg_name;
   if (!getParam(nh_, pnh_, "robot_pkg_name", robot_pkg_name)) {
     return false;
   }
+
   XmlRpc::XmlRpcValue model_name;
   if (!getParam(nh_, pnh_, "model_name", model_name)) {
     return false;
   }
 
   robot_ = hpp_pin::Device::create(std::string(robot_name));
-  // Only support planar root
-  hpp_pin::urdf::loadRobotModel(robot_, "planar", robot_pkg_name, model_name, "", "");
+  hpp_pin::urdf::loadRobotModel(robot_, root_joint_type_, robot_pkg_name, model_name, "", "");
   robot_->controlComputation(static_cast<Computation_t>(JOINT_POSITION | JACOBIAN));
   q_init_ = robot_->currentConfiguration();
   return true;
@@ -164,8 +171,8 @@ void HumanoidPathPlannerInterface::setJointConfig(const sensor_msgs::JointState&
   }
   q_init_[robot_->getJointByName("panda_left_joint4")->rankInConfiguration()] = -1.5;
   q_init_[robot_->getJointByName("panda_right_joint4")->rankInConfiguration()] = -1.5;
-  // TODO -3 is only true for planar root joint
-  ROS_INFO("%lu joint state updated. Robot dof (except base): %ld", valid, robot_->numberDof() - 3);
+  ROS_INFO("%lu joint state updated. Robot dof (except base): %ld", valid,
+           robot_->numberDof() - root_joint_.getDOF(root_joint_type_));
 }
 
 auto HumanoidPathPlannerInterface::setLocationConfig(const geometry_msgs::Pose& msg,
@@ -174,28 +181,38 @@ auto HumanoidPathPlannerInterface::setLocationConfig(const geometry_msgs::Pose& 
   if (!isPoseLegal(msg)) {
     return false;
   }
-  Eigen::Vector4d quat_original(config[3], config[4], config[5], config[2]);
-  Eigen::Vector4d quat_new(msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w);
-  if (quat_original.dot(quat_new) < 0.) {
-    quat_new = -quat_new;
+  Eigen::Quaterniond quat_curr(config[2], 0, 0, config[3]);
+  Eigen::Quaterniond quat_cmd(msg.orientation.w, msg.orientation.x, msg.orientation.y, msg.orientation.z);
+  auto angles = quat_cmd.toRotationMatrix().eulerAngles(2, 1, 0);
+  auto yaw = angles[0] * 2;
+  if (yaw > M_PI) {
+    yaw = yaw - M_PI * 2.;
+  }
+  Eigen::Quaterniond quat_new = Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX()) *
+                                Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY()) *
+                                Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+
+  if (quat_curr.dot(quat_new) < 0.) {
+    quat_new = quat_new.conjugate();
   }
   if (type == 0) {
-    config.head<kPlanarJointConfigDim>() << msg.position.x, msg.position.y, quat_new.w(), quat_new.x(), quat_new.y(),
-        quat_new.z();
+    ROS_ASSERT(kRootJointConfigDim == root_joint_.getConfigDim(root_joint_type_));
+    config.head<kRootJointConfigDim>() << msg.position.x, msg.position.y, quat_new.w(), quat_new.z();
     return true;
   }
   if (type == 1) {
-    config.head<2>() << config[0] + msg.position.x, config[1] + msg.position.y;
+    ROS_ASSERT(kRootJointPositionConfigDim == root_joint_.getPositionConfigDim(root_joint_type_));
+    config.head<kRootJointPositionConfigDim>() << config[0] + msg.position.x, config[1] + msg.position.y;
     return true;
   }
   if (type == 2) {
     geometry_msgs::Pose global_to_local;
     global_to_local.position.x = config[0];
     global_to_local.position.y = config[1];
-    global_to_local.orientation.w = quat_original.w();
-    global_to_local.orientation.x = quat_original.x();
-    global_to_local.orientation.y = quat_original.y();
-    global_to_local.orientation.z = quat_original.z();
+    global_to_local.orientation.w = config[2];
+    global_to_local.orientation.x = 0.;
+    global_to_local.orientation.y = 0.;
+    global_to_local.orientation.z = config[3];
 
     geometry_msgs::Pose global_to_target;
     localPoseToGlobalPose(msg, global_to_local, global_to_target);
@@ -241,6 +258,11 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
   if (is_initial_location_set_ && is_initial_state_set_) {
     ROS_INFO("Path planning started ...");
   } else {
+    int count = kInitializeTimes;
+    while (count > 0) {
+      ros::spinOnce();
+      count--;
+    }
     ROS_WARN("Initial state not set (location: %i, joint state: %i)", is_initial_location_set_, is_initial_state_set_);
     resp.result_status = resp.FAILED;
     return false;
@@ -299,7 +321,7 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
     publishPlanningResults(joint_states, vel_cmd);
 
     resetInitialConfig();
-  } while (!checkGoalReached(q_goal, req.tolerance));
+  } while (!checkGoalReached(q_goal, req.pos_tolerance, req.ori_tolerance));
 
   // Necessary for using the last goal
   path_planning_solver_->resetGoalConfigs();
@@ -326,45 +348,40 @@ void HumanoidPathPlannerInterface::extractBaseVelocityCommand(const vector_t& j_
 
 void HumanoidPathPlannerInterface::publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states,
                                                           const std::vector<geometry_msgs::Twist>& vel_cmd) {
+  // Since all vel_cmd are the same, we only use the first
+  base_vel_cmd_publisher_.publish(vel_cmd[0]);
+
   ros::Duration duration(time_step_ / kReductionRatio);
-  for (size_t i = 0; i < joint_states.size(); ++i) {
-    joint_command_publisher_.publish(joint_states[i]);
-    base_vel_cmd_publisher_.publish(vel_cmd[i]);
+  for (const auto& joint_state : joint_states) {
+    joint_command_publisher_.publish(joint_state);
     duration.sleep();
   }
+  // Stop the movement
   geometry_msgs::Twist zero;
   base_vel_cmd_publisher_.publish(zero);
 }
 
-auto HumanoidPathPlannerInterface::checkGoalReached(const hpp_core::Configuration_t& goal, const double& tolerance)
-    -> bool {
+auto HumanoidPathPlannerInterface::checkGoalReached(const hpp_core::Configuration_t& goal,
+                                                    const double& pos_tolerance,
+                                                    const double& ori_tolerance) -> bool {
   while (!is_initial_state_set_ || !is_initial_state_set_) {
     ROS_INFO_THROTTLE(3, "Waiting for initial config update ...");
   }
   std::vector<double> goal_location;
-  for (int i = 0; i < kPlanarJointConfigDim; ++i) {
+  for (int i = 0; i < kRootJointConfigDim; ++i) {
     goal_location.push_back(goal[i]);
   }
   std::vector<double> current_location;
-  for (int i = 0; i < kPlanarJointConfigDim; ++i) {
+  for (int i = 0; i < kRootJointConfigDim; ++i) {
     current_location.push_back(q_init_[i]);
   }
   size_t violated_i;
   double error;
   std::vector<double> tol;
   tol.resize(current_location.size());
-  std::fill(tol.begin(), tol.begin() + 2, tolerance);
-  std::fill(tol.begin() + 2, tol.end(), kQuaternionOrientationTolerance);
+  std::fill(tol.begin(), tol.begin() + root_joint_.getPositionConfigDim(root_joint_type_), pos_tolerance);
+  std::fill(tol.begin() + root_joint_.getPositionConfigDim(root_joint_type_), tol.end(), ori_tolerance);
   return allClose<double>(current_location, goal_location, violated_i, error, tol);
-}
-
-void HumanoidPathPlannerInterface::getBaseVelocity(const hpp_core::Configuration_t& j_q,
-                                                   const hpp_core::Configuration_t& j_q_0,
-                                                   hpp_core::vector_t& j_dq) {
-  double vel_x = (j_q[0] - j_q_0[0]) / kDefaultStep;
-  double vel_y = (j_q[1] - j_q_0[1]) / kDefaultStep;
-  j_dq[0] = fabs(vel_x) > fabs(j_dq[0]) ? j_dq[0] : vel_x;
-  j_dq[1] = fabs(vel_y) > fabs(j_dq[1]) ? j_dq[1] : vel_y;
 }
 
 }  // namespace roport

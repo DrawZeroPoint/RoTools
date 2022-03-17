@@ -9,7 +9,7 @@ auto main(int argc, char** argv) -> int {
 
   roport::HumanoidPathPlannerInterface hpp_interface(nh, pnh);
 
-  ros::AsyncSpinner spinner(2);
+  ros::AsyncSpinner spinner(4);
   spinner.start();
   ros::waitForShutdown();
 
