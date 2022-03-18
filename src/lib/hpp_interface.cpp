@@ -180,23 +180,24 @@ auto HumanoidPathPlannerInterface::setLocationConfig(const geometry_msgs::Pose& 
   if (!isPoseLegal(msg)) {
     return false;
   }
-  Eigen::Quaterniond quat_curr(config[2], 0, 0, config[3]);
   Eigen::Quaterniond quat_cmd(msg.orientation.w, msg.orientation.x, msg.orientation.y, msg.orientation.z);
-  auto angles = quat_cmd.toRotationMatrix().eulerAngles(2, 1, 0);
-  auto yaw = angles[0] * 2;
-  if (yaw > M_PI) {
-    yaw = yaw - M_PI * 2.;
-  }
-  Eigen::Quaterniond quat_new = Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX()) *
-                                Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY()) *
-                                Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+  double theta_cmd = quat_cmd.toRotationMatrix().eulerAngles(2, 1, 0)[0];
 
-  if (quat_curr.dot(quat_new) < 0.) {
-    quat_new = quat_new.conjugate();
-  }
+  //  auto angles = quat_cmd.toRotationMatrix().eulerAngles(2, 1, 0);
+  //  auto yaw = angles[0] * 2;
+  //  if (yaw > M_PI) {
+  //    yaw = yaw - M_PI * 2.;
+  //  }
+  //  Eigen::Quaterniond quat_new = Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX()) *
+  //                                Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY()) *
+  //                                Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+  //  if (quat_curr.dot(quat_new) < 0.) {
+  //    quat_new = quat_new.conjugate();
+  //  }
+
   if (type == 0) {
     ROS_ASSERT(kRootJointConfigDim == root_joint_.getConfigDim(root_joint_type_));
-    config.head<kRootJointConfigDim>() << msg.position.x, msg.position.y, quat_new.w(), quat_new.z();
+    config.head<kRootJointConfigDim>() << msg.position.x, msg.position.y, cos(theta_cmd), cos(theta_cmd);
     return true;
   }
   if (type == 1) {
@@ -205,13 +206,17 @@ auto HumanoidPathPlannerInterface::setLocationConfig(const geometry_msgs::Pose& 
     return true;
   }
   if (type == 2) {
+    double theta_curr = atan2(config[3], config[2]);  // theta = atan2(sin(theta), cos(theta)) in (-pi, pi]
+    Eigen::Quaterniond quat_curr = Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX()) *
+                                   Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY()) *
+                                   Eigen::AngleAxisd(theta_curr, Eigen::Vector3d::UnitZ());
     geometry_msgs::Pose global_to_local;
     global_to_local.position.x = config[0];
     global_to_local.position.y = config[1];
-    global_to_local.orientation.w = config[2];
+    global_to_local.orientation.w = quat_curr.w();
     global_to_local.orientation.x = 0.;
     global_to_local.orientation.y = 0.;
-    global_to_local.orientation.z = config[3];
+    global_to_local.orientation.z = quat_curr.z();
 
     geometry_msgs::Pose global_to_target;
     localPoseToGlobalPose(msg, global_to_local, global_to_target);
