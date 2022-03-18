@@ -84,9 +84,16 @@ class HumanoidPathPlannerInterface {
   std::string root_joint_type_;
 
   hpp_core::Configuration_t q_init_;
+  hpp_core::Configuration_t q_current_;
+  hpp_core::Configuration_t q_goal_;
 
-  ros::Subscriber state_subscriber_;
-  ros::Subscriber location_subscriber_;
+  double position_tolerance_;
+  double orientation_tolerance_;
+
+  ros::Subscriber initial_state_subscriber_;
+  ros::Subscriber current_state_subscriber_;
+  ros::Subscriber initial_location_subscriber_;
+  ros::Subscriber current_location_subscriber_;
 
   ros::ServiceServer execute_path_planning_srv_;
 
@@ -106,9 +113,11 @@ class HumanoidPathPlannerInterface {
   static constexpr double kDefaultStep = 0.01;  // Time for one step, in second
   static constexpr double kReductionRatio = 0.4;
 
+  static constexpr double kPositionTolerance = 0.01;
   static constexpr double kOrientationTolerance = 0.015;
 
   static constexpr int kInitializeTimes = 10;
+  static constexpr double kInitializeInterval = 0.1;
 
   double time_step_;
 
@@ -124,14 +133,20 @@ class HumanoidPathPlannerInterface {
    * @param config Output config.
    * @param update_names If true, will update internal joint names, these names will be controlled by the planner.
    *                     Always be true for initial config, false for goal config.
+   * @return The number of joints set.
    */
-  void setJointConfig(const sensor_msgs::JointState& msg, hpp_core::Configuration_t& config, const bool& update_names);
+  auto setJointConfig(const sensor_msgs::JointState& msg, hpp_core::Configuration_t& config, const bool& update_names)
+      -> size_t;
 
   auto setLocationConfig(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config) -> bool;
 
   void initialJointConfigCb(const sensor_msgs::JointState::ConstPtr& msg);
 
+  void currentJointConfigCb(const sensor_msgs::JointState::ConstPtr& msg);
+
   void initialLocationCb(const nav_msgs::Odometry::ConstPtr& msg);
+
+  void currentLocationCb(const nav_msgs::Odometry::ConstPtr& msg);
 
   /**
    * Check whether the provided config will cause collision.
@@ -158,8 +173,7 @@ class HumanoidPathPlannerInterface {
   void publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states,
                               const std::vector<geometry_msgs::Twist>& vel_cmd);
 
-  auto checkGoalReached(const hpp_core::Configuration_t& goal, const double& pos_tolerance, const double& ori_tolerance)
-      -> bool;
+  auto checkGoalLocationReached() -> bool;
 };
 
 }  // namespace roport
