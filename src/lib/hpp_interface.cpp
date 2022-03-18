@@ -47,9 +47,6 @@ HumanoidPathPlannerInterface::HumanoidPathPlannerInterface(const ros::NodeHandle
   if (!getParam(nh_, pnh_, "state_topic_id", state_topic_id)) {
     return;
   }
-  initial_state_subscriber_ = nh_.subscribe<sensor_msgs::JointState>(
-      state_topic_id, 1, [this](auto&& ph1) { return initialJointConfigCb(std::forward<decltype(ph1)>(ph1)); });
-
   current_state_subscriber_ = nh_.subscribe<sensor_msgs::JointState>(
       state_topic_id, 1, [this](auto&& ph1) { return currentJointConfigCb(std::forward<decltype(ph1)>(ph1)); });
 
@@ -57,9 +54,6 @@ HumanoidPathPlannerInterface::HumanoidPathPlannerInterface(const ros::NodeHandle
   if (!getParam(nh_, pnh_, "location_topic_id", location_topic_id)) {
     return;
   }
-  initial_location_subscriber_ = nh_.subscribe<nav_msgs::Odometry>(
-      location_topic_id, 1, [this](auto&& ph1) { return initialLocationCb(std::forward<decltype(ph1)>(ph1)); });
-
   current_location_subscriber_ = nh_.subscribe<nav_msgs::Odometry>(
       location_topic_id, 1, [this](auto&& ph1) { return currentLocationCb(std::forward<decltype(ph1)>(ph1)); });
 
@@ -109,7 +103,6 @@ auto HumanoidPathPlannerInterface::createRobot() -> bool {
   robot_ = hpp_pin::Device::create(std::string(robot_name));
   hpp_pin::urdf::loadRobotModel(robot_, root_joint_type_, robot_pkg_name, model_name, "", "");
   robot_->controlComputation(static_cast<Computation_t>(JOINT_POSITION | JACOBIAN));
-  q_init_ = robot_->currentConfiguration();
   q_current_ = robot_->currentConfiguration();
   return true;
 }
@@ -227,34 +220,18 @@ auto HumanoidPathPlannerInterface::setLocationConfig(const geometry_msgs::Pose& 
   return false;
 }
 
-void HumanoidPathPlannerInterface::initialJointConfigCb(const sensor_msgs::JointState::ConstPtr& msg) {
-  if (is_initial_state_set_) {
-    return;
-  }
-  std::lock_guard<std::mutex> lock(init_mutex_);
-  size_t valid = setJointConfig(*msg, q_init_, true);
-  is_initial_state_set_ = true;
-  ROS_INFO("Initial %lu joint state updated. Robot dof (except base): %ld", valid,
-           robot_->numberDof() - root_joint_.getDOF(root_joint_type_));
-}
-
 void HumanoidPathPlannerInterface::currentJointConfigCb(const sensor_msgs::JointState::ConstPtr& msg) {
-  setJointConfig(*msg, q_current_, false);
-}
-
-void HumanoidPathPlannerInterface::initialLocationCb(const nav_msgs::Odometry::ConstPtr& msg) {
-  if (is_initial_location_set_) {
-    return;
+  if (!is_initial_state_set_) {
+    setJointConfig(*msg, q_current_, true);
+    is_initial_state_set_ = true;
+  } else {
+    setJointConfig(*msg, q_current_, false);
   }
-  std::lock_guard<std::mutex> lock(init_mutex_);
-  // The pose from odom msg is considered as global
-  setLocationConfig(msg->pose.pose, 0, q_init_);
-  is_initial_location_set_ = true;
-  ROS_INFO("Initial location updated");
 }
 
 void HumanoidPathPlannerInterface::currentLocationCb(const nav_msgs::Odometry::ConstPtr& msg) {
   setLocationConfig(msg->pose.pose, 0, q_current_);
+  is_initial_location_set_ = true;
 }
 
 auto HumanoidPathPlannerInterface::detectCollision(const Configuration_t& config) -> bool {
@@ -291,7 +268,7 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
     }
   }
 
-  q_goal_ = q_init_;
+  q_goal_ = q_current_;
   setLocationConfig(req.goal_location, req.goal_type, q_goal_);
   setJointConfig(req.goal_state, q_goal_, false);
   position_tolerance_ = req.pos_tolerance;
@@ -305,13 +282,12 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
   path_planning_solver_->addGoalConfig(std::make_shared<Configuration_t>(q_goal_));
 
   do {
-    if (detectCollision(q_init_)) {
+    if (detectCollision(q_current_)) {
       ROS_WARN("Initial state is in collision, aborted");
       resp.result_status = resp.FAILED;
       return false;
     }
-    path_planning_solver_->initConfig(std::make_shared<Configuration_t>(q_init_));
-
+    path_planning_solver_->initConfig(std::make_shared<Configuration_t>(q_current_));
     path_planning_solver_->solve();
 
     // Get the last path from paths, which is an optimized one
@@ -379,11 +355,15 @@ void HumanoidPathPlannerInterface::publishPlanningResults(const std::vector<sens
   geometry_msgs::Twist zero;
 
   ros::Duration duration(time_step_ / kReductionRatio);
+  bool goal_location_reached = false;
   for (const auto& joint_state : joint_states) {
     joint_command_publisher_.publish(joint_state);
-    if (checkGoalLocationReached()) {
-      // Early stop
-      base_vel_cmd_publisher_.publish(zero);
+    if (!goal_location_reached) {
+      if (checkGoalLocationReached()) {
+        // Early stop
+        base_vel_cmd_publisher_.publish(zero);
+        goal_location_reached = true;
+      }
     }
     duration.sleep();
   }

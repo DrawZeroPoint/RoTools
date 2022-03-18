@@ -35,8 +35,8 @@ namespace roport {
 struct RootJoint {
   static constexpr int kPlanarDOF = 3;
   static constexpr int kPlanarConfigDim = 4;
-  static constexpr int kPlanarPositionConfigDim = 2;     // p_x, p_y
-  static constexpr int kPlanarOrientationConfigDim = 2;  // ori_w, ori_z
+  static constexpr int kPlanarPositionConfigDim = 2;                                               // p_x, p_y
+  static constexpr int kPlanarOrientationConfigDim = kPlanarConfigDim - kPlanarPositionConfigDim;  // ori_w, ori_z
 
   auto getDOF(const std::string& name) -> int {
     if (name == planar_joint_name) {
@@ -83,16 +83,13 @@ class HumanoidPathPlannerInterface {
   RootJoint root_joint_;
   std::string root_joint_type_;
 
-  hpp_core::Configuration_t q_init_;
   hpp_core::Configuration_t q_current_;
   hpp_core::Configuration_t q_goal_;
 
   double position_tolerance_;
   double orientation_tolerance_;
 
-  ros::Subscriber initial_state_subscriber_;
   ros::Subscriber current_state_subscriber_;
-  ros::Subscriber initial_location_subscriber_;
   ros::Subscriber current_location_subscriber_;
 
   ros::ServiceServer execute_path_planning_srv_;
@@ -108,7 +105,6 @@ class HumanoidPathPlannerInterface {
 
   static constexpr int kRootJointConfigDim = 4;
   static constexpr int kRootJointPositionConfigDim = 2;
-  static constexpr int kRootJointOrientationConfigDim = 2;
 
   static constexpr double kDefaultStep = 0.01;  // Time for one step, in second
   static constexpr double kReductionRatio = 0.4;
@@ -140,11 +136,7 @@ class HumanoidPathPlannerInterface {
 
   auto setLocationConfig(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config) -> bool;
 
-  void initialJointConfigCb(const sensor_msgs::JointState::ConstPtr& msg);
-
   void currentJointConfigCb(const sensor_msgs::JointState::ConstPtr& msg);
-
-  void initialLocationCb(const nav_msgs::Odometry::ConstPtr& msg);
 
   void currentLocationCb(const nav_msgs::Odometry::ConstPtr& msg);
 
