@@ -20,6 +20,7 @@
 #include <roport/ExecuteGroupPose.h>
 #include <roport/ExecuteGroupPosition.h>
 #include <roport/ExecuteGroupShift.h>
+#include <roport/ExecuteJointPosition.h>
 #include <roport/ExecuteMirroredPose.h>
 #include <roport/ExecutePathPlanning.h>
 #include <roport/ExecuteRemoveCollision.h>
@@ -500,6 +501,26 @@ class ExecuteGroupShift : public RosServiceNode<roport::ExecuteGroupShift> {
   }
 };
 
+class ExecuteJointPosition : public RosServiceNode<roport::ExecuteJointPosition> {
+ public:
+  ExecuteJointPosition(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteJointPosition>(node_handle, name, cfg) {}
+
+  static auto providedPorts() -> BT::PortsList {
+    return {
+        InputPort<JointState>("goal_state"),
+        InputPort<double>("speed_ratio"),
+    };
+  }
+
+  void onSendRequest(RequestType& request) override {
+    JointState goal_state{};
+    getInput<JointState>("goal_state", goal_state);
+
+    getInput<double>("speed_ratio", request.speed_ratio);
+  }
+};
+
 class ExecuteRemoveCollision : public RosServiceNode<roport::ExecuteRemoveCollision> {
  public:
   ExecuteRemoveCollision(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
@@ -667,6 +688,7 @@ auto main(int argc, char** argv) -> int {
   BT::registerRosService<BT::ExecutePathPlanning>(factory, "ExecutePathPlanning", node_handle);
   BT::registerRosService<BT::ExecuteGroupPosition>(factory, "ExecuteGroupPosition", node_handle);
   BT::registerRosService<BT::ExecuteGroupShift>(factory, "ExecuteGroupShift", node_handle);
+  BT::registerRosService<BT::ExecuteJointPosition>(factory, "ExecuteJointPosition", node_handle);
   BT::registerRosService<BT::ExecuteRemoveCollision>(factory, "ExecuteRemoveCollision", node_handle);
   BT::registerRosService<BT::GetPreparePose>(factory, "GetPreparePose", node_handle);
   BT::registerRosService<BT::GetTransformedPose>(factory, "GetTransformedPose", node_handle);

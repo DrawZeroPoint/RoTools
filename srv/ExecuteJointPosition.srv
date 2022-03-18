@@ -1,0 +1,12 @@
+# Execute whole-body collision aware path planning using HPP
+
+# Requests
+# goal_state: Goal joint state
+# pos_tolerance [opt]: Position tolerance for considering the goal location has been reached, default 0.01 m
+
+sensor_msgs/JointState goal_state
+float64 speed_ratio
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

@@ -66,6 +66,11 @@
             <input_port name="service_name" default="execute_group_position"/>
             <input_port name="tolerance" default="0.01"/>
         </Action>
+        <Action ID="ExecuteJointPosition">
+            <input_port name="goal_state"/>
+            <input_port name="service_name" default="execute_joint_position"/>
+            <input_port name="speed_ratio" default="0.1"/>
+        </Action>
         <Action ID="ExecuteMirroredPose">
             <input_port name="allow_collision" default="0"/>
             <input_port name="goal" default="0 0 0 0 0 0 1">Pose of the goal for the reference group.</input_port>
@@ -81,9 +86,9 @@
             <input_port name="goal_location" default="0.1 0 0 0 0 0 1"/>
             <input_port name="goal_state"/>
             <input_port name="goal_type" default="0"/>
+            <input_port name="ori_tolerance" default="0.02"/>
+            <input_port name="pos_tolerance" default="0.01"/>
             <input_port name="service_name" default="execute_path_planning"/>
-            <input_port default="0.01" name="pos_tolerance"/>
-            <input_port default="0.02" name="ori_tolerance"/>
         </Action>
         <Action ID="GetPreparePose">
             <input_port name="is_absolute" default="0">If true, the shift vector is wrt the base frame, else wrt the target pose frame</input_port>
