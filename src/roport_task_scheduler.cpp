@@ -514,10 +514,13 @@ class ExecuteJointPosition : public RosServiceNode<roport::ExecuteJointPosition>
   }
 
   void onSendRequest(RequestType& request) override {
+    double speed_ratio;
+    getInput<double>("speed_ratio", speed_ratio);
+    request.speed_ratio = speed_ratio;
+
     JointState goal_state{};
     getInput<JointState>("goal_state", goal_state);
-
-    getInput<double>("speed_ratio", request.speed_ratio);
+    request.goal_state = goal_state.toROS();
   }
 };
 
