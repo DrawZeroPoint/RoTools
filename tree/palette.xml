@@ -32,6 +32,13 @@
             <input_port name="service_name">Name of the service. Change this accordingly.</input_port>
             <input_port name="value" default="0">[Optional] The value used when enabling the target</input_port>
         </Action>
+        <Action ID="ExecuteFrankaGripperGrasp">
+            <input_port name="width" default="0.08">Grasp width of Gripper [m]</input_port>
+            <input_port name="epsilon_inner" default="0.005">If grasp an object without exact width, set as 0.08</input_port>
+            <input_port name="epsilon_outer" default="0.005">If grasp an object without exact width, set as 0.08</input_port>
+            <input_port name="speed" default="0.1">Grasp speed</input_port>
+            <input_port name="force" default="3">Grasp force within [0,70]</input_port>
+        </Action>
         <Action ID="ExecuteGroupAngularJointStates">
             <input_port name="goal" default="0 0 0 0 0 0 0">Joint positions in degrees. Separate with ' '</input_port>
             <input_port name="group_name" default="panda_arm">The group to be controlled</input_port>

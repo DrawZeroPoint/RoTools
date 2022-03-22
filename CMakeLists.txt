@@ -101,6 +101,7 @@ add_service_files(
   ExecuteAttachCollisionBox.srv
   ExecuteBinaryAction.srv
   ExecuteDetachCollision.srv
+        ExecuteFrankaGripperGrasp.srv
   ExecuteGroupJointStates.srv
   ExecuteGroupNamedStates.srv
   ExecuteGroupPlan.srv

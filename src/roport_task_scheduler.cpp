@@ -14,6 +14,7 @@
 #include <roport/ExecuteAttachCollisionBox.h>
 #include <roport/ExecuteBinaryAction.h>
 #include <roport/ExecuteDetachCollision.h>
+#include <roport/ExecuteFrankaGripperGrasp.h>
 #include <roport/ExecuteGroupJointStates.h>
 #include <roport/ExecuteGroupNamedStates.h>
 #include <roport/ExecuteGroupPlan.h>
@@ -288,6 +289,31 @@ class ExecuteDetachCollision : public RosServiceNode<roport::ExecuteDetachCollis
   void onSendRequest(RequestType& request) override {
     getInput<std::string>("group_name", request.group_name);
     getInput<std::string>("obj_name", request.obj_name);
+  }
+};
+
+
+class ExecuteFrankaGripperGrasp : public RosServiceNode<roport::ExecuteFrankaGripperGrasp> {
+ public:
+  ExecuteFrankaGripperGrasp(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteFrankaGripperGrasp>(node_handle, name, cfg) {}
+
+  static auto providedPorts() -> BT::PortsList {
+    return {
+        InputPort<double>("width"),
+        InputPort<double>("epsilon_inner"),
+        InputPort<double>("epsilon_outer"),
+        InputPort<double>("speed"),
+        InputPort<double>("force"),
+    };
+  }
+
+  void onSendRequest(RequestType& request) override {
+    getInput<double>("width", request.width);
+    getInput<double>("epsilon_inner", request.epsilon_inner);
+    getInput<double>("epsilon_outer", request.epsilon_outer);
+    getInput<double>("speed", request.speed);
+    getInput<double>("force", request.force);
   }
 };
 
@@ -683,6 +709,7 @@ auto main(int argc, char** argv) -> int {
   BT::registerRosService<BT::ExecuteAttachCollisionBox>(factory, "ExecuteAttachCollisionBox", node_handle);
   BT::registerRosService<BT::ExecuteBinaryAction>(factory, "ExecuteBinaryAction", node_handle);
   BT::registerRosService<BT::ExecuteDetachCollision>(factory, "ExecuteDetachCollision", node_handle);
+  BT::registerRosService<BT::ExecuteFrankaGripperGrasp>(factory, "ExecuteFrankaGripperGrasp", node_handle);
   BT::registerRosService<BT::ExecuteGroupAngularJointStates>(factory, "ExecuteGroupAngularJointStates", node_handle);
   BT::registerRosService<BT::ExecuteGroupLinearJointStates>(factory, "ExecuteGroupLinearJointStates", node_handle);
   BT::registerRosService<BT::ExecuteGroupNamedStates>(factory, "ExecuteGroupNamedStates", node_handle);
