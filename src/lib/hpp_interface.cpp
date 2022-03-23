@@ -316,7 +316,7 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
       joint_states.push_back(state);
 
       geometry_msgs::Twist twist;
-      extractBaseVelocityCommand(j_dq, twist);
+      extractBaseVelocityCommand(j_q, j_dq, twist);
       vel_cmd.push_back(twist);
     }
 
@@ -342,9 +342,15 @@ void HumanoidPathPlannerInterface::extractJointCommand(const Configuration_t& j_
   }
 }
 
-void HumanoidPathPlannerInterface::extractBaseVelocityCommand(const vector_t& j_dq, geometry_msgs::Twist& twist) {
-  twist.linear.x = j_dq[0] * kReductionRatio;
-  twist.linear.y = j_dq[1] * kReductionRatio;
+void HumanoidPathPlannerInterface::extractBaseVelocityCommand(const Configuration_t& j_q,
+                                                              const vector_t& j_dq,
+                                                              geometry_msgs::Twist& twist) {
+  Eigen::Rotation2Dd rot(atan2(j_q[3], j_q[2]));
+  Eigen::Vector2d global_linear(j_dq[0], j_dq[1]);
+  Eigen::Vector2d local_linear = rot.inverse() * global_linear;
+
+  twist.linear.x = local_linear.x() * kReductionRatio;
+  twist.linear.y = local_linear.y() * kReductionRatio;
   twist.angular.z = j_dq[2] * kReductionRatio;
 }
 

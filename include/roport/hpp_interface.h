@@ -108,7 +108,7 @@ class HumanoidPathPlannerInterface {
   static constexpr int kRootJointPositionConfigDim = 2;
 
   static constexpr double kDefaultStep = 0.01;  // Time for one step, in second
-  static constexpr double kReductionRatio = 0.4;
+  static constexpr double kReductionRatio = 0.5;
 
   static constexpr double kPositionTolerance = 0.01;
   static constexpr double kOrientationTolerance = 0.015;
@@ -161,7 +161,7 @@ class HumanoidPathPlannerInterface {
    */
   void extractJointCommand(const Configuration_t& j_q, const vector_t& j_dq, sensor_msgs::JointState& state);
 
-  static void extractBaseVelocityCommand(const vector_t& j_dq, geometry_msgs::Twist& twist);
+  static void extractBaseVelocityCommand(const Configuration_t& j_q, const vector_t& j_dq, geometry_msgs::Twist& twist);
 
   void publishPlanningResults(const std::vector<sensor_msgs::JointState>& joint_states,
                               const std::vector<geometry_msgs::Twist>& vel_cmd);
