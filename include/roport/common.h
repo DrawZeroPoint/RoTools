@@ -8,6 +8,7 @@
 #include <ros/ros.h>
 
 #include <Eigen/Eigen>
+#include <utility>
 
 #include <geometry_msgs/PoseStamped.h>
 
@@ -62,7 +63,7 @@ void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::Pose& pose) {
 }
 
 void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::PoseStamped& pose) {
-  eigenMatrixToGeometryPose(mat, pose.pose);
+  eigenMatrixToGeometryPose(std::move(mat), pose.pose);
 }
 
 void relativePoseToAbsolutePose(const geometry_msgs::PoseStamped& transform_wrt_local_base,
@@ -93,6 +94,17 @@ void localPoseToGlobalPose(const geometry_msgs::Pose& pose_local_to_target,
   Eigen::Matrix4d mat_global_to_local;
   geometryPoseToEigenMatrix(pose_global_to_local, mat_global_to_local);
   Eigen::Matrix4d mat_global_to_target = mat_global_to_local * mat_local_to_target;
+  eigenMatrixToGeometryPose(mat_global_to_target, pose_global_to_target);
+}
+
+void localAlignedPoseToGlobalPose(const geometry_msgs::Pose& pose_local_aligned_to_target,
+                                  const geometry_msgs::Pose& pose_global_to_local_aligned,
+                                  geometry_msgs::Pose& pose_global_to_target) {
+  Eigen::Matrix4d mat_local_aligned_to_target;
+  geometryPoseToEigenMatrix(pose_local_aligned_to_target, mat_local_aligned_to_target);
+  Eigen::Matrix4d mat_global_to_local_aligned;
+  geometryPoseToEigenMatrix(pose_global_to_local_aligned, mat_global_to_local_aligned);
+  Eigen::Matrix4d mat_global_to_target = mat_global_to_local_aligned * mat_local_aligned_to_target;
   eigenMatrixToGeometryPose(mat_global_to_target, pose_global_to_target);
 }
 

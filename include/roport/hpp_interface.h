@@ -20,6 +20,7 @@
 #include <hpp/core/plugin.hh>
 #include <hpp/core/problem-solver.hh>
 
+#include <cmath>
 #include <mutex>
 
 #include "common.h"

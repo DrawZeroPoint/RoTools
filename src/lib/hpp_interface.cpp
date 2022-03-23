@@ -25,7 +25,7 @@ HumanoidPathPlannerInterface::HumanoidPathPlannerInterface(const ros::NodeHandle
   }
   // Load a URDF describing the environment and obstacles in it
   if (!createObstacle()) {
-    return;
+    ROS_WARN("No obstacle loaded");
   }
 
   bool loaded;
@@ -180,43 +180,36 @@ auto HumanoidPathPlannerInterface::setLocationConfig(const geometry_msgs::Pose& 
   if (!isPoseLegal(msg)) {
     return false;
   }
-  Eigen::Quaterniond quat_cmd(msg.orientation.w, msg.orientation.x, msg.orientation.y, msg.orientation.z);
-  double theta_cmd = quat_cmd.toRotationMatrix().eulerAngles(2, 1, 0)[0];
-
-  //  auto angles = quat_cmd.toRotationMatrix().eulerAngles(2, 1, 0);
-  //  auto yaw = angles[0] * 2;
-  //  if (yaw > M_PI) {
-  //    yaw = yaw - M_PI * 2.;
-  //  }
-  //  Eigen::Quaterniond quat_new = Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX()) *
-  //                                Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY()) *
-  //                                Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
-  //  if (quat_curr.dot(quat_new) < 0.) {
-  //    quat_new = quat_new.conjugate();
-  //  }
 
   if (type == 0) {
-    ROS_ASSERT(kRootJointConfigDim == root_joint_.getConfigDim(root_joint_type_));
-    config.head<kRootJointConfigDim>() << msg.position.x, msg.position.y, cos(theta_cmd), cos(theta_cmd);
+    Eigen::Quaterniond quat(msg.orientation.w, msg.orientation.x, msg.orientation.y, msg.orientation.z);
+    Eigen::Rotation2Dd rot(quat.toRotationMatrix().topLeftCorner<2, 2>());
+    double theta_cmd = rot.smallestPositiveAngle();
+    config.head<kRootJointConfigDim>() << msg.position.x, msg.position.y, std::cos(theta_cmd), std::sin(theta_cmd);
     return true;
   }
   if (type == 1) {
-    ROS_ASSERT(kRootJointPositionConfigDim == root_joint_.getPositionConfigDim(root_joint_type_));
-    config.head<kRootJointPositionConfigDim>() << config[0] + msg.position.x, config[1] + msg.position.y;
-    return true;
+    geometry_msgs::Pose global_to_local_aligned;
+    global_to_local_aligned.position.x = q_current_[0];
+    global_to_local_aligned.position.y = q_current_[1];
+    global_to_local_aligned.orientation.w = 1.;
+
+    geometry_msgs::Pose global_to_target;
+    localAlignedPoseToGlobalPose(msg, global_to_local_aligned, global_to_target);
+    return setLocationConfig(global_to_target, 0, config);
   }
   if (type == 2) {
-    double theta_curr = atan2(config[3], config[2]);  // theta = atan2(sin(theta), cos(theta)) in (-pi, pi]
+    double theta_curr = atan2(q_current_[3], q_current_[2]);  // theta = atan2(sin(theta), cos(theta)) in (-pi, pi]
     Eigen::Quaterniond quat_curr = Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX()) *
                                    Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY()) *
                                    Eigen::AngleAxisd(theta_curr, Eigen::Vector3d::UnitZ());
     geometry_msgs::Pose global_to_local;
-    global_to_local.position.x = config[0];
-    global_to_local.position.y = config[1];
-    global_to_local.orientation.w = quat_curr.w();
+    global_to_local.position.x = q_current_[0];
+    global_to_local.position.y = q_current_[1];
     global_to_local.orientation.x = 0.;
     global_to_local.orientation.y = 0.;
     global_to_local.orientation.z = quat_curr.z();
+    global_to_local.orientation.w = quat_curr.w();
 
     geometry_msgs::Pose global_to_target;
     localPoseToGlobalPose(msg, global_to_local, global_to_target);
@@ -292,6 +285,8 @@ auto HumanoidPathPlannerInterface::executePathPlanningSrvCb(roport::ExecutePathP
       resp.result_status = resp.FAILED;
       return false;
     }
+    ROS_INFO_STREAM("Curr: " << q_current_[0] << " " << q_current_[1] << " " << q_current_[2] << " " << q_current_[3]);
+    ROS_INFO_STREAM("Goal: " << q_goal_[0] << " " << q_goal_[1] << " " << q_goal_[2] << " " << q_goal_[3]);
     path_planning_solver_->initConfig(std::make_shared<Configuration_t>(q_current_));
     path_planning_solver_->solve();
 
