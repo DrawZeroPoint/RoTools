@@ -59,7 +59,7 @@ class MsgConverter {
 
   std::vector<std::chrono::steady_clock::time_point> starts_;
 
-  bool getParam(const std::string& param_name, XmlRpc::XmlRpcValue& param_value) {
+  auto getParam(const std::string& param_name, XmlRpc::XmlRpcValue& param_value) -> bool {
     if (!pnh_.getParam(param_name, param_value)) {
       if (!nh_.getParam(param_name, param_value)) {
         ROS_ERROR_STREAM(prefix << "Param " << param_name << " is not defined");
@@ -70,7 +70,7 @@ class MsgConverter {
   }
 
   template <class T>
-  bool getParam(const std::string& param_name, std::map<std::string, T>& param_value) {
+  auto getParam(const std::string& param_name, std::map<std::string, T>& param_value) -> bool {
     if (!pnh_.getParam(param_name, param_value)) {
       if (!nh_.getParam(param_name, param_value)) {
         ROS_ERROR_STREAM(prefix << "Param " << param_name << " is not defined");
@@ -102,16 +102,18 @@ class MsgConverter {
 
   /**
    * Filter the source joint state message and only preserve the joints whose name are in source_names.
+   * Names' order in filtered_names could be different with that of src_msg.name. The filtered_msg.name will
+   * be the same as filtered_names.
    * If no name is defined in src_msg, will map positions, velocities, and efforts to the filtered message if
    * they have the same size as source_names.
    * @param src_msg Source joint state message.
-   * @param filtered_msg Filtered joint state message.
-   * @param source_names Names of the joints to be selected.
+   * @param filtered_names Names of the joints to be selected.
+   * @retval filtered_msg Filtered joint state message.
    * @return True if filtering is succeed, false otherwise.
    */
   auto filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg,
-                        sensor_msgs::JointState& filtered_msg,
-                        const std::vector<std::string>& source_names) -> bool;
+                        const std::vector<std::string>& filtered_names,
+                        sensor_msgs::JointState& filtered_msg) -> bool;
 
   static auto smoothJointState(const sensor_msgs::JointState& msg,
                                rotools::RuckigOptimizer* oto,
@@ -125,7 +127,7 @@ class MsgConverter {
    * @param param_name Name of the param containing a map.
    * @param source_names Joint names.
    * @param target_names Joint names.
-   * @param param_out Output values.
+   * @retval param_out Output param values.
    * @return True if got values. False if the param does not exist or cannot find source/target names in the map.
    */
   template <class T>
@@ -146,25 +148,26 @@ class MsgConverter {
                      const std::vector<std::string>& source_names);
 
   /**
-   *
-   * @param src_msg
-   * @param pub
-   * @param source_names
-   * @param target_names
+   * Given a sensor_msg::JointState type msg, convert values from source_names to target_names and publish
+   * the converted msg using the given publisher.
+   * @param src_msg Source msg.
+   * @param publisher The publisher.
+   * @param source_names Names to be selected from src_msg.name
+   * @param target_names Names corresponding to source_names while taking the selected values.
    */
   void publishJointState(const sensor_msgs::JointState& src_msg,
-                         const ros::Publisher& pub,
+                         const ros::Publisher& publisher,
                          const std::vector<std::string>& source_names,
                          const std::vector<std::string>& target_names);
 
   void publishFrankaJointCommand(const sensor_msgs::JointState& src_msg,
-                                 const ros::Publisher& pub,
+                                 const ros::Publisher& publisher,
                                  const int& arg,
                                  const std::vector<std::string>& source_names,
                                  const std::vector<std::string>& target_names);
 
   void publishUBTJointCommand(const sensor_msgs::JointState& src_msg,
-                              const ros::Publisher& pub,
+                              const ros::Publisher& publisher,
                               const int& arg,
                               const std::vector<std::string>& source_names,
                               const std::vector<std::string>& target_names);

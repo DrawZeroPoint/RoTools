@@ -173,7 +173,7 @@ void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
                                 const std::vector<std::string>& source_names,
                                 const std::vector<std::string>& target_names) {
   sensor_msgs::JointState filtered_msg;
-  if (!filterJointState(msg, filtered_msg, source_names)) {
+  if (!filterJointState(msg, source_names, filtered_msg)) {
     return;
   }
 
@@ -197,25 +197,25 @@ void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
   }
 }
 
-bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg,
-                                    sensor_msgs::JointState& filtered_msg,
-                                    const std::vector<std::string>& source_names) {
+auto MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg,
+                                    const std::vector<std::string>& filtered_names,
+                                    sensor_msgs::JointState& filtered_msg) -> bool {
   if (src_msg->position.empty()) {
     ROS_ERROR_STREAM_THROTTLE(3, prefix << "Source JointState message defines no position");
     return false;
   }
-  if (src_msg->position.size() < source_names.size()) {
+  if (src_msg->position.size() < filtered_names.size()) {
     ROS_ERROR_STREAM_THROTTLE(3, prefix << "Source JointState message have fewer positions ("
-                                        << src_msg->position.size() << ") than expected (" << source_names.size()
+                                        << src_msg->position.size() << ") than expected (" << filtered_names.size()
                                         << ")");
     return false;
   }
 
   filtered_msg.header = src_msg->header;
-  filtered_msg.name = source_names;
+  filtered_msg.name = filtered_names;
 
-  size_t i = 0;
-  for (const auto& name : source_names) {
+  size_t idx = 0;
+  for (const auto& name : filtered_names) {
     auto result = findInVector(src_msg->name, name);
     if (result.first) {
       filtered_msg.position.push_back(src_msg->position[result.second]);
@@ -226,22 +226,22 @@ bool MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
         filtered_msg.effort.push_back(src_msg->effort[result.second]);
       }
     } else {
-      ROS_WARN_STREAM_ONCE(
-          prefix << "No name in the source joint state message match the given source names (print only once)");
-      if (src_msg->position.size() == source_names.size()) {
-        filtered_msg.position.push_back(src_msg->position[i]);
-        if (src_msg->velocity.size() == source_names.size()) {
-          filtered_msg.velocity.push_back(src_msg->velocity[i]);
+      ROS_WARN_STREAM_ONCE(prefix << "No name in the source joint state msg match the selected name '" << name
+                                  << "' (print only once)");
+      if (src_msg->position.size() == filtered_names.size()) {
+        filtered_msg.position.push_back(src_msg->position[idx]);
+        if (src_msg->velocity.size() == filtered_names.size()) {
+          filtered_msg.velocity.push_back(src_msg->velocity[idx]);
         }
-        if (src_msg->effort.size() == source_names.size()) {
-          filtered_msg.effort.push_back(src_msg->effort[i]);
+        if (src_msg->effort.size() == filtered_names.size()) {
+          filtered_msg.effort.push_back(src_msg->effort[idx]);
         }
       } else {
-        ROS_ERROR_STREAM(prefix << "Source joint state message defines no " << name);
+        ROS_ERROR_STREAM(prefix << "Source joint state msg does not define " << name);
         return false;
       }
     }
-    i++;
+    idx++;
   }
   return true;
 }
@@ -274,7 +274,7 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
   }
 
   sensor_msgs::JointState filtered_msg;
-  if (!filterJointState(msg, filtered_msg, source_names)) {
+  if (!filterJointState(msg, source_names, filtered_msg)) {
     return;
   }
 
@@ -311,14 +311,14 @@ bool MsgConverter::phaseJointParameterMap(const std::string& param_name,
   if (!getParam(param_name, param_map)) {
     return false;
   }
-  for (size_t n = 0; n < source_names.size(); ++n) {
-    if (param_map.find(source_names[n]) != param_map.end()) {
-      param_out.push_back(param_map[source_names[n]]);
-    } else if (param_map.find(target_names[n]) != param_map.end()) {
-      param_out.push_back(param_map[target_names[n]]);
+  for (size_t idx = 0; idx < source_names.size(); ++idx) {
+    if (param_map.find(source_names[idx]) != param_map.end()) {
+      param_out.push_back(param_map[source_names[idx]]);
+    } else if (param_map.find(target_names[idx]) != param_map.end()) {
+      param_out.push_back(param_map[target_names[idx]]);
     } else {
-      ROS_ERROR_STREAM(prefix << ("Unable to find %s param for %s(%s)", param_name.c_str(), source_names[n].c_str(),
-                                  target_names[n].c_str()));
+      ROS_ERROR_STREAM(prefix << ("Unable to find %s param for %s(%s)", param_name.c_str(), source_names[idx].c_str(),
+                                  target_names[idx].c_str()));
       return false;
     }
   }
@@ -326,14 +326,14 @@ bool MsgConverter::phaseJointParameterMap(const std::string& param_name,
 }
 
 void MsgConverter::publishJointState(const sensor_msgs::JointState& src_msg,
-                                     const ros::Publisher& pub,
+                                     const ros::Publisher& publisher,
                                      const std::vector<std::string>& source_names,
                                      const std::vector<std::string>& target_names) {
   sensor_msgs::JointState tgt_msg;
   tgt_msg.header = src_msg.header;
 
   if (src_msg.name.empty()) {
-    ROS_ERROR_STREAM_THROTTLE(3, prefix << "Source JointState topic have empty name field");
+    ROS_ERROR_STREAM_THROTTLE(3, prefix << "Source JointState msg have empty 'name' field");
     return;
   }
   // It is possible to convert only a part of the joint values in the given source message to target message.
@@ -359,11 +359,11 @@ void MsgConverter::publishJointState(const sensor_msgs::JointState& src_msg,
                               << "does not match any name in the given JointState message");
     }
   }
-  pub.publish(tgt_msg);
+  publisher.publish(tgt_msg);
 }
 
 void MsgConverter::publishFrankaJointCommand(const sensor_msgs::JointState& src_msg,
-                                             const ros::Publisher& pub,
+                                             const ros::Publisher& publisher,
                                              const int& arg,
                                              const std::vector<std::string>& source_names,
                                              const std::vector<std::string>& target_names) {
@@ -408,7 +408,7 @@ void MsgConverter::publishFrankaJointCommand(const sensor_msgs::JointState& src_
 }
 
 void MsgConverter::publishUBTJointCommand(const sensor_msgs::JointState& src_msg,
-                                          const ros::Publisher& pub,
+                                          const ros::Publisher& publisher,
                                           const int& arg,
                                           const std::vector<std::string>& source_names,
                                           const std::vector<std::string>& target_names) {
@@ -442,7 +442,7 @@ void MsgConverter::publishUBTJointCommand(const sensor_msgs::JointState& src_msg
                               << "does not match any name in the given JointState message");
     }
   }
-  pub.publish(tgt_msg);
+  publisher.publish(tgt_msg);
 #endif
 }
 
