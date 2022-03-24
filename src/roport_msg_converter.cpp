@@ -5,10 +5,10 @@
 
 auto main(int argc, char** argv) -> int {
   ros::init(argc, argv, "roport_msg_converter");
-  ros::NodeHandle nh;
+  ros::NodeHandle node_handle;
   ros::NodeHandle pnh("~");
 
-  roport::MsgConverter converter(nh, pnh);
+  roport::MsgConverter converter(node_handle, pnh);
 
   ROS_INFO("Roport Msg Converter ready.");
   ros::AsyncSpinner spinner(4);
