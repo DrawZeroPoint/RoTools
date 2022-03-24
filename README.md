@@ -19,22 +19,31 @@ The packages compose of two components: roport and rotools.
 This module provides the application level entrance ports of the RoTools package. It is a middleware that allows using
 rotools cpp/python interfaces in ROS environment. It provides:
 
+#### Python based
+
 - [MoveIt Python Server](scripts/roport_moveit_py_server.py) for controlling the robot's single kinematic chain using
-  the Python interface.
-- [MoveIt CPP Server](src/roport_moveit_cpp_server.cpp) simultaneously controlling multiple kinematic chains of a robot.
+  MoveIt's Python interface.
 - [Sensing Server](scripts/roport_sensing_server.py) that bridges the perception modules outside the ROS environment
   (like those run in Python3) to ROS via HTTP.
 - [Planner Server](scripts/roport_planner_server.py) bridges ROS modules with the planning algorithm outside the ROS
   environment (running in Python3 or on another server on the local network) via HTTP. This server is designed for
   online control, that given the current state, it will query the algorithm for the next state. For now, the states are
   Cartesian poses.
-- [Path Planning Interface](src/roport_hpp_interface.cpp) utilize Humanoid Path Planner to plan whole-body collision
-  free paths for high-dof robots.
-- [Task Scheduler](src/roport_task_scheduler.cpp) using behavior tree for task scheduling. A bunch of general purpose
-  services are provided for building the task map fast.
-- [Xsens Server](scripts/roport_xsens_server.py) converting the live stream from Xsens's MVN Awinda motion capture suit
-  to ROS pose messages.
+- [Websocket Client](scripts/roport_websocket_client.py) enables transmitting ROS msgs among two PCs through ROS Bridge.
+- [Xsens Server](scripts/roport_xsens_server.py) converting the live stream from Xsens MVN Awinda motion capture suit to
+  ROS pose messages.
 - Hardware/Simulation interfaces adapted for a variety types of robots.
+
+#### CPP based
+
+- [MoveIt CPP Server](src/roport_moveit_cpp_server.cpp) simultaneously controlling multiple kinematic chains of a robot
+  with MoveIt's action interface.
+- [Path Planning Interface](src/roport_hpp_interface.cpp) utilizes Humanoid Path Planner to plan whole-body collision
+  free paths for high-dof robots.
+- [Msg Converter](src/roport_msg_converter.cpp) converts msg from one type to another, be able to modify the name field,
+  and enables smoothly start the control of certain joint groups.
+- [Task Scheduler](src/roport_task_scheduler.cpp) using behavior tree for task scheduling. A bunch of general purpose
+  services and a node [library](tree/palette.xml) are provided for building the task tree fast.
 
 ### rotools
 
