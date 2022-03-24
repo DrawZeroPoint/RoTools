@@ -8,7 +8,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 
 import rotools.simulation.mujoco.interface as interface
-from rotools.utility.kinematics import mecanum_base_get_wheel_velocities
+from rotools.utility.robotics import mecanum_base_get_wheel_velocities
 
 
 class MuJoCoServer(object):
