@@ -14,12 +14,14 @@
 #include <roport/ExecuteAttachCollisionBox.h>
 #include <roport/ExecuteBinaryAction.h>
 #include <roport/ExecuteDetachCollision.h>
+#include <roport/ExecuteFrankaGripperGrasp.h>
 #include <roport/ExecuteGroupJointStates.h>
 #include <roport/ExecuteGroupNamedStates.h>
 #include <roport/ExecuteGroupPlan.h>
 #include <roport/ExecuteGroupPose.h>
 #include <roport/ExecuteGroupPosition.h>
 #include <roport/ExecuteGroupShift.h>
+#include <roport/ExecuteJointPosition.h>
 #include <roport/ExecuteMirroredPose.h>
 #include <roport/ExecutePathPlanning.h>
 #include <roport/ExecuteRemoveCollision.h>
@@ -290,6 +292,31 @@ class ExecuteDetachCollision : public RosServiceNode<roport::ExecuteDetachCollis
   }
 };
 
+
+class ExecuteFrankaGripperGrasp : public RosServiceNode<roport::ExecuteFrankaGripperGrasp> {
+ public:
+  ExecuteFrankaGripperGrasp(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteFrankaGripperGrasp>(node_handle, name, cfg) {}
+
+  static auto providedPorts() -> BT::PortsList {
+    return {
+        InputPort<double>("width"),
+        InputPort<double>("epsilon_inner"),
+        InputPort<double>("epsilon_outer"),
+        InputPort<double>("speed"),
+        InputPort<double>("force"),
+    };
+  }
+
+  void onSendRequest(RequestType& request) override {
+    getInput<double>("width", request.width);
+    getInput<double>("epsilon_inner", request.epsilon_inner);
+    getInput<double>("epsilon_outer", request.epsilon_outer);
+    getInput<double>("speed", request.speed);
+    getInput<double>("force", request.force);
+  }
+};
+
 class ExecuteGroupAngularJointStates : public RosServiceNode<roport::ExecuteGroupJointStates> {
  public:
   ExecuteGroupAngularJointStates(const ros::NodeHandle& node_handle,
@@ -500,6 +527,29 @@ class ExecuteGroupShift : public RosServiceNode<roport::ExecuteGroupShift> {
   }
 };
 
+class ExecuteJointPosition : public RosServiceNode<roport::ExecuteJointPosition> {
+ public:
+  ExecuteJointPosition(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteJointPosition>(node_handle, name, cfg) {}
+
+  static auto providedPorts() -> BT::PortsList {
+    return {
+        InputPort<JointState>("goal_state"),
+        InputPort<double>("speed_ratio"),
+    };
+  }
+
+  void onSendRequest(RequestType& request) override {
+    double speed_ratio;
+    getInput<double>("speed_ratio", speed_ratio);
+    request.speed_ratio = speed_ratio;
+
+    JointState goal_state{};
+    getInput<JointState>("goal_state", goal_state);
+    request.goal_state = goal_state.toROS();
+  }
+};
+
 class ExecuteRemoveCollision : public RosServiceNode<roport::ExecuteRemoveCollision> {
  public:
   ExecuteRemoveCollision(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
@@ -659,6 +709,7 @@ auto main(int argc, char** argv) -> int {
   BT::registerRosService<BT::ExecuteAttachCollisionBox>(factory, "ExecuteAttachCollisionBox", node_handle);
   BT::registerRosService<BT::ExecuteBinaryAction>(factory, "ExecuteBinaryAction", node_handle);
   BT::registerRosService<BT::ExecuteDetachCollision>(factory, "ExecuteDetachCollision", node_handle);
+  BT::registerRosService<BT::ExecuteFrankaGripperGrasp>(factory, "ExecuteFrankaGripperGrasp", node_handle);
   BT::registerRosService<BT::ExecuteGroupAngularJointStates>(factory, "ExecuteGroupAngularJointStates", node_handle);
   BT::registerRosService<BT::ExecuteGroupLinearJointStates>(factory, "ExecuteGroupLinearJointStates", node_handle);
   BT::registerRosService<BT::ExecuteGroupNamedStates>(factory, "ExecuteGroupNamedStates", node_handle);
@@ -667,6 +718,7 @@ auto main(int argc, char** argv) -> int {
   BT::registerRosService<BT::ExecutePathPlanning>(factory, "ExecutePathPlanning", node_handle);
   BT::registerRosService<BT::ExecuteGroupPosition>(factory, "ExecuteGroupPosition", node_handle);
   BT::registerRosService<BT::ExecuteGroupShift>(factory, "ExecuteGroupShift", node_handle);
+  BT::registerRosService<BT::ExecuteJointPosition>(factory, "ExecuteJointPosition", node_handle);
   BT::registerRosService<BT::ExecuteRemoveCollision>(factory, "ExecuteRemoveCollision", node_handle);
   BT::registerRosService<BT::GetPreparePose>(factory, "GetPreparePose", node_handle);
   BT::registerRosService<BT::GetTransformedPose>(factory, "GetTransformedPose", node_handle);

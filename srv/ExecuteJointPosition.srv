@@ -1,0 +1,13 @@
+# Execute moving a robot to a goal joint position
+
+# Requests
+# goal_state: Goal joint state
+# pos_tolerance [opt]: Position tolerance for considering the goal location has been reached, default 0.01 m
+# speed_ratio: a value within [0,1] to shape the maximum speed of robot moving to the goal_state
+
+sensor_msgs/JointState goal_state
+float64 speed_ratio
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

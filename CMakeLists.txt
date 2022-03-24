@@ -101,12 +101,14 @@ add_service_files(
   ExecuteAttachCollisionBox.srv
   ExecuteBinaryAction.srv
   ExecuteDetachCollision.srv
+        ExecuteFrankaGripperGrasp.srv
   ExecuteGroupJointStates.srv
   ExecuteGroupNamedStates.srv
   ExecuteGroupPlan.srv
   ExecuteGroupPose.srv
   ExecuteGroupPosition.srv
   ExecuteGroupShift.srv
+  ExecuteJointPosition.srv
   ExecuteMirroredPose.srv
   ExecutePathPlanning.srv
   ExecuteRemoveCollision.srv
