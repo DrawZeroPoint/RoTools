@@ -292,19 +292,17 @@ class ExecuteDetachCollision : public RosServiceNode<roport::ExecuteDetachCollis
   }
 };
 
-
 class ExecuteFrankaGripperGrasp : public RosServiceNode<roport::ExecuteFrankaGripperGrasp> {
  public:
-  ExecuteFrankaGripperGrasp(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
+  ExecuteFrankaGripperGrasp(const ros::NodeHandle& node_handle,
+                            const std::string& name,
+                            const BT::NodeConfiguration& cfg)
       : RosServiceNode<roport::ExecuteFrankaGripperGrasp>(node_handle, name, cfg) {}
 
   static auto providedPorts() -> BT::PortsList {
     return {
-        InputPort<double>("width"),
-        InputPort<double>("epsilon_inner"),
-        InputPort<double>("epsilon_outer"),
-        InputPort<double>("speed"),
-        InputPort<double>("force"),
+        InputPort<double>("width"), InputPort<double>("epsilon_inner"), InputPort<double>("epsilon_outer"),
+        InputPort<double>("speed"), InputPort<double>("force"),
     };
   }
 
