@@ -3,8 +3,9 @@ from __future__ import print_function
 
 import nav_msgs.msg
 import rospy
+import sensor_msgs.msg
 
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import JointState, Image, CompressedImage
 from nav_msgs.msg import Odometry
 
 from roport.srv import *
@@ -26,11 +27,14 @@ class SnapshotServer(object):
         kwargs['js_topics'] = self.register_topics(kwargs['js_topics'], sensor_msgs.msg.JointState)
         kwargs['odom_topics'] = self.register_topics(kwargs['odom_topics'], nav_msgs.msg.Odometry)
 
+        self.register_topics(kwargs['rgb_compressed_topics'], sensor_msgs.msg.CompressedImage)
+        self.register_topics(kwargs['depth_compressed_topics'], sensor_msgs.msg.CompressedImage)
+
         self.interface = interface.SnapshotInterface(**kwargs)
 
-        self._srv_save_image = rospy.Service('save_image', SaveImage, self.save_image_handle)
         self._srv_save_joint_state = rospy.Service('save_joint_state', SaveJointState, self.save_joint_state_handle)
         self._srv_save_odom = rospy.Service('save_odom', SaveOdometry, self.save_odom_handle)
+        self._srv_save_image = rospy.Service('save_image', SaveImage, self.save_image_handle)
 
     def register_topics(self, topics, topic_type):
         """Register subscribers for cared topics.
@@ -46,7 +50,7 @@ class SnapshotServer(object):
             valid_topics = []
             for topic in topics:
                 # TODO if rospy.topics.is_topic()
-                subscriber = rospy.Subscriber(topic, topic_type, self.msg_cb, topic)
+                subscriber = rospy.Subscriber(topic, topic_type, self.msg_cb, topic, queue_size=1)
                 self._subscribers.append(subscriber)
                 rospy.loginfo("Registered topic {} of type {}".format(topic, topic_type))
                 valid_topics.append(topic)
@@ -55,7 +59,19 @@ class SnapshotServer(object):
             return None
 
     def save_image_handle(self, req):
-        pass
+        resp = SaveImageResponse()
+        if req.rgb_topic in self._msg_dict:
+            rgb_msg = self._msg_dict[req.rgb_topic]
+        else:
+            rgb_msg = None
+        if req.depth_topic in self._msg_dict:
+            depth_msg = self._msg_dict[req.depth_topic]
+        else:
+            depth_msg = None
+
+        ok = self.interface.save_image_msgs(req.rgb_topic, req.depth_topic, rgb_msg, depth_msg, req.tag)
+        resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
+        return resp
 
     def save_joint_state_handle(self, req):
         resp = SaveJointStateResponse()
@@ -80,4 +96,13 @@ class SnapshotServer(object):
         return resp
 
     def msg_cb(self, msg, arg):
+        """This callback function update the msg under the given topic.
+
+        Args:
+            msg: class ROS msg body.
+            arg: str Topic name.
+
+        Returns:
+            None
+        """
         self._msg_dict[arg] = msg

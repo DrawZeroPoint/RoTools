@@ -1,11 +1,14 @@
 from __future__ import print_function
 
 import os
+import cv2
 import csv
 import time
 import rospy
 
-from sensor_msgs.msg import JointState
+from cv_bridge import CvBridge
+
+from sensor_msgs.msg import JointState, Image, CompressedImage
 from nav_msgs.msg import Odometry
 
 try:
@@ -30,7 +33,7 @@ class SnapshotInterface(object):
     ):
         super(SnapshotInterface, self).__init__()
 
-        self.entities = {}
+        self._entities = {}
 
         if not os.path.isdir(save_dir):
             self.save_dir = '/tmp'
@@ -39,24 +42,32 @@ class SnapshotInterface(object):
             self.save_dir = save_dir
         rospy.loginfo("Saving snapshots to {}".format(self.save_dir))
 
-        self._make_entity(js_topics, 'JS_')
-        self._make_entity(odom_topics, 'ODOM_')
+        self._make_csv_entity(js_topics, 'JS_')
+        self._make_csv_entity(odom_topics, 'ODOM_')
 
-    def _make_entity(self, topics, prefix):
+        self._bridge = CvBridge()
+
+    def _make_csv_entity(self, topics, prefix):
         for topic in topics:
             assert isinstance(topic, str), print("Topic type is not str ({})".format(type(topic)))
             file_name = prefix + time.strftime('%H%M%S') + topic.replace('/', '_') + '.csv'
             file_path = os.path.join(self.save_dir, file_name)
             entity = [file_path, False]
-            self.entities[topic] = entity
+            self._entities[topic] = entity
+
+    def _make_image_entity(self, topics):
+        for topic in topics:
+            assert isinstance(topic, str), print("Topic type is not str ({})".format(type(topic)))
+            entity = self.save_dir
+            self._entities[topic] = entity
 
     def save_joint_state_msg(self, topic, msg, position_only, tag=''):
         assert isinstance(msg, JointState), print(type(msg))
-        if topic not in self.entities:
+        if topic not in self._entities:
             rospy.logerr("The interface does not hold the topic {}".format(topic))
             return False
 
-        file_path, has_header = self.entities[topic]
+        file_path, has_header = self._entities[topic]
         if not os.path.exists(file_path):
             has_header = False  # In case the file is removed while the program is still running
 
@@ -64,7 +75,7 @@ class SnapshotInterface(object):
             writer = csv.writer(f)
             if not has_header:
                 writer.writerow(['tag'] + msg.name)
-                self.entities[topic] = [file_path, True]
+                self._entities[topic] = [file_path, True]
             writer.writerow(['q_' + str(tag)] + self.to_str_list(msg.position))
             if not position_only:
                 writer.writerow(['dq_' + str(tag)] + self.to_str_list(msg.velocity))
@@ -73,11 +84,11 @@ class SnapshotInterface(object):
 
     def save_odom_msg(self, topic, msg, tag=''):
         assert isinstance(msg, Odometry), print(type(msg))
-        if topic not in self.entities:
+        if topic not in self._entities:
             rospy.logerr("The interface does not hold the topic {}".format(topic))
             return False
 
-        file_path, has_header = self.entities[topic]
+        file_path, has_header = self._entities[topic]
         if not os.path.exists(file_path):
             has_header = False
 
@@ -85,10 +96,27 @@ class SnapshotInterface(object):
             writer = csv.writer(f)
             if not has_header:
                 writer.writerow(['tag', 'p_x', 'p_y', 'p_z', 'o_x', 'o_y', 'o_z', 'o_w'])
-                self.entities[topic] = [file_path, True]
+                self._entities[topic] = [file_path, True]
             p = msg.pose.pose.position
             o = msg.pose.pose.orientation
             writer.writerow(['pose_' + str(tag)] + self.to_str_list([p.x, p.y, p.z, o.x, o.y, o.z, o.w]))
+        return True
+
+    def save_image_msgs(self, rgb_topic, depth_topic, rgb_msg, depth_msg, tag=''):
+        prefix = time.strftime('%H%M%S') + tag + '_'
+        rgb_ok = self._save_image_msg(rgb_topic, rgb_msg, prefix, '.jpg')
+        depth_ok = self._save_image_msg(depth_topic, depth_msg, prefix, '.png')
+        return rgb_ok | depth_ok
+
+    def _save_image_msg(self, topic, msg, prefix='', suffix=''):
+        file_name = prefix + topic.replace('/', '_') + suffix
+        if isinstance(msg, Image):
+            cv_image = self._bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+        elif isinstance(msg, CompressedImage):
+            cv_image = self._bridge.compressed_imgmsg_to_cv2(msg, desired_encoding='passthrough')
+        else:
+            raise NotImplementedError("Image type {} is not implemented".format(type(msg)))
+        cv2.imwrite(os.path.join(self.save_dir, file_name), cv_image)
         return True
 
     @staticmethod

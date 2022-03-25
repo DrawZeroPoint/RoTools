@@ -309,10 +309,11 @@ To use this function, we need to define the following parameters in the launch f
 This server records ROS msgs to local files depending on the msg types. Text types, like JointState, will be saved in
 CSV file. Image types are directly saved as images. Currently, we support:
 
-| Type       | Service to call   | Srv                                      |
-|------------|-------------------|------------------------------------------|
-| JointState | /save_joint_state | [SaveJointState](srv/SaveJointState.srv) |
-| Odometry   | /save_odometry    | [SaveOdometry](srv/SaveOdometry.srv)     |
+| Type            | Service to call   | Srv                                      |
+|-----------------|-------------------|------------------------------------------|
+| JointState      | /save_joint_state | [SaveJointState](srv/SaveJointState.srv) |
+| Odometry        | /save_odometry    | [SaveOdometry](srv/SaveOdometry.srv)     |
+| CompressedImage | /save_image       | [SaveImage](srv/SaveImage.srv)           |
 
 Refer to [roport_snapshot_server.launch](launch/roport_snapshot_server.launch) for launching the function. Topics you
 want to take snapshot must be registered with ROS parameters and be published by other nodes. You can specify which

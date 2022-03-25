@@ -11,6 +11,10 @@
       <!-- A list contains Odometry type topic names to record -->
       ["/odom", ]
     </rosparam>
+    <rosparam param="rgb_compressed_topics">
+      <!-- A list contains CompressedImage type topic names to record -->
+      ["/rgb/compressed", ]
+    </rosparam>
   </node>
 
 </launch>
