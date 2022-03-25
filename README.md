@@ -29,6 +29,7 @@ rotools cpp/python interfaces in ROS environment. It provides:
   environment (running in Python3 or on another server on the local network) via HTTP. This server is designed for
   online control, that given the current state, it will query the algorithm for the next state. For now, the states are
   Cartesian poses.
+- [Snapshot Server](scripts/roport_snapshot_server.py) enables recording various types of ROS msgs to files.
 - [Websocket Client](scripts/roport_websocket_client.py) enables transmitting ROS msgs among two PCs through ROS Bridge.
 - [Xsens Server](scripts/roport_xsens_server.py) converting the live stream from Xsens MVN Awinda motion capture suit to
   ROS pose messages.
@@ -302,6 +303,20 @@ To use this function, we need to define the following parameters in the launch f
 | `max_vel`             | map[str, double] | For each joint name, define its maximum allowed velocity during smooth movement. The name could be either in `source_joint_group` or `target_joint_group` (same for max_acc and max_jerk). |
 | `max_acc`             | map[str, double] | For each joint name, define its maximum acceleration during smooth movement.                                                                                                               |
 | `max_jerk`            | map[str, double] | For each joint name, define its maximum jerk during smooth movement.                                                                                                                       |
+
+### roport_snapshot_server
+
+This server records ROS msgs to local files depending on the msg types. Text types, like JointState, will be saved in
+CSV file. Image types are directly saved as images. Currently, we support:
+
+| Type       | Service to call   | Srv                                      |
+|------------|-------------------|------------------------------------------|
+| JointState | /save_joint_state | [SaveJointState](srv/SaveJointState.srv) |
+| Odometry   | /save_odometry    | [SaveOdometry](srv/SaveOdometry.srv)     |
+
+Refer to [roport_snapshot_server.launch](launch/roport_snapshot_server.launch) for launching the function. Topics you
+want to take snapshot must be registered with ROS parameters and be published by other nodes. You can specify which
+topic to record by calling aforementioned services By default, the saved files are located at `~`.
 
 ## :memo: Coding Guide
 
