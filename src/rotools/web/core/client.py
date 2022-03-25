@@ -25,19 +25,19 @@ class WebsocketROSClient(object):
         self._advertise_dict = {}
 
         # Down streams: the client subscribe to local topics and publish it to the server
-        if kwargs['downstream_list'] is not None:
+        if kwargs['from_client_topics'] is not None:
             self.local_subscribers = []
-            self.downstream_list = kwargs['downstream_list']
+            self.downstream_list = kwargs['from_client_topics']
             for i, entity in enumerate(self.downstream_list):
                 local_topic_id, remote_topic_id, msg_type = entity
                 subscriber = self.create_subscriber(local_topic_id, msg_type, remote_topic_id)
                 self.local_subscribers.append(subscriber)
 
         # Up stream: the client receive topics from the server and publish them locally
-        if kwargs['upstream_list'] is not None:
+        if kwargs['to_client_topics'] is not None:
             self.local_timers = []
             self.local_publishers = []
-            self.upstream_list = kwargs['upstream_list']
+            self.upstream_list = kwargs['to_client_topics']
             for i, entity in enumerate(self.upstream_list):
                 local_topic_id, remote_topic_id, msg_type = entity
                 timer, publisher = self.create_timer(local_topic_id, msg_type)
@@ -75,16 +75,18 @@ class WebsocketROSClient(object):
         for i, entity in enumerate(self.upstream_list):
             local_topic_id, remote_topic_id, msg_type = entity
             if 'Odometry' in msg_type:
-                result = self.subscribe(remote_topic_id, 'nav_msgs/Odometry')
+                result = self.subscribe_once(remote_topic_id, 'nav_msgs/Odometry')
                 self.local_publishers[i].publish(result)
 
     def _advertise(self, topic_name, topic_type):
-        """
-        Advertise a topic with its type in 'package/Message' format.
+        """Advertise a topic with its type in 'package/Message' format.
 
-        :param str topic_name: ROS topic name.
-        :param str topic_type: ROS topic type, e.g. std_msgs/String.
-        :returns str: ID to de-advertise later on.
+        Args:
+            topic_name: str topic_name: ROS topic name.
+            topic_type: str topic_type: ROS topic type, e.g. std_msgs/String.
+
+        Returns:
+            str: ID to de-advertise later on.
         """
         new_uuid = str(uuid4())
         self._advertise_dict[new_uuid] = {'topic_name': topic_name,
@@ -113,8 +115,12 @@ class WebsocketROSClient(object):
     def _publish(self, topic_name, message):
         """Publish onto the already advertised topic the msg in the shape of a Python dict.
 
-        :param str topic_name: ROS topic name.
-        :param dict msg: Dictionary containing the definition of the message.
+        Args:
+            topic_name: str topic_name: ROS topic name.
+            message: dict Dictionary containing the definition of the message.
+
+        Returns:
+
         """
         msg = {
             'op': 'publish',
@@ -125,11 +131,14 @@ class WebsocketROSClient(object):
         self.ws.send(json_msg)
 
     def publish(self, topic_name, ros_message):
-        """
-        Publish on a topic given ROS messages through ros-bridge.
-        :param str topic_name: ROS topic name.
-        :param * ros_message: Any ROS message instance, e.g. LaserScan()
-            from sensor_msgs/LaserScan.
+        """Publish on a topic given ROS messages through ros-bridge.
+
+        Args:
+            topic_name: str ROS topic name on the remote server.
+            ros_message: * Any ROS message instance, e.g. LaserScan() from sensor_msgs/LaserScan.
+
+        Returns:
+            None
         """
         # First check if we already advertised the topic
         d = self._advertise_dict
@@ -143,11 +152,10 @@ class WebsocketROSClient(object):
             self._advertise(topic_name, topic_type)
         # Converting ROS message to a dictionary through YAML
         ros_message_as_dict = yaml.load(ros_message.__str__())
-        # Publishing
         self._publish(topic_name, ros_message_as_dict)
 
-    def subscribe(self, topic_name, msg_type):
-        """
+    def subscribe_once(self, topic_name, msg_type):
+        """Subscribe to the topic on the remote server and retrieve its contents.
 
         Args:
             topic_name: str ROS topic name.

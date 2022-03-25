@@ -18,6 +18,7 @@ if __name__ == "__main__":
         assert algorithm_ports is not None, print("No sensing algorithm available")
         if algorithm_names and algorithm_ports:
             assert len(algorithm_names) == len(algorithm_ports), print('Algorithm names mismatch ports')
+
         configs = {
             'device_names': device_names,
             'algorithm_names': algorithm_names,

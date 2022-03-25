@@ -4,7 +4,7 @@ from __future__ import print_function
 import rospy
 
 from rotools.xsens.core.server import XsensServer
-from rotools.utility.common import get_param, pretty_print_configs
+from rotools.utility.common import get_param, pretty_print_configs, is_ip_valid, is_port_valid
 
 
 if __name__ == "__main__":
@@ -26,6 +26,9 @@ if __name__ == "__main__":
             s.connect(("8.8.8.8", 80))
             configs['udp_ip'] = s.getsockname()[0]
             s.close()
+
+        if not is_ip_valid(configs['udp_ip']) or not is_port_valid(configs['port']):
+            exit(-1)
 
         pretty_print_configs(configs)
         server = XsensServer(configs)

@@ -530,6 +530,26 @@ def byte_to_uint8(data):
     return struct.unpack('!B', data)[0]
 
 
+def is_ip_valid(ip):
+    if not isinstance(ip, str):
+        print_error("IP is not a string")
+        return False
+    if len(ip.split('.')) != 4:
+        print_error("IP {} is illegal".format(ip))
+        return False
+    if ':' in ip:
+        print_error("IP {} should not contain port number".format(ip))
+        return False
+    return True
+
+
+def is_port_valid(port):
+    if not isinstance(port, int):
+        print_error("Port is not a int")
+        return False
+    return True
+
+
 def play_hint_sound(enable):
     """Play a hint sound according to if enabled.
 
