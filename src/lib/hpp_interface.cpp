@@ -402,23 +402,35 @@ ManipulationPlanningInterface::ManipulationPlanningInterface(const ros::NodeHand
       time_step_(kDefaultStep),
       position_tolerance_(kPositionTolerance),
       orientation_tolerance_(kOrientationTolerance) {
-  manipulation_planning_solver_ = hpp_man::ProblemSolver::create();
+  manipulation_problem_solver_ = hpp_man::ProblemSolver::create();
 
   if (!createRobot()) {
     return;
   }
-  manipulation_planning_solver_->robot(robot_);
+  manipulation_problem_ = hpp_man::Problem::create(robot_);
+  steering_method_ = hpp_man::steeringMethod::Graph::create(manipulation_problem_);
+  problem_ = manipulation_problem_;
+  problem_->steeringMethod(steering_method_);
+
+  graph_ = hpp_man::graph::Graph::create("manipulation-graph", robot_, manipulation_problem_);
+  components_.push_back(graph_);
+  graph_->maxIterations(40);
+  graph_->errorThreshold(1e-3);
+  selector_ = graph_->createStateSelector("node-selector");
+  graph_->initialize();
+
+  manipulation_problem_solver_->robot(robot_);
 
   // Set locomotion area
   if (!setBound()) {
     return;
   }
   static constexpr double kErrorThreshold = 0.001;
-  manipulation_planning_solver_->errorThreshold(kErrorThreshold);
-  manipulation_planning_solver_->maxIterProjection(kMaxIterProjection);
+  manipulation_problem_solver_->errorThreshold(kErrorThreshold);
+  manipulation_problem_solver_->maxIterProjection(kMaxIterProjection);
 
   //  hpp_cons::ImplicitPtr_t constraint(0.04);
-  //  manipulation_planning_solver_->addNumericalConstraint("curi/panda_right_finger_joint1", constraint);
+  //  manipulation_problem_solver_->addNumericalConstraint("curi/panda_right_finger_joint1", constraint);
 
   // Load a URDF describing the environment and obstacles in it
   if (!createObstacle()) {
@@ -428,16 +440,16 @@ ManipulationPlanningInterface::ManipulationPlanningInterface(const ros::NodeHand
   bool loaded;
   try {
     std::string filename = plugin::findPluginLibrary("spline-gradient-based.so");
-    loaded = plugin::loadPlugin(filename, manipulation_planning_solver_);
+    loaded = plugin::loadPlugin(filename, manipulation_problem_solver_);
   } catch (const std::invalid_argument&) {
     loaded = false;
   }
   if (loaded) {
     ROS_INFO("Using path optimizer: SplineGradientBased_bezier1");
-    manipulation_planning_solver_->addPathOptimizer("SplineGradientBased_bezier1");
+    manipulation_problem_solver_->addPathOptimizer("SplineGradientBased_bezier1");
   } else {
     ROS_WARN("Could not load spline-gradient-based.so, using path optimizer: RandomShortcut");
-    manipulation_planning_solver_->addPathOptimizer("RandomShortcut");
+    manipulation_problem_solver_->addPathOptimizer("RandomShortcut");
   }
 
   XmlRpc::XmlRpcValue state_topic_id;
@@ -498,8 +510,10 @@ auto ManipulationPlanningInterface::createRobot() -> bool {
   }
 
   robot_ = hpp_man::Device::create(std::string(robot_name));
-  hpp_pin::urdf::loadRobotModel(robot_, root_joint_type_, robot_pkg_name, model_name, "", "");
+  hpp_pin::urdf::loadRobotModel(robot_, 0, std::string(robot_name) + "/", root_joint_type_, robot_pkg_name, model_name,
+                                "", "");
   robot_->controlComputation(static_cast<Computation_t>(JOINT_POSITION | JACOBIAN));
+
   q_current_ = robot_->currentConfiguration();
   return true;
 }
@@ -545,7 +559,7 @@ auto ManipulationPlanningInterface::createObstacle() -> bool {
   obstacle_ = hpp_man::Device::create(obstacle_name);
   hpp_pin::urdf::loadUrdfModel(obstacle_, "anchor", obstacle_pkg_name, obstacle_model_name);
   obstacle_->controlComputation(JOINT_POSITION);
-  manipulation_planning_solver_->addObstacle(obstacle_, true, true);
+  manipulation_problem_solver_->addObstacle(obstacle_, true, true);
   return true;
 }
 

@@ -25,6 +25,9 @@
 #include <hpp/manipulation/fwd.hh>
 #include <hpp/manipulation/manipulation-planner.hh>
 #include <hpp/manipulation/problem-solver.hh>
+#include <hpp/manipulation/problem.hh>
+#include <hpp/manipulation/steering-method/fwd.hh>
+#include <hpp/manipulation/steering-method/graph.hh>
 
 #include <hpp/constraints/fwd.hh>
 
@@ -40,6 +43,8 @@ namespace hpp_core = hpp::core;
 namespace hpp_pin = hpp::pinocchio;
 namespace hpp_man = hpp::manipulation;
 namespace hpp_cons = hpp::constraints;
+
+typedef std::vector<hpp_man::graph::GraphComponentPtr_t> GraphComponents_t;
 
 namespace roport {
 
@@ -188,7 +193,15 @@ class ManipulationPlanningInterface {
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
 
-  hpp_man::ProblemSolverPtr_t manipulation_planning_solver_;
+  hpp_core::SteeringMethodPtr_t steering_method_;
+  hpp_core::ProblemPtr_t problem_;
+
+  GraphComponents_t components_;
+  hpp_man::graph::GraphPtr_t graph_;
+  hpp_man::graph::StateSelectorPtr_t selector_;
+
+  hpp_man::ProblemPtr_t manipulation_problem_;
+  hpp_man::ProblemSolverPtr_t manipulation_problem_solver_;
 
   hpp_man::DevicePtr_t robot_;
   hpp_man::DevicePtr_t obstacle_;
