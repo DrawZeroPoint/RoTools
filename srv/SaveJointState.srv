@@ -1,0 +1,14 @@
+# Save JointState from topics to files
+
+# Requests
+# js_topic: JointState topic id
+# position_only [opt]: If true, only record the positions. Default false
+# tag [opt]: Record tag. Default empty
+
+string topic
+bool position_only
+string tag
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

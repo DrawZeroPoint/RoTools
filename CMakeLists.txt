@@ -101,7 +101,7 @@ add_service_files(
   ExecuteAttachCollisionBox.srv
   ExecuteBinaryAction.srv
   ExecuteDetachCollision.srv
-        ExecuteFrankaGripperGrasp.srv
+  ExecuteFrankaGripperGrasp.srv
   ExecuteGroupJointStates.srv
   ExecuteGroupNamedStates.srv
   ExecuteGroupPlan.srv
@@ -118,6 +118,9 @@ add_service_files(
   GetImageData.srv
   GetPreparePose.srv
   GetTransformedPose.srv
+  SaveImage.srv
+  SaveJointState.srv
+  SaveOdometry.srv
   SenseManipulationPoses.srv
   VisualizePose.srv
 )
@@ -195,7 +198,7 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB AND HPP_MANIPULATION_LIB)
   ADD_DEFINITIONS(-DBOOST_MPL_LIMIT_LIST_SIZE=30)
 
   include_directories(/opt/openrobots/include /usr/local/include)
-  
+
   find_library(PINOCCHIO_LIBRARIES pinocchio HINTS /usr/local/lib)
   find_library(OMNI_THREAD_LIB omnithread HINTS /opt/openrobots/lib)
   find_library(OMNI_ORB4_LIB omniORB4 HINTS /opt/openrobots/lib)
@@ -257,7 +260,9 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB)
     )
 endif ()
 
-# Install
+############
+# Install ##
+############
 
 file(GLOB_RECURSE PY_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.py)
 catkin_install_python(PROGRAMS

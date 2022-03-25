@@ -1,0 +1,16 @@
+<launch>
+  <!-- This launch file is only for debugging -->
+
+  <node pkg="roport" type="roport_snapshot_server.py" name="roport_snapshot_server" output="screen">
+    <param name="save_dir" value="$(optenv HOME)"/>
+    <rosparam param="js_topics">
+      <!-- A list contains JointState type topic names to record -->
+      ["/joint_state", ]
+    </rosparam>
+    <rosparam param="odom_topics">
+      <!-- A list contains Odometry type topic names to record -->
+      ["/odom", ]
+    </rosparam>
+  </node>
+
+</launch>

@@ -1,0 +1,12 @@
+# Save Odometry msg from topics to files
+
+# Requests
+# odom_topic: Odometry topic id
+# tag [opt]: Record tag. Default empty
+
+string topic
+string tag
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

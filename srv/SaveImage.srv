@@ -1,0 +1,14 @@
+# Save images from topics to files
+
+# Requests
+# rgb_topic: Rgb topic id
+# depth_topic: Depth topic id
+# tag [opt]: Image tag
+
+string rgb_topic
+string depth_topic
+string tag
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status
