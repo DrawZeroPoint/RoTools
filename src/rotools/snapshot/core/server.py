@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import nav_msgs.msg
 import rospy
+import rostopic
 import sensor_msgs.msg
 
 from sensor_msgs.msg import JointState, Image, CompressedImage
@@ -49,10 +50,18 @@ class SnapshotServer(object):
         if isinstance(topics, list) or isinstance(topics, tuple):
             valid_topics = []
             for topic in topics:
-                # TODO if rospy.topics.is_topic()
+                real_type, _, _ = rostopic.get_topic_type(topic, blocking=False)
+                if real_type is None:
+                    rospy.logwarn("Topic {} has not been published, type check skipped".format(topic))
+                else:
+                    type_name = topic_type.__name__
+                    if type_name != real_type and type_name != real_type.split('/')[-1]:
+                        rospy.logerr("Topic {} assigned as {}, but the real type is {}, omitted".format(
+                            topic, type_name, real_type))
+                        continue
                 subscriber = rospy.Subscriber(topic, topic_type, self.msg_cb, topic, queue_size=1)
                 self._subscribers.append(subscriber)
-                rospy.loginfo("Registered topic {} of type {}".format(topic, topic_type))
+                rospy.loginfo("Registered topic {} of type {}".format(topic, topic_type.__name__))
                 valid_topics.append(topic)
             return valid_topics
         else:
