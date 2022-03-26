@@ -193,6 +193,12 @@ are in `PoseStamped`.
 `right_tcp` is the right palm pose. `left_sole` is the left sole pose; `right_sole` is the right sole pose. When
 standing in N-pose, the TCP poses and sole poses are illustrated as:
 
+<img alt="frames" src="./misc/frames.png" width="800"/>
+
+These poses all reference to the reference_frame, which could be 'Pelvis' or 'T8'. You can set the reference frame in
+the launch file. If the frame name is not within these two, a given one will be used. If empty string is given, the
+default one `world` will be used.
+
 You can use `remap` in the launch file to remap some of these to other topic names.
 
 The server will also publish hand joint states on topics: `/xsens/left_hand_js`, and `/xsens/right_hand_js`. The joint
@@ -203,11 +209,8 @@ states for each hand compose of 10 values ranging from 0 to 1, where 0 is fully 
 | thumb_j1 | thumb_j2 | index_j1 | index_j2 | middle_j1 | middle_j2 | ring_j1 | ring_j2 | pinky_j1 | pinky_j2 |
 
 *Note: j1 is the joint between metacarpals (parent) and proximal phalanges (child); j2 is the angle between proximal
-phalanges and intermediate/distal phalanges (distal is used only for the thumb)*
-
-These poses all reference to the reference_frame, which could be 'Pelvis' or 'T8'. You can set the reference frame in
-the launch file. If the frame name is not within these two, a given one will be used. If empty string is given, the
-default one `world` will be used.
+phalanges and intermediate/distal phalanges (distal is used only for the thumb). For the four fingers other than
+the thumb, the joints between intermediate and distal phalanges are not presented.*
 
 ### State switch
 
