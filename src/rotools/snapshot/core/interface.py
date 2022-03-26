@@ -8,16 +8,9 @@ import rospy
 
 from cv_bridge import CvBridge
 
+from geometry_msgs.msg import Pose, PoseStamped
 from sensor_msgs.msg import JointState, Image, CompressedImage
 from nav_msgs.msg import Odometry
-
-try:
-    import geometry_msgs.msg as GeometryMsg
-    import control_msgs.msg as ControlMsg
-    import trajectory_msgs.msg as TrajectoryMsg
-    import std_msgs.msg as StdMsg
-except ImportError:
-    pass
 
 from rotools.utility import common, transform
 
@@ -28,6 +21,7 @@ class SnapshotInterface(object):
             self,
             js_topics,
             odom_topics,
+            pose_topics,
             save_dir,
             **kwargs
     ):
@@ -44,21 +38,18 @@ class SnapshotInterface(object):
 
         self._make_csv_entity(js_topics, 'JS_')
         self._make_csv_entity(odom_topics, 'ODOM_')
+        self._make_csv_entity(pose_topics, 'POSE_')
 
         self._bridge = CvBridge()
 
     def _make_csv_entity(self, topics, prefix):
+        if topics is None:
+            return
         for topic in topics:
             assert isinstance(topic, str), print("Topic type is not str ({})".format(type(topic)))
             file_name = prefix + time.strftime('%H%M%S') + topic.replace('/', '_') + '.csv'
             file_path = os.path.join(self.save_dir, file_name)
             entity = [file_path, False]
-            self._entities[topic] = entity
-
-    def _make_image_entity(self, topics):
-        for topic in topics:
-            assert isinstance(topic, str), print("Topic type is not str ({})".format(type(topic)))
-            entity = self.save_dir
             self._entities[topic] = entity
 
     def save_joint_state_msg(self, topic, msg, position_only, tag=''):
@@ -99,6 +90,29 @@ class SnapshotInterface(object):
                 self._entities[topic] = [file_path, True]
             p = msg.pose.pose.position
             o = msg.pose.pose.orientation
+            writer.writerow(['pose_' + str(tag)] + self.to_str_list([p.x, p.y, p.z, o.x, o.y, o.z, o.w]))
+        return True
+
+    def save_pose_msg(self, topic, msg, tag=''):
+        if isinstance(msg, PoseStamped):
+            return save_pose_msg(topic, msg.pose, tag)
+
+        assert isinstance(msg, Pose), print(type(msg))
+        if topic not in self._entities:
+            rospy.logerr("The interface does not hold the topic {}".format(topic))
+            return False
+
+        file_path, has_header = self._entities[topic]
+        if not os.path.exists(file_path):
+            has_header = False
+
+        with open(file_path, 'a', newline='') as f:
+            writer = csv.writer(f)
+            if not has_header:
+                writer.writerow(['tag', 'p_x', 'p_y', 'p_z', 'o_x', 'o_y', 'o_z', 'o_w'])
+                self._entities[topic] = [file_path, True]
+            p = msg.position
+            o = msg.orientation
             writer.writerow(['pose_' + str(tag)] + self.to_str_list([p.x, p.y, p.z, o.x, o.y, o.z, o.w]))
         return True
 

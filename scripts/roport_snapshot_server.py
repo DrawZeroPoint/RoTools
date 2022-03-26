@@ -12,6 +12,7 @@ if __name__ == "__main__":
         configs = {
             'js_topics': get_param('~js_topics'),
             'odom_topics': get_param('~odom_topics'),
+            'pose_topics': get_param('~pose_topics'),
             'rgb_compressed_topics': get_param('~rgb_compressed_topics'),
             'depth_compressed_topics': get_param('~depth_compressed_topics'),
             'save_dir': get_param('~save_dir'),

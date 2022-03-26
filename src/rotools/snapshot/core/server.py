@@ -27,6 +27,7 @@ class SnapshotServer(object):
 
         kwargs['js_topics'] = self.register_topics(kwargs['js_topics'], sensor_msgs.msg.JointState)
         kwargs['odom_topics'] = self.register_topics(kwargs['odom_topics'], nav_msgs.msg.Odometry)
+        kwargs['pose_topics'] = self.register_topics(kwargs['pose_topics'], geometry_msgs.msg.Pose)
 
         self.register_topics(kwargs['rgb_compressed_topics'], sensor_msgs.msg.CompressedImage)
         self.register_topics(kwargs['depth_compressed_topics'], sensor_msgs.msg.CompressedImage)
@@ -35,6 +36,7 @@ class SnapshotServer(object):
 
         self._srv_save_joint_state = rospy.Service('save_joint_state', SaveJointState, self.save_joint_state_handle)
         self._srv_save_odom = rospy.Service('save_odom', SaveOdometry, self.save_odom_handle)
+        self._srv_save_pose = rospy.Service('save_pose', SavePose, self.save_pose_handle)
         self._srv_save_image = rospy.Service('save_image', SaveImage, self.save_image_handle)
 
     def register_topics(self, topics, topic_type):
@@ -101,6 +103,17 @@ class SnapshotServer(object):
             resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
         else:
             rospy.logwarn("Odometry topic {} has not been recorded".format(req.topic))
+            resp.result_status = resp.FAILED
+        return resp
+
+    def save_pose_handle(self, req):
+        resp = SavePoseResponse()
+        if req.topic in self._msg_dict:
+            msg = self._msg_dict[req.topic]
+            ok = self.interface.save_pose_msg(req.topic, msg, req.tag)
+            resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
+        else:
+            rospy.logwarn("Pose topic {} has not been recorded".format(req.topic))
             resp.result_status = resp.FAILED
         return resp
 

@@ -121,6 +121,7 @@ add_service_files(
   SaveImage.srv
   SaveJointState.srv
   SaveOdometry.srv
+  SavePose.srv
   SenseManipulationPoses.srv
   VisualizePose.srv
 )

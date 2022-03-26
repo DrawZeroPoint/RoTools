@@ -316,6 +316,7 @@ CSV file. Image types are directly saved as images. Currently, we support:
 |-----------------|-------------------|------------------------------------------|
 | JointState      | /save_joint_state | [SaveJointState](srv/SaveJointState.srv) |
 | Odometry        | /save_odometry    | [SaveOdometry](srv/SaveOdometry.srv)     |
+| Pose            | /save_pose        | [SavePose](srv/SavePose.srv)             |
 | CompressedImage | /save_image       | [SaveImage](srv/SaveImage.srv)           |
 
 Refer to [roport_snapshot_server.launch](launch/roport_snapshot_server.launch) for launching the function. Topics you
@@ -377,7 +378,7 @@ uint8 result_status
 
 For these parameters the comment could be omitted.
 
-## Note
+## :warning: Warning
 
 ### Simultaneous execution
 

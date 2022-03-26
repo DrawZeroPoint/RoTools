@@ -1,7 +1,7 @@
-# Save Odometry msg from topics to files
+# Save Pose msg from topics to files
 
 # Requests
-# topic: Odometry topic id
+# topic: Pose topic name
 # tag [opt]: Record tag. Default empty
 
 string topic
