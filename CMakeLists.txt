@@ -109,6 +109,7 @@ add_service_files(
   ExecuteGroupPosition.srv
   ExecuteGroupShift.srv
   ExecuteJointPosition.srv
+  ExecuteManipulationPlanning.srv
   ExecuteMirroredPose.srv
   ExecutePathPlanning.srv
   ExecuteRemoveCollision.srv

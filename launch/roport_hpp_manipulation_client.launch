@@ -1,0 +1,17 @@
+<launch>
+  <!-- This launch file is only for debugging -->
+  <!-- A complete installation of HPP is needed to run the script -->
+  <!-- To run this script, first run `hppcorbaserver` and `gepetto-gui -c basic` -->
+
+  <node pkg="roport" type="roport_hpp_manipulation_client.py" name="roport_hpp_manipulation_client" output="screen">
+    <param name="env_name" value="kitchen_area"/>
+    <param name="env_pkg_name" value="hpp_tutorial"/>
+    <param name="object_name" value="box"/>
+    <param name="object_pkg_name" value="hpp_tutorial"/>
+    <param name="robot_name" value="pr2"/>
+    <param name="robot_pkg_name" value="hpp_tutorial"/>
+    <param name="robot_urdf_name" value="pr2"/>
+    <param name="robot_srdf_name" value="pr2_manipulation"/>
+  </node>
+
+</launch>

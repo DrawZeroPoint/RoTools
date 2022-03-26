@@ -191,7 +191,7 @@ By default, the server will publish poses on topics: `/xsens/all_poses`, `/xsens
 are in `PoseStamped`.
 `body_poses` are the poses of body segments without hand segments; `left_tcp` is the left palm pose;
 `right_tcp` is the right palm pose. `left_sole` is the left sole pose; `right_sole` is the right sole pose. When
-standing in N-pose, the TCP poses and sole poses are illustrated as:
+standing in T-pose, the TCP poses and sole poses are illustrated as:
 
 <img src="./misc/frames.png" alt="frames" width="100%"/>
 
@@ -354,18 +354,12 @@ be used.
 # Brief explanation about the service
 
 # Requests
-# param [opt]: explanation
+# param [opt]: Explanation goes here
 # ...
 
 # Response
-# param [opt]: explanation
+# param [opt]: Explanation goes here
 # ...
-```
-
-The request of the service should always contain:
-
-```
-std_msgs/Header header
 ```
 
 The response of the service should always contain:
