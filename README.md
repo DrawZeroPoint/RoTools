@@ -58,12 +58,15 @@ sensing, transformation calculation, simulation, and so forth.
 
 This software is continuously tested on Ubuntu 18.04 and 20.04. ROS Indigo on Ubuntu 14.04 is not supported.
 
-### Officially supported robots
+### Supported Robots
+
+This package has been developed as we use the following robots featuring sophisticated design, yet the package itself is
+agnostic to robot type and can be used to various types including robot arms and mobile manipulators.
 
 - Walker from UBTech
 - [CURI/Curiosity](https://github.com/DrawZeroPoint/curiosity) from CLOVER Lab CUHK
 
-### Dependence
+### ROS
 
 #### Noetic
 
@@ -84,6 +87,8 @@ ros-$ROS_DISTRO-eigen-conversions
 #### Indigo
 
 Not supported.
+
+### Optional
 
 Optionally, you can install the following Python packages to activate helper utilities.
 
@@ -191,7 +196,7 @@ By default, the server will publish poses on topics: `/xsens/all_poses`, `/xsens
 are in `PoseStamped`.
 `body_poses` are the poses of body segments without hand segments; `left_tcp` is the left palm pose;
 `right_tcp` is the right palm pose. `left_sole` is the left sole pose; `right_sole` is the right sole pose. When
-standing in N-pose, the TCP poses and sole poses are illustrated as:
+standing in T-pose, the TCP poses and sole poses are illustrated as:
 
 <img src="./misc/frames.png" alt="frames" width="100%"/>
 
