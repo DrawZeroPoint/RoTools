@@ -364,6 +364,41 @@ def get_transform_same_target(start, end):
     return np.dot(sd_start, np.linalg.inv(sd_end))
 
 
+def local_pose_to_global_pose(local_to_target, global_to_local):
+    if type(local_to_target) != type(global_to_local):
+        print_warn(
+            "Local to target pose type {} is not the same as global to local pose {}".format(
+                type(local_to_target), type(global_to_local))
+        )
+    sd_local_to_target = sd_pose(local_to_target)
+    sd_global_to_local = sd_pose(global_to_local)
+    sd_global_to_target = np.dot(sd_global_to_local, sd_local_to_target)
+    if isinstance(local_to_target, geo_msg.Pose):
+        return to_ros_pose(sd_global_to_target)
+    elif isinstance(local_to_target, geo_msg.PoseStamped):
+        return to_ros_pose_stamped(sd_global_to_target, local_to_target.header.frame_id)
+    else:
+        raise NotImplementedError
+
+
+def local_aligned_pose_to_global_pose(local_aligned_to_target, global_to_local):
+    if type(local_aligned_to_target) != type(global_to_local):
+        print_warn(
+            "Local aligned to target pose type {} is not the same as global to local pose {}".format(
+                type(local_aligned_to_target), type(global_to_local))
+        )
+    sd_local_aligned_to_target = sd_pose(local_aligned_to_target)
+    sd_global_to_local_aligned = sd_pose(global_to_local)
+    sd_global_to_local_aligned[:3, :3] = np.eye(3)
+    sd_global_to_target = np.dot(sd_global_to_local_aligned, sd_local_aligned_to_target)
+    if isinstance(local_aligned_to_target, geo_msg.Pose):
+        return to_ros_pose(sd_global_to_target)
+    elif isinstance(local_aligned_to_target, geo_msg.PoseStamped):
+        return to_ros_pose_stamped(sd_global_to_target, local_aligned_to_target.header.frame_id)
+    else:
+        raise NotImplementedError
+
+
 def get_param(name, value=None):
     """Get ros param from param server
 
