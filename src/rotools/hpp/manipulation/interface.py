@@ -16,7 +16,7 @@ from geometry_msgs.msg import Pose
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
 
-from rotools.hpp.core import Object, Environment
+from rotools.hpp.core import Object, Environment, Model, Gripper
 from rotools.utility import common, transform
 
 
@@ -26,14 +26,22 @@ class HPPManipulationInterface(object):
             self,
             env_name,
             env_pkg_name,
+            env_surface,
             object_name,
             object_pkg_name,
+            object_surface,
+            object_handle,
             robot_name,
             robot_pkg_name,
             robot_urdf_name,
             robot_srdf_name,
-            robot_bound=[-5, -2, -5.2, -2.7],
-            object_bound=[-5.1, -2, -5.2, -2.7, 0, 1.5],
+            robot_bound,
+            object_bound,
+            gripper_name,
+            fingers,
+            finger_joints,
+            finger_joint_values,
+            enable_viewer=True,
             **kwargs
     ):
         super(HPPManipulationInterface, self).__init__()
@@ -41,13 +49,18 @@ class HPPManipulationInterface(object):
         loadServerPlugin("corbaserver", "manipulation-corba.so")
         Client().problem.resetProblem()
 
-        self._robot_name = robot_name
-        self._object_name = object_name
+        self._rm = Model(robot_name, robot_pkg_name, robot_urdf_name, robot_srdf_name)
+        self._om = Model(object_name, object_pkg_name, surface=object_surface, handle=object_handle)
+        self._em = Model(env_name, env_pkg_name, surface=env_surface)
+        self._gm = Gripper(self._rm, gripper_name, fingers, finger_joints, finger_joint_values)
 
-        self._robot = self._create_robot(robot_pkg_name, robot_urdf_name, robot_srdf_name)
+        self._robot = self._create_robot()
         self._problem_solver = ProblemSolver(self._robot)
 
-        self._viewer_factory = self._create_viewer_factory(object_pkg_name, env_name, env_pkg_name)
+        if enable_viewer:
+            self._viewer_factory = self._create_viewer_factory()
+        else:
+            self._viewer_factory = None
 
         self._robot.setJointBounds("{}/root_joint".format(robot_name), robot_bound)
         self._robot.setJointBounds("{}/root_joint".format(object_name), object_bound)
@@ -58,47 +71,21 @@ class HPPManipulationInterface(object):
 
         # Generate initial and goal configuration.
         self._q_current = self._robot.getCurrentConfig()
-
-        self._q_current[0:2] = [-3.2, -4]
-        rank = self._robot.rankInConfiguration['{}/l_gripper_l_finger_joint'.format(robot_name)]
-        self._q_current[rank] = 0.5
-        rank = self._robot.rankInConfiguration['{}/l_gripper_r_finger_joint'.format(robot_name)]
-        self._q_current[rank] = 0.5
-        rank = self._robot.rankInConfiguration['{}/torso_lift_joint'.format(robot_name)]
-        self._q_current[rank] = 0.2
-
-        rank = self._robot.rankInConfiguration['{}/root_joint'.format(object_name)]
-        self._q_current[rank:rank + 3] = [-2.5, -4, 0.8]
-
         self._q_goal = self._q_current[::]
-        self._q_goal[0:2] = [-3.2, -4]
-        rank = self._robot.rankInConfiguration['{}/root_joint'.format(object_name)]
-        self._q_goal[rank:rank + 3] = [-3.5, -4, 0.8]
 
-        lock_hand = self._create_lock_hand(['l_l_finger', 'l_r_finger'],
-                                           ['l_gripper_l_finger_joint', 'l_gripper_r_finger_joint'], [0.5, 0.5])
+        self._lock_hand = self._create_lock_hand()
 
-        self._constrain_graph = ConstraintGraph(self._robot, 'graph')
-        factory = ConstraintGraphFactory(self._constrain_graph)
-        factory.setGrippers(["{}/l_gripper".format(robot_name), ])
-        factory.environmentContacts(["{}/pancake_table_table_top".format(env_name), ])
-        factory.setObjects([object_name, ],
-                           [["{}/handle2".format(object_name), ], ],
-                           [["{}/box_surface".format(object_name), ], ])
-        factory.setRules([Rule([".*"], [".*"], True), ])
-        factory.generate()
-        self._constrain_graph.addConstraints(graph=True, constraints=Constraints(lockedJoints=lock_hand))
-        self._constrain_graph.initialize()
+        self._constrain_graph = self._create_constrain_graph()
 
-    def _create_robot(self, pkg_name, urdf_name, srdf_name, root_joint_type='planar'):
+    def _create_robot(self, root_joint_type='planar'):
         class CompositeRobot(Parent):
-            urdfFilename = "package://{}/urdf/{}.urdf".format(pkg_name, urdf_name)
-            srdfFilename = "package://{}/srdf/{}.srdf".format(pkg_name, srdf_name)
+            urdfFilename = "package://{}/urdf/{}.urdf".format(self._rm.pkg_name, self._rm.urdf_name)
+            srdfFilename = "package://{}/srdf/{}.srdf".format(self._rm.pkg_name, self._rm.srdf_name)
             rootJointType = root_joint_type
 
             # \param compositeName name of the composite robot that will be built later,
             # \param robotName name of the first robot that is loaded now,
-            # \param load whether to actually load urdf files. Set to no if you only
+            # \param load whether to actually load urdf files. Set to false if you only
             #        want to initialize a corba client to an already initialized
             #        problem.
             # \param rootJointType type of root joint among ("freeflyer", "planar",
@@ -107,30 +94,44 @@ class HPPManipulationInterface(object):
                          rootJointType="planar", **kwargs):
                 Parent.__init__(self, compositeName, robotName, rootJointType, load, **kwargs)
 
-        robot = CompositeRobot('{}-{}'.format(self._robot_name, self._object_name), self._robot_name)
+        robot = CompositeRobot('{}-{}'.format(self._rm.name, self._om.name), self._rm.name)
         return robot
 
-    def _create_viewer_factory(self, object_pkg_name, env_name, env_pkg_name):
-        object_to_grasp = Object(self._object_name, object_pkg_name)
-        environment = Environment(env_name, env_pkg_name)
+    def _create_viewer_factory(self):
+        object_to_grasp = Object(self._om.name, self._om.pkg_name)
+        environment = Environment(self._em.name, self._em.pkg_name)
         viewer_factory = ViewerFactory(self._problem_solver)
-        viewer_factory.loadObjectModel(object_to_grasp, self._object_name)
-        viewer_factory.loadEnvironmentModel(environment, env_name)
+        viewer_factory.loadObjectModel(object_to_grasp, self._om.name)
+        viewer_factory.loadEnvironmentModel(environment, self._em.name)
         return viewer_factory
 
-    def _create_lock_hand(self, fingers, finger_joints, finger_joint_values):
-        assert len(fingers) == len(finger_joints) == len(finger_joint_values) == 2
-        lock_hand = fingers
-        for i in range(2):
-            self._problem_solver.createLockedJoint(fingers[i], '{}/{}'.format(self._robot_name, finger_joints[i]),
-                                                   [finger_joint_values[i], ])
+    def _create_lock_hand(self):
+        lock_hand = self._gm.fingers
+        for i in range(self._gm.dof):
+            self._problem_solver.createLockedJoint(
+                self._gm.fingers[i], '{}/{}'.format(self._rm.name, self._gm.joints[i]), [self._gm.values[i], ]
+            )
         return lock_hand
+
+    def _create_constrain_graph(self):
+        constrain_graph = ConstraintGraph(self._robot, 'graph')
+        factory = ConstraintGraphFactory(constrain_graph)
+        factory.setGrippers(["{}/{}".format(self._rm.name, self._gm.name), ])
+        factory.environmentContacts(["{}/{}".format(self._em.name, self._em.surface), ])
+        factory.setObjects([self._om.name, ],
+                           [["{}/{}".format(self._om.name, self._om.handle), ], ],
+                           [["{}/{}".format(self._om.name, self._om.surface), ], ])
+        factory.setRules([Rule([".*"], [".*"], True), ])
+        factory.generate()
+        constrain_graph.addConstraints(graph=True, constraints=Constraints(lockedJoints=self._lock_hand))
+        constrain_graph.initialize()
+        return constrain_graph
 
     def update_current_config(self, msg):
         if isinstance(msg, JointState):
             for i, joint_name in enumerate(msg.name):
                 try:
-                    rank = self._robot.rankInConfiguration['{}/{}'.format(self._robot_name, joint_name)]
+                    rank = self._robot.rankInConfiguration['{}/{}'.format(self._rm.name, joint_name)]
                     self._q_current[rank] = msg.position
                 except KeyError:
                     continue
@@ -142,7 +143,7 @@ class HPPManipulationInterface(object):
             rospy.logerr("Msg is not of type JointState/Odometry/Pose: {}".format(type(msg)))
 
     def set_object_goal_config(self, object_pose):
-        assert isinstance(object_pose, Pose)
+        self._q_goal = self._q_current[::]
         self._set_object_config(self._q_goal, object_pose)
 
     def get_current_base_global_pose(self):
@@ -157,15 +158,16 @@ class HPPManipulationInterface(object):
         self._problem_solver.solve()
 
         self._problem_solver.setTargetState(
-            self._constrain_graph.nodes["{}/l_gripper grasps {}/handle2".format(self._robot_name, self._object_name)])
+            self._constrain_graph.nodes[
+                "{}/{} grasps {}/{}".format(self._rm.name, self._gm.name, self._om.name, self._om.handle)])
         self._problem_solver.solve()
 
-        viewer = self._viewer_factory.createViewer()
-        viewer(q_init_proj)
-        path_player = PathPlayer(viewer)
-
-        path_player(0)
-        path_player(1)
+        if self._viewer_factory is not None:
+            viewer = self._viewer_factory.createViewer()
+            viewer(q_init_proj)
+            path_player = PathPlayer(viewer)
+            path_player(0)
+            path_player(1)
 
     @staticmethod
     def _get_robot_base_pose(config):
@@ -188,7 +190,7 @@ class HPPManipulationInterface(object):
 
     def _set_object_config(self, config, object_pose):
         assert isinstance(object_pose, Pose)
-        rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._object_name)]
+        rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
         # TODO check the order is wxyz
         config[rank: rank + 7] = [object_pose.position.x, object_pose.position.y, object_pose.position.z,
                                   object_pose.orientation.w, object_pose.orientation.x, object_pose.orientation.y,
