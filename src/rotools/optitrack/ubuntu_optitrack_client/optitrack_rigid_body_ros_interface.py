@@ -13,7 +13,7 @@ def data_process(data):
 
 def talker():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # 主动去连接局域网内IP为192.168.27.238，端口为6688的进程
+    #connect to windows IP
     client.connect(('192.168.13.118', 6688))
     print('connected')
     pub = rospy.Publisher('rigid_body_pose', Pose, queue_size=10)
