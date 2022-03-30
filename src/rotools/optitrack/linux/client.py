@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import socket
 
 import rospy
@@ -69,4 +71,14 @@ class OptiTrackClient(object):
             else:
                 raise NotImplementedError
             publisher.publish(msg)
+            print(msg)
         self._client.send('ok'.encode('utf-8'))
+
+
+
+def test():
+    args_dict = {'ip':'192.168.13.118', 'port':6688, 'rate':500, 'pose_topic':'rigid_body_pose','odom_topic':'odom'}
+    client = OptiTrackClient(args_dict)
+
+if __name__=='__main__':
+    test()
