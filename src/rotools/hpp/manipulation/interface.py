@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import math
+import numpy as np
 
 import rospy
 
@@ -12,7 +13,7 @@ from hpp.corbaserver import loadServerPlugin
 from hpp.gepetto import PathPlayer
 from hpp.gepetto.manipulation import ViewerFactory
 
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, Twist
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
 
@@ -41,6 +42,8 @@ class HPPManipulationInterface(object):
             fingers,
             finger_joints,
             finger_joint_values,
+            joint_cmd_topic,
+            base_cmd_topic,
             enable_viewer=True,
             **kwargs
     ):
@@ -69,13 +72,16 @@ class HPPManipulationInterface(object):
         self._problem_solver.setErrorThreshold(1e-3)
         self._problem_solver.setMaxIterProjection(40)
 
-        # Generate initial and goal configuration.
+        self._joint_names = []
         self._q_current = self._robot.getCurrentConfig()
         self._q_goal = self._q_current[::]
 
         self._lock_hand = self._create_lock_hand()
 
         self._constrain_graph = self._create_constrain_graph()
+
+        self._joint_cmd_publisher = rospy.Publisher(joint_cmd_topic, JointState, queue_size=1)
+        self._base_cmd_publisher = rospy.Publisher(base_cmd_topic, Twist, queue_size=1)
 
     def _create_robot(self, root_joint_type='planar'):
         class CompositeRobot(Parent):
@@ -133,6 +139,8 @@ class HPPManipulationInterface(object):
                 try:
                     rank = self._robot.rankInConfiguration['{}/{}'.format(self._rm.name, joint_name)]
                     self._q_current[rank] = msg.position
+                    if joint_name not in self._joint_names:
+                        self._joint_names.append(joint_name)
                 except KeyError:
                     continue
         elif isinstance(msg, Odometry):
@@ -149,25 +157,39 @@ class HPPManipulationInterface(object):
     def get_current_base_global_pose(self):
         return self._get_robot_base_pose(self._q_current)
 
-    def make_plan(self):
-        res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
+    def make_plan(self, pos_tol, ori_tol):
+        """
+
+        Returns:
+
+        """
         res, q_goal_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_goal)
-
-        self._problem_solver.setInitialConfig(q_init_proj)
         self._problem_solver.addGoalConfig(q_goal_proj)
-        self._problem_solver.solve()
 
-        self._problem_solver.setTargetState(
-            self._constrain_graph.nodes[
-                "{}/{} grasps {}/{}".format(self._rm.name, self._gm.name, self._om.name, self._om.handle)])
-        self._problem_solver.solve()
+        while not self._check_goal_reached(pos_tol, ori_tol):
+            res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
+            self._problem_solver.setInitialConfig(q_init_proj)
+            self._problem_solver.solve()
 
-        if self._viewer_factory is not None:
-            viewer = self._viewer_factory.createViewer()
-            viewer(q_init_proj)
-            path_player = PathPlayer(viewer)
-            path_player(0)
-            path_player(1)
+            self._problem_solver.setTargetState(
+                self._constrain_graph.nodes[
+                    "{}/{} grasps {}/{}".format(self._rm.name, self._gm.name, self._om.name, self._om.handle)])
+            self._problem_solver.solve()
+
+            if self._viewer_factory is not None:
+                viewer = self._viewer_factory.createViewer()
+                viewer(q_init_proj)
+                path_player = PathPlayer(viewer)
+                path_player(0)
+                path_player(1)
+
+            path_length = self._problem_solver.pathLength(1)
+            for t in np.range(0, path_length, 0.01):
+                j_q = self._problem_solver.configAtParam(1, t)
+                j_dq = j_q.derivative(t, 1)
+                self._publish_planning_results(j_q, j_dq)
+
+        return True
 
     @staticmethod
     def _get_robot_base_pose(config):
@@ -195,3 +217,40 @@ class HPPManipulationInterface(object):
         config[rank: rank + 7] = [object_pose.position.x, object_pose.position.y, object_pose.position.z,
                                   object_pose.orientation.w, object_pose.orientation.x, object_pose.orientation.y,
                                   object_pose.orientation.z]
+
+    def _publish_planning_results(self, j_q, j_dq):
+        joint_cmd = JointState()
+        for name in self._joint_names:
+            joint_cmd.name.append(name)
+            rank = self._robot.rankInConfiguration['{}/{}'.format(self._rm.name, name)]
+            joint_cmd.position.append(j_q[rank])
+            rank = self._robot.rankInVelocity['{}/{}'.format(self._rm.name, name)]
+            joint_cmd.velocity.append(j_dq[rank])
+
+        base_cmd = Twist()
+        theta = math.atan2(j_q[3], j_q[2])
+        rotation_2d = np.array([np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)])
+        local_linear = np.dot(rotation_2d.T(), np.array([j_dq[0], j_dq[1]]).T())
+        assert local_linear.shape == np.size(1, 2)
+        base_cmd.linear.x = local_linear[0]
+        base_cmd.linear.y = local_linear[1]
+        base_cmd.angular.z = j_dq[2]
+
+        self._joint_cmd_publisher.publish(joint_cmd)
+        self._base_cmd_publisher.publish(base_cmd)
+
+    def _check_goal_reached(self, pos_tol, ori_tol):
+        """Check if the base has reached the goal pose.
+
+        Args:
+            pos_tol: double Position tolerance.
+            ori_tol: double Orientation tolerance.
+
+        Returns:
+            True if both position and orientation errors are within tolerance.
+        """
+        q_goal_pos = self._q_goal[:2]
+        q_curr_pos = self._q_current[:2]
+        q_goal_ori = self._q_goal[2:4]
+        q_curr_ori = self._q_current[2:4]
+        return common.all_close(q_goal_pos, q_curr_pos, pos_tol) & common.all_close(q_goal_ori, q_curr_ori, ori_tol)

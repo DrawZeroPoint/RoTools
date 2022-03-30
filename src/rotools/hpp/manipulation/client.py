@@ -46,22 +46,27 @@ class HPPManipulationClient(object):
 
     def execute_manipulation_planning_handle(self, req):
         resp = ExecuteManipulationPlanningResponse()
-        current_base_global_pose = self.interface.get_current_base_global_pose()
+        base_global_pose = self.interface.get_current_base_global_pose()
 
-        if req.goal_pose_type == req.GLOBAL:
-            goal_pose = req.goal_pose
-        elif req.goal_pose_type == req.LOCAL_ALIGNED:
-            goal_pose = common.local_aligned_pose_to_global_pose(req.goal_pose, current_base_global_pose)
-        elif req.goal_pose_type == req.LOCAL:
-            goal_pose = common.local_pose_to_global_pose(req.goal_pose, current_base_global_pose)
-        else:
-            raise NotImplementedError
+        object_goal_pose = self._to_global_pose(req.object_goal_pose, req.object_goal_pose_type, base_global_pose)
+        # self.interface.set_object_goal_config(object_goal_pose)
 
-        # self.interface.set_object_goal_config(goal_pose)
+        base_goal_pose = self._to_global_pose(req.base_goal_pose, req.base_goal_pose_type, base_global_pose)
+        # self.interface.set_base_goal_config(base_goal_pose)
 
-        ok = self.interface.make_plan()
+        ok = self.interface.make_plan(req.pos_tolerance, req.ori_tolerance)
         resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
         return resp
+
+    def _to_global_pose(self, pose, pose_type, reference_pose):
+        if pose_type == 0:
+            return pose
+        elif pose_type == 1:
+            return common.local_aligned_pose_to_global_pose(pose, reference_pose)
+        elif pose_type == 2:
+            return common.local_pose_to_global_pose(pose, reference_pose)
+        else:
+            raise NotImplementedError
 
     def update_cb(self, msg):
         self.interface.update_current_config(msg)

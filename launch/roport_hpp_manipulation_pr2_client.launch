@@ -1,0 +1,38 @@
+<launch>
+  <!-- This launch file is only for debugging -->
+  <!-- A complete installation of HPP is needed to run the script -->
+  <!-- To run this script, first run `hppcorbaserver` and `gepetto-gui -c basic` -->
+
+  <node pkg="roport" type="roport_hpp_manipulation_client.py" name="roport_hpp_manipulation_client" output="screen">
+    <param name="env_name" value="kitchen_area"/>
+    <param name="env_pkg_name" value="hpp_tutorial"/>
+    <param name="env_surface" value="pancake_table_table_top"/>
+    <param name="object_name" value="box"/>
+    <param name="object_pkg_name" value="hpp_tutorial"/>
+    <param name="object_surface" value="box_surface"/>
+    <param name="object_handle" value="handle2"/>
+    <param name="robot_name" value="pr2"/>
+    <param name="robot_pkg_name" value="hpp_tutorial"/>
+    <param name="robot_urdf_name" value="pr2"/>
+    <param name="robot_srdf_name" value="pr2_manipulation"/>
+    <rosparam param="robot_bound">
+      [-5, -2, -5.2, -2.7]
+    </rosparam>
+    <rosparam param="object_bound">
+      [-5.1, -2, -5.2, -2.7, 0, 1.5]
+    </rosparam>
+    <param name="gripper_name" value="l_gripper"/>
+    <rosparam param="fingers">
+      ["l_l_finger", "l_r_finger"]
+    </rosparam>
+    <rosparam param="finger_joints">
+      ["l_gripper_l_finger_joint", "l_gripper_r_finger_joint"]
+    </rosparam>
+    <rosparam param="finger_joint_values">
+      [0.5, 0.5]
+    </rosparam>
+    <param name="joint_cmd_topic" value="/joint_command"/>
+    <param name="base_cmd_topic" value="/cmd_vel"/>
+  </node>
+
+</launch>
