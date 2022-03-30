@@ -33,6 +33,7 @@ rotools cpp/python interfaces in ROS environment. It provides:
 - [Websocket Client](scripts/roport_websocket_client.py) enables transmitting ROS msgs among two PCs through ROS Bridge.
 - [Xsens Server](scripts/roport_xsens_server.py) converting the live stream from Xsens MVN Awinda motion capture suit to
   ROS pose messages.
+- [OptiTrack Client](scripts/roport_optitrack_client.py) converting streams from OptiTrack socket server to pose msgs.
 - Hardware/Simulation interfaces adapted for a variety types of robots.
 
 #### CPP based
@@ -231,6 +232,23 @@ rosservice call /xsens/enable "data: true"
 ```
 
 The initial state is in deactivate state, to disable conversion, set `data` as false.
+
+## :running: Use with OptiTrack
+
+### Launch process
+
+First, you should start the server on the Windows side
+with [start_server.py](src/rotools/optitrack/windows/start_server.py):
+
+```bash
+python start_server.py
+```
+
+Then, on the linux side, run:
+
+```bash
+roslaunch roport roport_optitrack_client.launch
+```
 
 ## :page_facing_up: API reference
 

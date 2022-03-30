@@ -1,0 +1,19 @@
+<launch>
+  <arg name="ip" default="192.168.13.118"/>
+  <arg name="port" default="6688"/>
+
+  <node pkg="roport" type="roport_optitrack_client.py" name="roport_optitrack_client" output="screen">
+    <param name="ip" value="$(arg ip)"/>
+    <param name="port" value="$(arg port)"/>
+
+    <!-- odom_topic and pose_topic both receive a str or a list of str -->
+    <rosparam param="odom_topic">
+      "/odom"
+    </rosparam>
+
+    <!--    <rosparam param="pose_topic">-->
+    <!--      ["/pose_1", "/pose_2"]-->
+    <!--    </rosparam>-->
+  </node>
+
+</launch>
