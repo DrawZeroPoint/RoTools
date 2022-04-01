@@ -58,10 +58,6 @@ class OptiTrackClient(object):
         position, orientation = data_process(utf_data)
         position = Point(*position)
         orientation = Quaternion(*orientation)
-        # print('position:')
-        print(position)
-        # print('orientation:')
-        # print(orientation)
         for _, entity in self._advertise_dict.items():
             msg_type, publisher = entity
             if msg_type is geometry_msgs.msg.Pose:
@@ -76,16 +72,3 @@ class OptiTrackClient(object):
                 raise NotImplementedError
             publisher.publish(msg)
         self._client.send('ok'.encode('utf-8'))
-
-
-
-def test():
-    rospy.init_node('rigid_body_pose_publisher')
-    args_dict = {'ip':'192.168.13.118', 'port':6688, 'rate':500, 'pose_topic':None,'odom_topic':'odom'}
-    client = OptiTrackClient(args_dict)
-
-
-if __name__=='__main__':
-    test()
-    while True:
-        pass
