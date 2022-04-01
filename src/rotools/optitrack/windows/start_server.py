@@ -1,35 +1,17 @@
-# Copyright © 2018 Naturalpoint
-#
-# Licensed under the Apache License, Version 2.0 (the "License")
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-
-# OptiTrack NatNet direct depacketization sample for Python 3.x
-#
-# Uses the Python NatNetClient.py library to establish a connection (by creating a NatNetClient),
-# and receive data via a NatNet connection and decode it using the NatNetClient library.
-
 import sys
 import time
 from NatNetClient import NatNetClient
 import DataDescriptions
 import MoCapData
+from multiprocessing import Process, Manager
+import socket
 
 
 # This is a callback function that gets connected to the NatNet client
 # and called once per mocap frame.
 def receive_new_frame(data_dict):
-    order_list = ["frameNumber", "markerSetCount", "unlabeledMarkersCount", "rigidBodyCount", "skeletonCount",
-                  "labeledMarkerCount", "timecode", "timecodeSub", "timestamp", "isRecording", "trackedMdelsChangedo"]
+    # order_list = ["frameNumber", "markerSetCount", "unlabeledMarkersCount", "rigidBodyCount", "skeletonCount",
+    #               "labeledMarkerCount", "timecode", "timecodeSub", "timestamp", "isRecording", "trackedMdelsChangedo"]
     dump_args = False
     if dump_args:
         out_string = "    "
@@ -159,14 +141,38 @@ def my_parse_args(arg_list, args_dict):
     return args_dict
 
 
+# keep receiving msg from optitrack stream
+def optitrack_stream(dic, client2optitrack):
+    recv_buffer_size = 1024 * 1024
+    while True:
+        offset = 4
+        major = client2optitrack.get_major()
+        minor = client2optitrack.get_minor()
+
+        in_socket = client2optitrack.data_socket
+        data, addr = in_socket.recvfrom(recv_buffer_size)
+        packet_size = int.from_bytes(data[2:4], byteorder='little')
+        offset_tmp, mocap_data = client2optitrack.unpack_mocap_data(data[offset:], packet_size, major, minor)
+        data_rbd = mocap_data.rigid_body_data
+        data_rbd = data_rbd.get_as_string()
+        data_rbd = data_rbd.encode('utf-8')
+        dic['data_rbd'] = data_rbd
+
+
+# send to ubuntu
+def send2client(dic, server2ubuntu):
+    while True:
+        try:
+            data_rbd = dic['data_rbd']
+            server2ubuntu.send(data_rbd)
+            rec = server2ubuntu.recv(64)
+        except:
+            print('waiting for optitrack_stream')
+
+
 if __name__ == "__main__":
-
-    import socket
-
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # Must be the wlan local IP192.168.13.118，localhost和127.0.0.1 is for optitrack loopback
     server.bind(('192.168.13.118', 6688))
-    # start to listen
     server.listen(5)
     connect, (host, port) = server.accept()
     print(u'the client %s:%s has connected.' % (host, port))
@@ -184,11 +190,9 @@ if __name__ == "__main__":
     # Configure the streaming client to call our rigid body handler on the emulator to send data out.
     streaming_client.new_frame_listener = receive_new_frame
     streaming_client.rigid_body_listener = receive_rigid_body_frame
-    #
     # Start up the streaming client now that the callbacks are set up.
     # This will run perpetually, and operate on a separate thread.
     is_running = streaming_client.Creat_data_command_socket()
-    # is_running = True
     if not is_running:
         print("ERROR: Could not start streaming client.")
         try:
@@ -197,29 +201,13 @@ if __name__ == "__main__":
             print("...")
         finally:
             print("exiting")
-
-    is_looping = True
     time.sleep(1)
 
-    recv_buffer_size = 64 * 1024
-
-    while is_looping:
-        # skip the 4 bytes for message ID and packet_size
-        offset = 4
-        major = streaming_client.get_major()
-        minor = streaming_client.get_minor()
-
-        in_socket = streaming_client.data_socket
-        data, addr = in_socket.recvfrom(recv_buffer_size)
-        packet_size = int.from_bytes(data[2:4], byteorder='little')
-        offset_tmp, mocap_data = streaming_client.unpack_mocap_data(data[offset:], packet_size, major, minor)
-        # streaming_client.send_request(streaming_client.command_socket, streaming_client.NAT_CONNECT, "",
-        # (streaming_client.server_ip_address, streaming_client.command_port))
-        data_rbd = mocap_data.rigid_body_data
-        data_rbd = data_rbd.get_as_string()
-        data_rbd = data_rbd.encode('utf-8')
-        connect.send(data_rbd)
-        rec = connect.recv(1024)
-        # print(rec)
-
-        # print(data_p)
+    with Manager() as manager:
+        dict_share = manager.dict()
+        optitrack_stream_process = Process(target=optitrack_stream, args=(dict_share, streaming_client,))
+        send2client_process = Process(target=send2client, args=(dict_share, connect,))
+        optitrack_stream_process.start()
+        send2client_process.start()
+        optitrack_stream_process.join()
+        send2client_process.join()
