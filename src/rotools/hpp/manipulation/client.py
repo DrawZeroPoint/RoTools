@@ -27,7 +27,7 @@ class HPPManipulationClient(object):
                                                                 ExecuteManipulationPlanning,
                                                                 self.execute_manipulation_planning_handle)
         try:
-            js_topic = kwargs['js_topic']
+            js_topic = kwargs['joint_state_topic']
             self._sub_joint_state = rospy.Subscriber(js_topic, JointState, self.update_cb, buff_size=1)
         except KeyError:
             rospy.logwarn("Joint state topic is not provided")
