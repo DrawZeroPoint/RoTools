@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 
 from roport.srv import *
 
-import rotools.hpp.manipulation.pr2_interface as interface
+import rotools.hpp.manipulation.interface as interface
 import rotools.utility.common as common
 
 

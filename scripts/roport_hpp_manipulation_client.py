@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+import sys
 import rospy
+import subprocess
 
 from rotools.hpp.manipulation.client import HPPManipulationClient
 
@@ -8,6 +10,12 @@ from rotools.utility.common import get_param, pretty_print_configs
 
 
 if __name__ == '__main__':
+    if sys.version_info >= (3, 2):
+        server_process = subprocess.Popen(["hppcorbaserver"], start_new_session=True)
+    else:
+        server_process = None
+        rospy.logwarn("You need to manually run 'hppcorbaserver' before launching this program")
+
     try:
         rospy.init_node('roport_hpp_manipulation_client')
 
@@ -31,11 +39,23 @@ if __name__ == '__main__':
             'finger_joint_values': get_param('~finger_joint_values'),
             'joint_cmd_topic': get_param('~joint_cmd_topic'),
             'base_cmd_topic': get_param('~base_cmd_topic'),
+            'enable_viewer': get_param('~enable_viewer'),
         }
+
+        viewer_process = None
+        if configs['enable_viewer']:
+            if sys.version_info >= (3, 2):
+                viewer_process = subprocess.Popen(["gepetto-gui", "-c", "basic"], start_new_session=True)
+            else:
+                rospy.logwarn("You need to manually run 'gepetto-gui -c basic' before launching this program")
 
         pretty_print_configs(configs)
         client = HPPManipulationClient(configs)
         rospy.loginfo("RoPort HPP Manipulation Client ready.")
         rospy.spin()
+        if server_process is not None:
+            server_process.kill()
+        if viewer_process is not None:
+            viewer_process.kill()
     except rospy.ROSInterruptException as e:
         print(e)
