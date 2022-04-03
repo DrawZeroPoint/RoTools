@@ -248,7 +248,15 @@ def sd_position(position):
 
 
 def sd_orientation(orientation):
-    """Standardize the input to a np array representation of orientation.
+    """[deprecated] Standardize the input to a np array representation of orientation.
+
+    Args:
+        orientation:
+
+    Returns:
+
+    """
+    """
     The order should be qx, qy, qz, qw.
     """
     if isinstance(orientation, np.ndarray):
@@ -260,6 +268,32 @@ def sd_orientation(orientation):
         return sd_orientation(np.array(orientation))
     elif isinstance(orientation, geo_msg.Quaternion):
         return sd_orientation(np.array([orientation.x, orientation.y, orientation.z, orientation.w]))
+    else:
+        raise NotImplementedError
+
+
+def to_orientation_matrix(orientation):
+    """Standardize the input to a 3x3 numpy array representing orientation.
+
+    Args:
+        orientation: Data structure for an orientation.
+
+    Returns:
+        ndarray 3x3 matrix
+    """
+    if isinstance(orientation, np.ndarray):
+        if orientation.shape == (3, 3):
+            return orientation
+        elif orientation.shape == (4, 4):
+            return orientation[:3, :3]
+        elif orientation.shape == (4,):
+            return transform.quaternion_matrix(orientation)[:3, :3]
+        else:
+            raise NotImplementedError
+    elif (isinstance(orientation, list) or isinstance(orientation, tuple)) and len(orientation) == 4:
+        return to_orientation_matrix(np.array(orientation))
+    elif isinstance(orientation, geo_msg.Quaternion):
+        return to_orientation_matrix(np.array([orientation.x, orientation.y, orientation.z, orientation.w]))
     else:
         raise NotImplementedError
 

@@ -138,7 +138,7 @@ class HPPManipulationInterface(object):
             for i, joint_name in enumerate(msg.name):
                 try:
                     rank = self._robot.rankInConfiguration['{}/{}'.format(self._rm.name, joint_name)]
-                    self._q_current[rank] = msg.position
+                    self._q_current[rank] = msg.position[i]
                     if joint_name not in self._joint_names:
                         self._joint_names.append(joint_name)
                 except KeyError:
@@ -146,13 +146,13 @@ class HPPManipulationInterface(object):
         elif isinstance(msg, Odometry):
             self._set_robot_base_config(self._q_current, msg)
         elif isinstance(msg, Pose):
-            self._set_object_config(self._q_current, msg)
+            self._q_current = self._set_object_config(self._q_current, msg)
         else:
             rospy.logerr("Msg is not of type JointState/Odometry/Pose: {}".format(type(msg)))
 
     def set_object_goal_config(self, object_pose):
         self._q_goal = self._q_current[::]
-        self._set_object_config(self._q_goal, object_pose)
+        self._q_goal = self._set_object_config(self._q_goal, object_pose)
 
     def get_current_base_global_pose(self):
         return self._get_robot_base_pose(self._q_current)
@@ -207,7 +207,7 @@ class HPPManipulationInterface(object):
         assert isinstance(base_odom, Odometry)
         base_pose = base_odom.pose.pose
         config[0:2] = [base_pose.position.x, base_pose.position.y]
-        yaw = transform.euler_from_matrix(common.sd_orientation(base_pose.orientation))[-1]
+        yaw = transform.euler_from_matrix(common.to_orientation_matrix(base_pose.orientation))[-1]
         config[2:4] = [math.cos(yaw), math.sin(yaw)]
 
     def _set_object_config(self, config, object_pose):
@@ -217,6 +217,7 @@ class HPPManipulationInterface(object):
         config[rank: rank + 7] = [object_pose.position.x, object_pose.position.y, object_pose.position.z,
                                   object_pose.orientation.w, object_pose.orientation.x, object_pose.orientation.y,
                                   object_pose.orientation.z]
+        return config
 
     def _publish_planning_results(self, j_q, j_dq):
         joint_cmd = JointState()
