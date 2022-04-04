@@ -48,7 +48,9 @@ if __name__ == '__main__':
         viewer_process = None
         if configs['enable_viewer']:
             if sys.version_info >= (3, 2):
-                viewer_process = subprocess.Popen(["gepetto-gui", "-c", "basic"], start_new_session=True)
+                viewer_process = subprocess.Popen(["gepetto-gui", "-c", "basic"],
+                                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                                  start_new_session=True)
             else:
                 rospy.logwarn("You need to manually run 'gepetto-gui -c basic' before launching this program")
 

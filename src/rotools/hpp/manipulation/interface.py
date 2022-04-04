@@ -83,6 +83,9 @@ class HPPManipulationInterface(object):
         self._joint_cmd_publisher = rospy.Publisher(joint_cmd_topic, JointState, queue_size=1)
         self._base_cmd_publisher = rospy.Publisher(base_cmd_topic, Twist, queue_size=1)
 
+        self._time_step = 0.01
+        self._reduction_ratio = 0.5
+
     def _create_robot(self, root_joint_type='planar'):
         class CompositeRobot(Parent):
             urdfFilename = "package://{}/urdf/{}.urdf".format(self._rm.pkg_name, self._rm.urdf_name)
@@ -129,7 +132,7 @@ class HPPManipulationInterface(object):
                            [["{}/{}".format(self._om.name, self._om.surface), ], ])
         factory.setRules([Rule([".*"], [".*"], True), ])
         factory.generate()
-        constrain_graph.addConstraints(graph=True, constraints=Constraints(lockedJoints=self._lock_hand))
+        constrain_graph.addConstraints(graph=True, constraints=Constraints(numConstraints=self._lock_hand))
         constrain_graph.initialize()
         return constrain_graph
 
@@ -169,26 +172,27 @@ class HPPManipulationInterface(object):
         while not self._check_goal_reached(pos_tol, ori_tol):
             res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
             self._problem_solver.setInitialConfig(q_init_proj)
-            self._problem_solver.solve()
+            # self._problem_solver.solve()
 
             self._problem_solver.setTargetState(
                 self._constrain_graph.nodes[
                     "{}/{} grasps {}/{}".format(self._rm.name, self._gm.name, self._om.name, self._om.handle)])
             self._problem_solver.solve()
 
+            last_path_id = self._problem_solver.numberPaths() - 1
             if self._viewer_factory is not None:
                 viewer = self._viewer_factory.createViewer()
                 viewer(q_init_proj)
                 path_player = PathPlayer(viewer)
-                path_player(0)
-                path_player(1)
+                path_player(last_path_id)
 
-            path_length = self._problem_solver.pathLength(1)
-            for t in np.range(0, path_length, 0.01):
-                j_q = self._problem_solver.configAtParam(1, t)
-                j_dq = j_q.derivative(t, 1)
+            path_length = self._problem_solver.pathLength(last_path_id)
+            for t in np.arange(0, path_length, self._time_step):
+                j_q = self._problem_solver.configAtParam(last_path_id, t)
+                j_dq = self._problem_solver.derivativeAtParam(last_path_id, 1, t)
                 self._publish_planning_results(j_q, j_dq)
-
+                rospy.sleep(self._time_step / self._reduction_ratio)
+            # self._stop_base()
         return True
 
     @staticmethod
@@ -227,21 +231,21 @@ class HPPManipulationInterface(object):
             joint_cmd.position.append(j_q[rank])
             rank = self._robot.rankInVelocity['{}/{}'.format(self._rm.name, name)]
             joint_cmd.velocity.append(j_dq[rank])
+            joint_cmd.effort.append(0)  # TODO currently torque control is not supported
 
         base_cmd = Twist()
         theta = math.atan2(j_q[3], j_q[2])
-        rotation_2d = np.array([np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)])
-        local_linear = np.dot(rotation_2d.T(), np.array([j_dq[0], j_dq[1]]).T())
-        assert local_linear.shape == np.size(1, 2)
-        base_cmd.linear.x = local_linear[0]
-        base_cmd.linear.y = local_linear[1]
-        base_cmd.angular.z = j_dq[2]
+        rotation_2d = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+        local_linear = np.dot(rotation_2d.T, np.array([j_dq[0], j_dq[1]]).T)
+        base_cmd.linear.x = local_linear[0] * self._reduction_ratio
+        base_cmd.linear.y = local_linear[1] * self._reduction_ratio
+        base_cmd.angular.z = j_dq[2] * self._reduction_ratio
 
         self._joint_cmd_publisher.publish(joint_cmd)
         self._base_cmd_publisher.publish(base_cmd)
 
     def _check_goal_reached(self, pos_tol, ori_tol):
-        """Check if the base has reached the goal pose.
+        """Check if the object and optionally the base has reached the goal pose.
 
         Args:
             pos_tol: double Position tolerance.
@@ -250,8 +254,17 @@ class HPPManipulationInterface(object):
         Returns:
             True if both position and orientation errors are within tolerance.
         """
+        rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
+        obj_curr_pos = self._q_current[rank: rank + 3]
+        obj_goal_pos = self._q_goal[rank: rank + 3]
+        obj_curr_ori = self._q_current[rank + 3: rank + 7]
+        obj_goal_ori = self._q_goal[rank + 3: rank + 7]
         q_goal_pos = self._q_goal[:2]
         q_curr_pos = self._q_current[:2]
         q_goal_ori = self._q_goal[2:4]
         q_curr_ori = self._q_current[2:4]
-        return common.all_close(q_goal_pos, q_curr_pos, pos_tol) & common.all_close(q_goal_ori, q_curr_ori, ori_tol)
+        print(obj_goal_pos, obj_curr_pos, obj_goal_ori, obj_curr_ori)
+        return common.all_close(obj_goal_pos, obj_curr_pos, pos_tol) &\
+            common.all_close(obj_goal_ori, obj_curr_ori, ori_tol) & \
+            common.all_close(q_goal_pos, q_curr_pos, pos_tol) & \
+            common.all_close(q_goal_ori, q_curr_ori, ori_tol)
