@@ -540,7 +540,7 @@ class ExecuteJointPosition : public RosServiceNode<roport::ExecuteJointPosition>
   }
 
   void onSendRequest(RequestType& request) override {
-    double speed_ratio;
+    double speed_ratio = 0.1;
     getInput<double>("speed_ratio", speed_ratio);
     request.speed_ratio = speed_ratio;
 
@@ -585,7 +585,7 @@ class GetPreparePose : public RosServiceNode<roport::GetPreparePose> {
     Pose pose{};
     getInput<Pose>("pose", pose);
     request.pose = pose.toROS();
-    int is_absolute;
+    int is_absolute = 0;
     getInput<int>("is_absolute", is_absolute);
     request.is_absolute = static_cast<bool>(is_absolute);
     Point shift{};
@@ -647,7 +647,7 @@ class SenseManipulationPoses : public RosServiceNode<roport::SenseManipulationPo
     StringArray device_names{};
     getInput<StringArray>("device_names", device_names);
     request.device_names = device_names.toROS();
-    int algorithm_id;
+    int algorithm_id = -1;
     getInput<int>("algorithm_id", algorithm_id);
     request.algorithm_id = static_cast<uint8_t>(algorithm_id);
   }
