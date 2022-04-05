@@ -248,7 +248,15 @@ def sd_position(position):
 
 
 def sd_orientation(orientation):
-    """Standardize the input to a np array representation of orientation.
+    """[deprecated] Standardize the input to a np array representation of orientation.
+
+    Args:
+        orientation:
+
+    Returns:
+
+    """
+    """
     The order should be qx, qy, qz, qw.
     """
     if isinstance(orientation, np.ndarray):
@@ -260,6 +268,32 @@ def sd_orientation(orientation):
         return sd_orientation(np.array(orientation))
     elif isinstance(orientation, geo_msg.Quaternion):
         return sd_orientation(np.array([orientation.x, orientation.y, orientation.z, orientation.w]))
+    else:
+        raise NotImplementedError
+
+
+def to_orientation_matrix(orientation):
+    """Standardize the input to a 3x3 numpy array representing orientation.
+
+    Args:
+        orientation: Data structure for an orientation.
+
+    Returns:
+        ndarray 3x3 matrix
+    """
+    if isinstance(orientation, np.ndarray):
+        if orientation.shape == (3, 3):
+            return orientation
+        elif orientation.shape == (4, 4):
+            return orientation[:3, :3]
+        elif orientation.shape == (4,):
+            return transform.quaternion_matrix(orientation)[:3, :3]
+        else:
+            raise NotImplementedError
+    elif (isinstance(orientation, list) or isinstance(orientation, tuple)) and len(orientation) == 4:
+        return to_orientation_matrix(np.array(orientation))
+    elif isinstance(orientation, geo_msg.Quaternion):
+        return to_orientation_matrix(np.array([orientation.x, orientation.y, orientation.z, orientation.w]))
     else:
         raise NotImplementedError
 
@@ -362,6 +396,41 @@ def get_transform_same_target(start, end):
     sd_start = sd_pose(start)
     sd_end = sd_pose(end)
     return np.dot(sd_start, np.linalg.inv(sd_end))
+
+
+def local_pose_to_global_pose(local_to_target, global_to_local):
+    if type(local_to_target) != type(global_to_local):
+        print_warn(
+            "Local to target pose type {} is not the same as global to local pose {}".format(
+                type(local_to_target), type(global_to_local))
+        )
+    sd_local_to_target = sd_pose(local_to_target)
+    sd_global_to_local = sd_pose(global_to_local)
+    sd_global_to_target = np.dot(sd_global_to_local, sd_local_to_target)
+    if isinstance(local_to_target, geo_msg.Pose):
+        return to_ros_pose(sd_global_to_target)
+    elif isinstance(local_to_target, geo_msg.PoseStamped):
+        return to_ros_pose_stamped(sd_global_to_target, local_to_target.header.frame_id)
+    else:
+        raise NotImplementedError
+
+
+def local_aligned_pose_to_global_pose(local_aligned_to_target, global_to_local):
+    if type(local_aligned_to_target) != type(global_to_local):
+        print_warn(
+            "Local aligned to target pose type {} is not the same as global to local pose {}".format(
+                type(local_aligned_to_target), type(global_to_local))
+        )
+    sd_local_aligned_to_target = sd_pose(local_aligned_to_target)
+    sd_global_to_local_aligned = sd_pose(global_to_local)
+    sd_global_to_local_aligned[:3, :3] = np.eye(3)
+    sd_global_to_target = np.dot(sd_global_to_local_aligned, sd_local_aligned_to_target)
+    if isinstance(local_aligned_to_target, geo_msg.Pose):
+        return to_ros_pose(sd_global_to_target)
+    elif isinstance(local_aligned_to_target, geo_msg.PoseStamped):
+        return to_ros_pose_stamped(sd_global_to_target, local_aligned_to_target.header.frame_id)
+    else:
+        raise NotImplementedError
 
 
 def get_param(name, value=None):

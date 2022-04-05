@@ -1,0 +1,26 @@
+# Execute whole-body collision aware manipulation planning using HPP
+
+# Requests
+# *_goal_pose_type: GLOBAL: The goal pose is an absolute one wrt the global frame (world frame)
+#                   LOCAL_ALIGNED: The goal pose is relative to the world frame aligned with the robot base frame
+#                   LOCAL: The goal pose is relative to the robot base frame
+# object_goal_pose: Object's pose after manipulation
+# base_goal_pose: Robot base's pose after manipulation
+# goal_state [opt]: Robot's joint state after manipulation, if applicable
+# pos_tolerance [opt]: Position tolerance for considering the goal pose has been reached, default 0.01 m
+# ori_tolerance [opt]: Orientation (in quaternion) tolerance, default 0.02 for all coefficients
+
+uint8 GLOBAL=0
+uint8 LOCAL_ALIGNED=1
+uint8 LOCAL=2
+uint8 object_goal_pose_type
+uint8 base_goal_pose_type
+geometry_msgs/Pose object_goal_pose
+geometry_msgs/Pose base_goal_pose
+sensor_msgs/JointState goal_state
+float64 pos_tolerance
+float64 ori_tolerance
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

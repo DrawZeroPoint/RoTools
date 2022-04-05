@@ -377,18 +377,12 @@ be used.
 # Brief explanation about the service
 
 # Requests
-# param [opt]: explanation
+# param [opt]: Explanation goes here
 # ...
 
 # Response
-# param [opt]: explanation
+# param [opt]: Explanation goes here
 # ...
-```
-
-The request of the service should always contain:
-
-```
-std_msgs/Header header
 ```
 
 The response of the service should always contain:
