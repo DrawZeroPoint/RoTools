@@ -686,7 +686,7 @@ class VisualizePose : public RosServiceNode<roport::VisualizePose> {
     request.pose = pose.toROS();
   }
 };
-}  // namespace BT
+}  // namespace bt
 
 auto main(int argc, char** argv) -> int {
   ros::init(argc, argv, "roport_bt_port");
