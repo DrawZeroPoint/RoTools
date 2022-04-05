@@ -1,6 +1,3 @@
-import urdf_parser_py
-
-
 class Object(object):
     rootJointType = 'freeflyer'
     urdfSuffix = ""

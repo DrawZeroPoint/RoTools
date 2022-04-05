@@ -147,7 +147,7 @@ class HPPManipulationInterface(object):
                 except KeyError:
                     continue
         elif isinstance(msg, Odometry):
-            self._set_robot_base_config(self._q_current, msg)
+            self._q_current = self._set_robot_base_config(self._q_current, msg)
         elif isinstance(msg, Pose):
             self._q_current = self._set_object_config(self._q_current, msg)
         else:
@@ -166,8 +166,8 @@ class HPPManipulationInterface(object):
         Returns:
 
         """
-        res, q_goal_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_goal)
-        self._problem_solver.addGoalConfig(q_goal_proj)
+        # res, q_goal_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_goal)
+        # self._problem_solver.addGoalConfig(q_goal_proj)
 
         while not self._check_goal_reached(pos_tol, ori_tol):
             res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
@@ -178,6 +178,7 @@ class HPPManipulationInterface(object):
                 self._constrain_graph.nodes[
                     "{}/{} grasps {}/{}".format(self._rm.name, self._gm.name, self._om.name, self._om.handle)])
             self._problem_solver.solve()
+            self._problem_solver.optimizePath(0)
 
             last_path_id = self._problem_solver.numberPaths() - 1
             if self._viewer_factory is not None:
@@ -192,6 +193,10 @@ class HPPManipulationInterface(object):
                 j_dq = self._problem_solver.derivativeAtParam(last_path_id, 1, t)
                 self._publish_planning_results(j_q, j_dq)
                 rospy.sleep(self._time_step / self._reduction_ratio)
+
+            j_q = self._problem_solver.configAtParam(last_path_id, path_length)
+            j_dq = self._problem_solver.derivativeAtParam(last_path_id, 1, path_length)
+            self._publish_planning_results(j_q, j_dq)
             # self._stop_base()
         return True
 
@@ -208,11 +213,21 @@ class HPPManipulationInterface(object):
 
     @staticmethod
     def _set_robot_base_config(config, base_odom):
+        """Update the configurations of the robot base's pose.
+
+        Args:
+            config: list[double] HPP configurations.
+            base_odom: Odometry msg of the robot's planar base.
+
+        Returns:
+            Updated configurations.
+        """
         assert isinstance(base_odom, Odometry)
         base_pose = base_odom.pose.pose
         config[0:2] = [base_pose.position.x, base_pose.position.y]
         yaw = transform.euler_from_matrix(common.to_orientation_matrix(base_pose.orientation))[-1]
         config[2:4] = [math.cos(yaw), math.sin(yaw)]
+        return config
 
     def _set_object_config(self, config, object_pose):
         assert isinstance(object_pose, Pose)
@@ -264,7 +279,7 @@ class HPPManipulationInterface(object):
         q_goal_ori = self._q_goal[2:4]
         q_curr_ori = self._q_current[2:4]
         print(obj_goal_pos, obj_curr_pos, obj_goal_ori, obj_curr_ori)
-        return common.all_close(obj_goal_pos, obj_curr_pos, pos_tol) &\
-            common.all_close(obj_goal_ori, obj_curr_ori, ori_tol) & \
-            common.all_close(q_goal_pos, q_curr_pos, pos_tol) & \
-            common.all_close(q_goal_ori, q_curr_ori, ori_tol)
+        return common.all_close(obj_goal_pos, obj_curr_pos, pos_tol) & \
+               common.all_close(obj_goal_ori, obj_curr_ori, ori_tol) & \
+               common.all_close(q_goal_pos, q_curr_pos, pos_tol) & \
+               common.all_close(q_goal_ori, q_curr_ori, ori_tol)
