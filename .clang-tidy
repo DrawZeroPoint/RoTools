@@ -1,4 +1,4 @@
-Checks: 'readability-*,performance-*,-implicit-bool-conversion,-clang-diagnostic-deprecated-declarations,-clang-diagnostic-reinterpret-base-class,-clang-diagnostic-return-type,-clang-diagnostic-switch'
+Checks: 'readability-identifier-naming'
 HeaderFilterRegex: '^rotools_.*'
 CheckOptions:
 # Classes, structs, ...
