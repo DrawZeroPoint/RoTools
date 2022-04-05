@@ -286,7 +286,7 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
 
   std::vector<double> q_desired;
   optimizers_[group_id]->getTargetPosition(q_desired);
-  size_t violated_i;
+  size_t violated_i = 0;
   double residual;
   if (allClose<double>(filtered_msg.position, q_desired, violated_i, residual)) {
     finished_smooth_start_flags_[group_id] = true;
