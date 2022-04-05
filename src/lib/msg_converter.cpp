@@ -287,7 +287,7 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
   std::vector<double> q_desired;
   optimizers_[group_id]->getTargetPosition(q_desired);
   size_t violated_i = 0;
-  double residual;
+  double residual = 0.;
   if (allClose<double>(filtered_msg.position, q_desired, violated_i, residual)) {
     finished_smooth_start_flags_[group_id] = true;
     ROS_INFO("Successfully moved group %d to the start position.", group_id);
@@ -318,8 +318,8 @@ bool MsgConverter::phaseJointParameterMap(const std::string& param_name,
     } else if (param_map.find(target_names[idx]) != param_map.end()) {
       param_out.push_back(param_map[target_names[idx]]);
     } else {
-      ROS_ERROR_STREAM(prefix << ("Unable to find %s param for %s(%s)", param_name.c_str(), source_names[idx].c_str(),
-                                  target_names[idx].c_str()));
+      ROS_ERROR_STREAM(prefix << "Unable to find " << param_name << " param for " << source_names[idx] << " ("
+                              << target_names[idx] << ")");
       return false;
     }
   }
