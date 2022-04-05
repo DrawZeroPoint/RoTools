@@ -222,7 +222,7 @@ auto ControlServer::buildTrajectory(MoveGroupInterface& move_group,
     move_group.setPoseTarget(pose);
     moveit::planning_interface::MoveGroupInterface::Plan plan;
     auto res = move_group.plan(plan);
-    if (res != moveit::planning_interface::MoveItErrorCode::SUCCESS) {
+    if (res != moveit::planning_interface::MoveItErrorCode::SUCCESS) {  // NOLINT
       ROS_ERROR_STREAM("RoPort: Planning for group " + move_group.getName() + " failed with MoveItErrorCode " +
                        std::to_string(res.val));
       return false;
