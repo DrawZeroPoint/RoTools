@@ -32,7 +32,9 @@
 
 // Actions (customized)
 
-namespace BT {
+using namespace BT;
+
+namespace bt {
 
 class ExecuteAddCollisionBox : public RosServiceNode<roport::ExecuteAddCollisionBox> {
  public:
@@ -699,34 +701,34 @@ auto main(int argc, char** argv) -> int {
   }
 
   BT::BehaviorTreeFactory factory;
-  BT::registerRosService<BT::ExecuteAddCollisionBox>(factory, "ExecuteAddCollisionBox", node_handle);
-  BT::registerRosService<BT::ExecuteAddCollisionPlane>(factory, "ExecuteAddCollisionPlane", node_handle);
-  BT::registerRosService<BT::ExecuteAllPlans>(factory, "ExecuteAllPlans", node_handle);
-  BT::registerRosService<BT::ExecuteAllPoses>(factory, "ExecuteAllPoses", node_handle);
-  BT::registerRosService<BT::ExecuteMirroredPose>(factory, "ExecuteMirroredPose", node_handle);
-  BT::registerRosService<BT::ExecuteAttachCollisionBox>(factory, "ExecuteAttachCollisionBox", node_handle);
-  BT::registerRosService<BT::ExecuteBinaryAction>(factory, "ExecuteBinaryAction", node_handle);
-  BT::registerRosService<BT::ExecuteDetachCollision>(factory, "ExecuteDetachCollision", node_handle);
-  BT::registerRosService<BT::ExecuteFrankaGripperGrasp>(factory, "ExecuteFrankaGripperGrasp", node_handle);
-  BT::registerRosService<BT::ExecuteGroupAngularJointStates>(factory, "ExecuteGroupAngularJointStates", node_handle);
-  BT::registerRosService<BT::ExecuteGroupLinearJointStates>(factory, "ExecuteGroupLinearJointStates", node_handle);
-  BT::registerRosService<BT::ExecuteGroupNamedStates>(factory, "ExecuteGroupNamedStates", node_handle);
-  BT::registerRosService<BT::ExecuteGroupPlan>(factory, "ExecuteGroupPlan", node_handle);
-  BT::registerRosService<BT::ExecuteGroupPose>(factory, "ExecuteGroupPose", node_handle);
-  BT::registerRosService<BT::ExecutePathPlanning>(factory, "ExecutePathPlanning", node_handle);
-  BT::registerRosService<BT::ExecuteGroupPosition>(factory, "ExecuteGroupPosition", node_handle);
-  BT::registerRosService<BT::ExecuteGroupShift>(factory, "ExecuteGroupShift", node_handle);
-  BT::registerRosService<BT::ExecuteJointPosition>(factory, "ExecuteJointPosition", node_handle);
-  BT::registerRosService<BT::ExecuteRemoveCollision>(factory, "ExecuteRemoveCollision", node_handle);
-  BT::registerRosService<BT::GetPreparePose>(factory, "GetPreparePose", node_handle);
-  BT::registerRosService<BT::GetTransformedPose>(factory, "GetTransformedPose", node_handle);
-  BT::registerRosService<BT::SenseManipulationPoses>(factory, "SenseManipulationPoses", node_handle);
-  BT::registerRosService<BT::VisualizePose>(factory, "VisualizePose", node_handle);
+  BT::registerRosService<bt::ExecuteAddCollisionBox>(factory, "ExecuteAddCollisionBox", node_handle);
+  BT::registerRosService<bt::ExecuteAddCollisionPlane>(factory, "ExecuteAddCollisionPlane", node_handle);
+  BT::registerRosService<bt::ExecuteAllPlans>(factory, "ExecuteAllPlans", node_handle);
+  BT::registerRosService<bt::ExecuteAllPoses>(factory, "ExecuteAllPoses", node_handle);
+  BT::registerRosService<bt::ExecuteMirroredPose>(factory, "ExecuteMirroredPose", node_handle);
+  BT::registerRosService<bt::ExecuteAttachCollisionBox>(factory, "ExecuteAttachCollisionBox", node_handle);
+  BT::registerRosService<bt::ExecuteBinaryAction>(factory, "ExecuteBinaryAction", node_handle);
+  BT::registerRosService<bt::ExecuteDetachCollision>(factory, "ExecuteDetachCollision", node_handle);
+  BT::registerRosService<bt::ExecuteFrankaGripperGrasp>(factory, "ExecuteFrankaGripperGrasp", node_handle);
+  BT::registerRosService<bt::ExecuteGroupAngularJointStates>(factory, "ExecuteGroupAngularJointStates", node_handle);
+  BT::registerRosService<bt::ExecuteGroupLinearJointStates>(factory, "ExecuteGroupLinearJointStates", node_handle);
+  BT::registerRosService<bt::ExecuteGroupNamedStates>(factory, "ExecuteGroupNamedStates", node_handle);
+  BT::registerRosService<bt::ExecuteGroupPlan>(factory, "ExecuteGroupPlan", node_handle);
+  BT::registerRosService<bt::ExecuteGroupPose>(factory, "ExecuteGroupPose", node_handle);
+  BT::registerRosService<bt::ExecutePathPlanning>(factory, "ExecutePathPlanning", node_handle);
+  BT::registerRosService<bt::ExecuteGroupPosition>(factory, "ExecuteGroupPosition", node_handle);
+  BT::registerRosService<bt::ExecuteGroupShift>(factory, "ExecuteGroupShift", node_handle);
+  BT::registerRosService<bt::ExecuteJointPosition>(factory, "ExecuteJointPosition", node_handle);
+  BT::registerRosService<bt::ExecuteRemoveCollision>(factory, "ExecuteRemoveCollision", node_handle);
+  BT::registerRosService<bt::GetPreparePose>(factory, "GetPreparePose", node_handle);
+  BT::registerRosService<bt::GetTransformedPose>(factory, "GetTransformedPose", node_handle);
+  BT::registerRosService<bt::SenseManipulationPoses>(factory, "SenseManipulationPoses", node_handle);
+  BT::registerRosService<bt::VisualizePose>(factory, "VisualizePose", node_handle);
 
   auto tree = factory.createTreeFromFile(tree_file);
   BT::PublisherZMQ publisher_zmp(tree);
 
-  BT::RosoutLogger logger(tree.rootNode());
+  bt::RosoutLogger logger(tree.rootNode());
   printTreeRecursively(tree.rootNode());
 
   ROS_WARN("Get ready and press Enter to run the task.");

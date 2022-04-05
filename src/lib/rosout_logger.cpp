@@ -1,9 +1,9 @@
 #include "roport/rosout_logger.h"
 
-namespace BT {
+namespace bt {
 std::atomic<bool> RosoutLogger::ref_count(false);
 
-RosoutLogger::RosoutLogger(TreeNode* root_node, ros::console::Level verbosity_level)
+RosoutLogger::RosoutLogger(BT::TreeNode* root_node, ros::console::Level verbosity_level)
     : StatusChangeLogger(root_node), level_(verbosity_level) {
   bool expected = false;
   if (!ref_count.compare_exchange_strong(expected, true)) {
@@ -26,7 +26,10 @@ RosoutLogger::~RosoutLogger() {
   ref_count.store(false);
 }
 
-void RosoutLogger::callback(Duration /*timestamp*/, const TreeNode& node, NodeStatus prev_status, NodeStatus status) {
+void RosoutLogger::callback(BT::Duration /*timestamp*/,
+                            const BT::TreeNode& node,
+                            BT::NodeStatus prev_status,
+                            BT::NodeStatus status) {
   constexpr const char* kWhitespaces = "                         ";
   const size_t kWsCount = strlen(kWhitespaces) - 1;
 
@@ -51,4 +54,4 @@ void RosoutLogger::callback(Duration /*timestamp*/, const TreeNode& node, NodeSt
 
 void RosoutLogger::flush() {}
 
-}  // namespace BT
+}  // namespace bt

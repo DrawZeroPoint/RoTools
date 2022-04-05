@@ -87,8 +87,8 @@ void RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq
 
   auto interval = std::chrono::steady_clock::now() - *start_;
   auto i_ms = std::chrono::duration_cast<std::chrono::milliseconds>(interval);
-  const unsigned long steps = std::max<unsigned long>(i_ms.count(), 1);
-  for (unsigned long i = 0; i < steps; i++) {
+  const unsigned long kSteps = std::max<unsigned long>(i_ms.count(), 1);
+  for (unsigned long i = 0; i < kSteps; i++) {
     trajectory_generator_->update(*input_param_, *output_param_);
 
     input_param_->current_position = output_param_->new_position;
