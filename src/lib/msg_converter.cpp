@@ -297,8 +297,9 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
 
   if (std::chrono::steady_clock::now() - starts_[group_id] > std::chrono::seconds(20)) {
     finished_smooth_start_flags_[group_id] = true;
+    std::string name = source_names[violated_i];
     ROS_WARN("Unable to move group %d to the start position in 20 sec due to joint #%zu: %s. Residual %f. Aborted.",
-             group_id, violated_i, source_names[violated_i].c_str(), residual);
+             group_id, violated_i, name.c_str(), residual);
   }
 }
 

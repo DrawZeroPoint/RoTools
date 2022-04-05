@@ -565,7 +565,7 @@ class ExecuteRemoveCollision : public RosServiceNode<roport::ExecuteRemoveCollis
 
   void onSendRequest(RequestType& request) override {
     getInput<std::string>("obj_name", request.obj_name);
-    int is_exact;
+    int is_exact = 0;
     getInput<int>("is_exact", is_exact);
     request.is_exact = bool(is_exact);
   }
