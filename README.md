@@ -111,11 +111,15 @@ echo "export PYTHONPATH=$HOME/RoTools/src:\$PYTHONPATH" >> ~/.zshrc
 
 ### Optional
 
+#### Python Utilities
+
 Optionally, you can install the following Python packages to activate helper utilities.
 
 ```shell
 sudo pip install playsound pynput requests
 ```
+
+#### Humanoid Path Planner
 
 If the HPP interface is needed, you can install HPP and Pinocchio by:
 
@@ -194,6 +198,27 @@ If the HPP interface is needed, you can install HPP and Pinocchio by:
 
 The HPP interface will not be built if `hpp-core`, `hpp-fcl`, and `hpp-manipulation` libraries were not found. You
 should have these libs if HPP is properly installed.
+
+#### CartesI/O
+
+#### MuJoCo and mujoco-py
+
+If simulation in MuJoCo is needed, you can install necessary software via:
+
+<details>
+<summary>Click to expand</summary>
+
+Currently, we recommend following the instructions in https://github.com/openai/mujoco-py
+
+Some dependencies you may need:
+
+```shell
+sudo apt-get install patchelf
+
+pip install numpy --upgrade
+```
+
+</details>
 
 ## :zap: Install
 
