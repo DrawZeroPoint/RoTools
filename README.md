@@ -72,6 +72,8 @@ agnostic to robot type and can be used to various types including robot arms and
 #### Noetic
 
 ```shell script
+ROS_DISTRO=noetic
+
 sudo apt-get install ros-$ROS_DISTRO-behaviortree-cpp-v3 ros-$ROS_DISTRO-ros-control ros-$ROS_DISTRO-ros-controllers \
 ros-$ROS_DISTRO-webots-ros ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs ros-$ROS_DISTRO-trac-ik-lib \
 ros-$ROS_DISTRO-eigen-conversions
@@ -80,6 +82,8 @@ ros-$ROS_DISTRO-eigen-conversions
 #### Melodic
 
 ```shell script
+ROS_DISTRO=melodic
+
 sudo apt-get install ros-$ROS_DISTRO-behaviortree-cpp-v3 ros-$ROS_DISTRO-ros-control ros-$ROS_DISTRO-ros-controllers \
 ros-$ROS_DISTRO-webots-ros ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs ros-$ROS_DISTRO-trac-ik-kinematics-plugin \
 ros-$ROS_DISTRO-eigen-conversions
@@ -116,12 +120,105 @@ sudo pip install playsound pynput requests
 If the HPP interface is needed, you can install HPP and Pinocchio by:
 
 1. Install [HPP](https://humanoid-path-planner.github.io/hpp-doc/download.html). It is recommended to install with
-   binary distributed with `robotpkg`.
-2. Install Pinocchio [from source](https://stack-of-tasks.github.io/pinocchio/download.html). Note that you need to
-   modify the cloned CMakeLists.txt and change the option `BUILD_WITH_COLLISION_SUPPORT` from `OFF` to `ON`.
+   binary distributed with `robotpkg`. Here we provide a quick cheatsheet based on the official version:
 
-The interface will not be built if `hpp-core`, `hpp-fcl`, and `hpp-manipulation` libraries were not found. You should
-have these libs if HPP is properly installed.
+   <details>
+   <summary>Click to expand</summary>
+
+   ```shell
+   sudo tee /etc/apt/sources.list.d/robotpkg.list <<EOF
+   deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -sc) robotpkg
+   EOF
+   
+   curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key |
+   
+   sudo apt-key add -
+   
+   sudo apt update
+   
+   apt-cache search robotpkg-
+   
+   pyver=38  # Default python version in Ubuntu 20.04, change to 36 or 27 if needed
+   
+   sudo apt-get install robotpkg-py${pyver}-hpp-manipulation-corba robotpkg-py${pyver}-qt5-hpp-gepetto-viewer \
+   robotpkg-py${pyver}-hpp-tutorial robotpkg-py${pyver}-qt5-hpp-gui robotpkg-py${pyver}-qt5-hpp-plot \
+   robotpkg-py${pyver}-hpp-environments robotpkg-py${pyver}-eigenpy
+   ```
+
+   After the installation, add the following to your bashrc (change 3.8 if your version is different):
+
+   ```shell
+   export PATH=/opt/openrobots/bin:${PATH}
+   export LD_LIBRARY_PATH=/opt/openrobots/lib:${LD_LIBRARY_PATH}
+   export PYTHONPATH=/opt/openrobots/lib/python3.8/site-packages:${PYTHONPATH}
+   export ROS_PACKAGE_PATH=/opt/openrobots/share:${ROS_PACKAGE_PATH}
+
+   export CMAKE_PREFIX_PATH=/opt/openrobots:${CMAKE_PREFIX_PATH}
+   export PKG_CONFIG_PATH=/opt/openrobots:${PKG_CONFIG_PATH}
+   ```
+
+   </details>
+
+2. Install Pinocchio [from source](https://stack-of-tasks.github.io/pinocchio/download.html). Note that you need to
+   change the default option `BUILD_WITH_COLLISION_SUPPORT` from `OFF` to `ON`. We also provide the command history for
+   reference:
+
+   <details>
+   <summary>Click to expand</summary>
+
+   ```shell
+   git clone --recursive https://github.com/stack-of-tasks/pinocchio
+   
+   cd pinocchio/ && git checkout master
+   
+   mkdir build && cd build
+   
+   cmake -DBUILD_WITH_COLLISION_SUPPORT=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+   
+   make -j4
+   
+   sudo make install
+   ```
+
+   After building, add the following to your bashrc (change 3.8 if your version is different):
+
+   ```shell
+   export PATH=/usr/local/bin:$PATH
+   export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+   export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+   export PYTHONPATH=/usr/local/lib/python3.8/site-packages:$PYTHONPATH
+   export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
+   ```
+
+   </details>
+
+The HPP interface will not be built if `hpp-core`, `hpp-fcl`, and `hpp-manipulation` libraries were not found. You
+should have these libs if HPP is properly installed.
+
+## :zap: Install
+
+Clone the repo from GitHub to your $HOME folder:
+
+```shell
+cd ~
+git clone https://github.com/DrawZeroPoint/RoTools.git
+```
+
+Make a symlink under the ROS workspace (assume `~/catkin_ws` here). Note that the symlink trick enables flexible
+multiple ROS workspace support, such that you do not need to manage more than one RoTools package.
+
+```shell
+cd ~/RoTools
+./make_symlink.sh
+```
+
+Then, you can build your ROS packages:
+
+```shell
+cd ~/catkin_ws
+
+catkin_make  # We also support catkin build
+```
 
 ## :running: Use with MoveIt!
 
