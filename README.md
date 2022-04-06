@@ -89,6 +89,22 @@ ros-$ROS_DISTRO-eigen-conversions
 
 Not supported.
 
+### Python
+
+Run the following command to add `rotools` to your PYTHONPATH:
+
+#### If you use Bash
+
+```shell
+echo "export PYTHONPATH=$HOME/RoTools/src:\$PYTHONPATH" >> ~/.bashrc
+```
+
+#### If you use Zsh
+
+```shell
+echo "export PYTHONPATH=$HOME/RoTools/src:\$PYTHONPATH" >> ~/.zshrc
+```
+
 ### Optional
 
 Optionally, you can install the following Python packages to activate helper utilities.
