@@ -184,8 +184,8 @@ class HPPManipulationInterface(object):
         self._problem_solver.addGoalConfig(q_goal_proj)
 
         while not self._check_location_goal_reached(pos_tol, ori_tol):
-            rospy.loginfo("Approaching location:\n{}".format(self._get_robot_base_pose(self._q_goal)))
-            rospy.loginfo("Current location:\n{}".format(self._get_robot_base_pose(self._q_current)))
+            rospy.loginfo("Approaching location:\n{}".format(self._q_goal))
+            rospy.loginfo("Current location:\n{}".format(self._q_current))
 
             res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
             self._problem_solver.setInitialConfig(q_init_proj)
@@ -241,7 +241,7 @@ class HPPManipulationInterface(object):
         base_pose = base_odom.pose.pose
         config[0:2] = [base_pose.position.x, base_pose.position.y]
         yaw = transform.euler_from_matrix(common.to_orientation_matrix(base_pose.orientation), 'szyx')[0]
-        rospy.loginfo_throttle(0.1, yaw)
+        # rospy.loginfo_throttle(0.1, yaw)
         config[2:4] = [math.cos(yaw), math.sin(yaw)]
         return config
 
