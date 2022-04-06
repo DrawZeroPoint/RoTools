@@ -186,6 +186,7 @@ add_library(${PROJECT_NAME}
   src/lib/robot_interface.cpp
   src/lib/moveit_cpp_server.cpp
   src/lib/msg_converter.cpp
+        src/lib/msg_aggregator.cpp
   src/lib/online_trajectory_optimizer.cpp
   )
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
@@ -248,6 +249,13 @@ target_link_libraries(roport_moveit_cpp_server
 add_executable(roport_msg_converter src/roport_msg_converter.cpp)
 add_dependencies(roport_msg_converter ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_msg_converter
+  ${catkin_LIBRARIES}
+  ${PROJECT_NAME}
+  )
+
+add_executable(roport_msg_aggregator src/roport_msg_aggregator.cpp)
+add_dependencies(roport_msg_aggregator ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(roport_msg_aggregator
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
   )
