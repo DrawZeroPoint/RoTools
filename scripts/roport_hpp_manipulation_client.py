@@ -10,11 +10,11 @@ from rotools.utility.common import get_param, pretty_print_configs
 
 
 if __name__ == '__main__':
-    if sys.version_info >= (3, 2):
-        server_process = subprocess.Popen(["hppcorbaserver"], start_new_session=True)
-    else:
-        server_process = None
-        rospy.logwarn("You need to manually run 'hppcorbaserver' before launching this program")
+    server_process = None
+    # if sys.version_info >= (3, 2):
+    #     server_process = subprocess.Popen(["hppcorbaserver"], start_new_session=True)
+    # else:
+    #     rospy.logwarn("You need to manually run 'hppcorbaserver' before launching this program")
 
     try:
         rospy.init_node('roport_hpp_manipulation_client')
@@ -46,13 +46,13 @@ if __name__ == '__main__':
         }
 
         viewer_process = None
-        if configs['enable_viewer']:
-            if sys.version_info >= (3, 2):
-                viewer_process = subprocess.Popen(["gepetto-gui", "-c", "basic"],
-                                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                                  start_new_session=True)
-            else:
-                rospy.logwarn("You need to manually run 'gepetto-gui -c basic' before launching this program")
+        # if configs['enable_viewer']:
+        #     if sys.version_info >= (3, 2):
+        #         viewer_process = subprocess.Popen(["gepetto-gui", "-c", "basic"],
+        #                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        #                                           start_new_session=True)
+        #     else:
+        #         rospy.logwarn("You need to manually run 'gepetto-gui -c basic' before launching this program")
 
         pretty_print_configs(configs)
         client = HPPManipulationClient(configs)

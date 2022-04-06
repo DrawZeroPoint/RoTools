@@ -34,7 +34,7 @@ class HPPManipulationClient(object):
 
         try:
             odom_topic = kwargs['odom_topic']
-            self._sub_odom = rospy.Subscriber(odom_topic, Odometry, self.update_cb, buff_size=1)
+            self._sub_odom = rospy.Subscriber(odom_topic, Odometry, self.odom_update_cb, buff_size=1)
         except KeyError:
             rospy.logwarn("Odom topic is not provided")
 
@@ -52,7 +52,7 @@ class HPPManipulationClient(object):
         self.interface.set_object_goal_config(object_goal_pose)
 
         base_goal_pose = self._to_global_pose(req.base_goal_pose, req.base_goal_pose_type, base_global_pose)
-        # self.interface.set_base_goal_config(base_goal_pose)
+        self.interface.set_base_goal_config(base_goal_pose)
 
         ok = self.interface.make_plan(req.pos_tolerance, req.ori_tolerance)
         resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
@@ -69,4 +69,7 @@ class HPPManipulationClient(object):
             raise NotImplementedError
 
     def update_cb(self, msg):
+        self.interface.update_current_config(msg)
+
+    def odom_update_cb(self, msg):
         self.interface.update_current_config(msg)
