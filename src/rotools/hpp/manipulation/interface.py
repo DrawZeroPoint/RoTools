@@ -151,21 +151,21 @@ class HPPManipulationInterface(object):
                 except KeyError:
                     continue
         elif isinstance(msg, Odometry):
-            self._q_current = self._set_robot_base_config(self._q_current, msg)
+            self._set_robot_base_config(self._q_current, msg)
         elif isinstance(msg, Pose):
-            self._q_current = self._set_object_config(self._q_current, msg)
+            self._set_object_config(self._q_current, msg)
         else:
             rospy.logerr("Msg is not of type JointState/Odometry/Pose: {}".format(type(msg)))
 
     def set_object_goal_config(self, object_pose):
         self._q_goal = self._q_current[::]
-        self._q_goal = self._set_object_config(self._q_goal, object_pose)
+        self._set_object_config(self._q_goal, object_pose)
 
     def set_base_goal_config(self, base_pose):
         self._q_goal = self._q_current[::]
         odom = Odometry()
         odom.pose.pose = base_pose
-        self._q_goal = self._set_robot_base_config(self._q_goal, odom)
+        self._set_robot_base_config(self._q_goal, odom)
 
     def get_current_base_global_pose(self):
         return self._get_robot_base_pose(self._q_current)
@@ -186,6 +186,9 @@ class HPPManipulationInterface(object):
         while not self._check_location_goal_reached(pos_tol, ori_tol):
             rospy.loginfo("Approaching location:\n{}".format(self._q_goal))
             rospy.loginfo("Current location:\n{}".format(self._q_current))
+
+            while input('Enter c to continue\n') != 'c':
+                rospy.sleep(0.01)
 
             res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
             self._problem_solver.setInitialConfig(q_init_proj)
@@ -209,6 +212,9 @@ class HPPManipulationInterface(object):
             j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
             j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
             self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol)
+            self._stop_base()
+
+        self._problem_solver.resetGoalConfigs()
         return True
 
     @property
@@ -241,9 +247,7 @@ class HPPManipulationInterface(object):
         base_pose = base_odom.pose.pose
         config[0:2] = [base_pose.position.x, base_pose.position.y]
         yaw = transform.euler_from_matrix(common.to_orientation_matrix(base_pose.orientation), 'szyx')[0]
-        # rospy.loginfo_throttle(0.1, yaw)
         config[2:4] = [math.cos(yaw), math.sin(yaw)]
-        return config
 
     def _set_object_config(self, config, object_pose):
         assert isinstance(object_pose, Pose)
@@ -252,7 +256,6 @@ class HPPManipulationInterface(object):
         config[rank: rank + 7] = [object_pose.position.x, object_pose.position.y, object_pose.position.z,
                                   object_pose.orientation.w, object_pose.orientation.x, object_pose.orientation.y,
                                   object_pose.orientation.z].copy()
-        return config
 
     def _publish_planning_results(self, j_q, j_dq, pos_tol, ori_tol):
         joint_cmd = JointState()
@@ -278,7 +281,7 @@ class HPPManipulationInterface(object):
             self._stop_base()
 
     def _stop_base(self):
-        base_cmd = Twist(0, 0, 0, 0, 0, 0)
+        base_cmd = Twist()
         self._base_cmd_publisher.publish(base_cmd)
 
     def _check_goal_reached(self, pos_tol, ori_tol):
@@ -292,14 +295,14 @@ class HPPManipulationInterface(object):
             True if both position and orientation errors are within tolerance.
         """
         rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
-        obj_curr_pos = self._q_current[rank: rank + 3].copy()
-        obj_goal_pos = self._q_goal[rank: rank + 3].copy()
-        obj_curr_ori = self._q_current[rank + 3: rank + 7].copy()
-        obj_goal_ori = self._q_goal[rank + 3: rank + 7].copy()
-        q_goal_pos = self._q_goal[:2].copy()
-        q_curr_pos = self._q_current[:2].copy()
-        q_goal_ori = self._q_goal[2:4].copy()
-        q_curr_ori = self._q_current[2:4].copy()
+        obj_curr_pos = self._q_current[rank: rank + 3]
+        obj_goal_pos = self._q_goal[rank: rank + 3]
+        obj_curr_ori = self._q_current[rank + 3: rank + 7]
+        obj_goal_ori = self._q_goal[rank + 3: rank + 7]
+        q_goal_pos = self._q_goal[:2]
+        q_curr_pos = self._q_current[:2]
+        q_goal_ori = self._q_goal[2:4]
+        q_curr_ori = self._q_current[2:4]
         print(obj_goal_pos, obj_curr_pos, obj_goal_ori, obj_curr_ori)
         return common.all_close(obj_goal_pos, obj_curr_pos, pos_tol) & \
                common.all_close(obj_goal_ori, obj_curr_ori, ori_tol) & \
@@ -307,10 +310,9 @@ class HPPManipulationInterface(object):
                common.all_close(q_goal_ori, q_curr_ori, ori_tol)
 
     def _check_location_goal_reached(self, pos_tol, ori_tol):
-        rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
-        q_goal_pos = self._q_goal[:2].copy()
-        q_curr_pos = self._q_current[:2].copy()
-        q_goal_ori = self._q_goal[2:4].copy()
-        q_curr_ori = self._q_current[2:4].copy()
+        q_goal_pos = self._q_goal[:2]
+        q_curr_pos = self._q_current[:2]
+        q_goal_ori = self._q_goal[2:4]
+        q_curr_ori = self._q_current[2:4]
         return common.all_close(q_goal_pos, q_curr_pos, pos_tol) & \
                common.all_close(q_goal_ori, q_curr_ori, ori_tol)
