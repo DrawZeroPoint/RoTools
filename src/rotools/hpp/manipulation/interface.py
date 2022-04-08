@@ -176,7 +176,12 @@ class HPPManipulationInterface(object):
         Returns:
 
         """
-        self._make_approaching_plan(pos_tol, ori_tol)
+        if not self._make_approaching_plan(pos_tol, ori_tol):
+            self._problem_solver.resetGoalConfigs()
+            return False
+
+        self._make_grasping_plan(pos_tol, ori_tol)
+        self._problem_solver.resetGoalConfigs()
         return True
 
     def _make_approaching_plan(self, pos_tol, ori_tol):
@@ -189,15 +194,19 @@ class HPPManipulationInterface(object):
 
             res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
             self._problem_solver.setInitialConfig(q_init_proj)
-            self._problem_solver.solve()
+            try:
+                time_spent = self._problem_solver.solve()
+                rospy.loginfo('Approaching plan solved in {} h {} m {} s {} ms'.format(*time_spent))
+            except BaseException:
+                return False
 
             self._problem_solver.optimizePath(self._last_path_id)
 
-            if self._viewer_factory is not None:
-                viewer = self._viewer_factory.createViewer()
-                viewer(q_init_proj)
-                path_player = PathPlayer(viewer)
-                path_player(self._last_path_id)
+            # if self._viewer_factory is not None:
+            #     viewer = self._viewer_factory.createViewer()
+            #     viewer(q_init_proj)
+            #     path_player = PathPlayer(viewer)
+            #     path_player(self._last_path_id)
 
             path_length = self._problem_solver.pathLength(self._last_path_id)
             r = rospy.Rate(1. / self._time_step * self._reduction_ratio)
@@ -212,8 +221,37 @@ class HPPManipulationInterface(object):
             self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol)
             self._stop_base()
 
-        self._problem_solver.resetGoalConfigs()
         return True
+
+    def _make_grasping_plan(self, pos_tol, ori_tol):
+        res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
+        self._problem_solver.setInitialConfig(q_init_proj)
+        self._problem_solver.setTargetState(self._constrain_graph.nodes[
+                                                "{}/{} grasps {}/{}".format(self._rm.name, self._gm.name,
+                                                                            self._om.name, self._om.handle)])
+        time_spent = self._problem_solver.solve()
+        rospy.loginfo('Grasping plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
+
+        self._problem_solver.optimizePath(self._last_path_id)
+
+        if self._viewer_factory is not None:
+            viewer = self._viewer_factory.createViewer()
+            viewer(q_init_proj)
+            path_player = PathPlayer(viewer)
+            path_player(self._last_path_id)
+
+        path_length = self._problem_solver.pathLength(self._last_path_id)
+        r = rospy.Rate(1. / self._time_step * self._reduction_ratio)
+        for t in np.arange(0, path_length, self._time_step):
+            j_q = self._problem_solver.configAtParam(self._last_path_id, t)
+            j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
+            self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol)
+            r.sleep()
+
+        j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
+        j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
+        self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol)
+        self._stop_base()
 
     @property
     def _last_path_id(self):
