@@ -11,15 +11,14 @@ try:
     import geometry_msgs.msg as geo_msg
     import moveit_msgs.msg as moveit_msg
     import trajectory_msgs.msg as traj_msg
-    from moveit_commander.conversions import pose_to_list
 except ImportError:
+    print('Failed to load rospy, maybe in a virtual env without sourcing setup.bash')
     rospy = None
     geo_msg = None
     moveit_msg = None
     traj_msg = None
-    pose_to_list = None
 
-from rotools.utility import transform
+from rotools.utility import transform, robotics
 
 
 def print_debug(content):
@@ -52,6 +51,9 @@ def all_close(values_a, values_b, tolerance=1.e-8):
 
     Returns:
         True if two arrays are element-wise equal within a tolerance.
+
+    Raises:
+        NotImplementedError if the input type is not supported.
     """
     return np.allclose(to_list(values_a), to_list(values_b), atol=tolerance)
 
@@ -66,9 +68,10 @@ def to_list(values):
         A list of plain python number types.
     """
     if isinstance(values, geo_msg.PoseStamped):
-        output = pose_to_list(values.pose)
+        output = to_list(values.pose)
     elif isinstance(values, geo_msg.Pose):
-        output = pose_to_list(values)
+        output = [values.position.x, values.position.y, values.position.z, values.orientation.x, values.orientation.y,
+                  values.orientation.z, values.orientation.w]
     elif isinstance(values, list) or isinstance(values, tuple):
         output = list(values)
     elif isinstance(values, np.ndarray):
@@ -88,6 +91,9 @@ def offset_ros_pose(pose, offset):
 
     Returns:
         Translated pose of the same type as the input pose.
+
+    Raises:
+        NotImplementedError if the input type is not supported.
     """
     if isinstance(pose, geo_msg.Pose):
         output = geo_msg.Pose()
@@ -117,12 +123,19 @@ def regularize_pose(pose):
     return to_ros_pose(pose_mat)
 
 
-def sd_pose(pose):
-    """Standardize the input pose to the 4x4 homogeneous transformation
-    matrix in special Euclidean group SE(3).
+def sd_pose(pose, check=False):
+    """Standardize the input pose to the 4x4 homogeneous transformation matrix SE(3).
 
-    :param pose:
-    :return: transformation matrix
+    Args:
+        pose: ndarray/ Values denoting a pose/transformation.
+        check: bool If true, will check if the input is legal.
+
+    Returns:
+        SE(3)
+
+    Raises:
+        ValueError if check and check failed.
+        NotImplementedError if the input type is not supported.
     """
     if isinstance(pose, np.ndarray):
         if pose.ndim == 1 and pose.size == 7:
@@ -130,6 +143,8 @@ def sd_pose(pose):
             q = pose[3:]
             tm = transform.translation_matrix(t)
             rm = transform.quaternion_matrix(q)
+            if check and not robotics.test_if_SE3(rm):
+                raise ValueError
             # make sure to let tm left product rm
             return np.dot(tm, rm)
         elif pose.ndim == 1 and pose.size == 6:
@@ -137,8 +152,12 @@ def sd_pose(pose):
             rpy = pose[3:]
             tm = transform.translation_matrix(t)
             rm = transform.euler_matrix(rpy[0], rpy[1], rpy[2])
+            if check and not robotics.test_if_SE3(rm):
+                raise ValueError
             return np.dot(tm, rm)
         elif pose.shape == (4, 4):
+            if check and not robotics.test_if_SE3(pose):
+                raise ValueError
             return pose
         else:
             raise NotImplementedError
@@ -298,30 +317,44 @@ def to_orientation_matrix(orientation):
         raise NotImplementedError
 
 
-def to_ros_orientation(orientation):
-    """Convert standard orientation as 4x4 matrix to ROS geometry msg quaternion
+def to_ros_orientation(ori, check=False):
+    """This function converts standard orientation denoted as 4x4 matrix to ROS geometry msg quaternion.
 
-    :param orientation: ndarray, standard pose matrix representing a single orientation
-    :return: geometry_msgs.Quaternion
+    Args:
+        ori: ndarray, standard SE(3) matrix representing the orientation.
+        check: bool If true, will check if the input matrix is SE(3).
+
+    Returns:
+        Orientation denoted as geometry_msgs/Quaternion.
+
+    Raises:
+        ValueError if check and check failed.
+        NotImplementedError if the input type is not supported.
     """
-    if isinstance(orientation, np.ndarray):
+    if isinstance(ori, np.ndarray):
         msg = geo_msg.Quaternion()
-        if orientation.shape == (4, 4):
-            q = transform.quaternion_from_matrix(orientation)
+        if ori.shape == (4, 4):
+            if check and not robotics.test_if_SE3(ori):
+                raise ValueError('The input SE(3) matrix is illegal:\n{}'.format(ori))
+            q = transform.quaternion_from_matrix(ori)
             msg.x = q[0]
             msg.y = q[1]
             msg.z = q[2]
             msg.w = q[3]
             return msg
-        elif orientation.shape == (3, 3):
+        elif ori.shape == (3, 3):
+            if check and not robotics.test_if_SO3(ori):
+                raise ValueError('The input SO(3) matrix is illegal:\n{}'.format(ori))
             i = transform.identity_matrix()
-            i[:3, :3] = orientation
+            i[:3, :3] = ori
             return to_ros_orientation(i)
-        elif orientation.size == 4:
-            msg.x = orientation[0]
-            msg.y = orientation[1]
-            msg.z = orientation[2]
-            msg.w = orientation[3]
+        elif ori.size == 4:
+            if check and not np.allclose(np.linalg.norm(ori), 1.):
+                raise ValueError('The input norm is not close to 1: {}'.format(ori, np.linalg.norm(ori)))
+            msg.x = ori[0]
+            msg.y = ori[1]
+            msg.z = ori[2]
+            msg.w = ori[3]
             return msg
         else:
             raise NotImplementedError
@@ -358,13 +391,13 @@ def to_ros_plan(t, p, v=None, a=None):
     return msg
 
 
-def get_relative_rotation(rot_1, rot_2):
-    """Given a rotation from base to 1: rot_1 and a rotation rot_2,
+def get_relative_rotation(base_to_1, base_to_2):
+    """Given a rotation from base to 1 and a rotation from base to 2,
     get the rotation matrix from 1 to 2 with Euler angles (sxyz)
 
     """
-    R_1 = transform.quaternion_matrix(sd_orientation(rot_1))
-    R_2 = transform.quaternion_matrix(sd_orientation(rot_2))
+    R_1 = transform.quaternion_matrix(sd_orientation(base_to_1))
+    R_2 = transform.quaternion_matrix(sd_orientation(base_to_2))
     R = np.dot(np.linalg.inv(R_1), R_2)
     ax, ay, az = transform.euler_from_matrix(R)
     return R, np.array([ax, ay, az])
@@ -399,6 +432,19 @@ def get_transform_same_target(start, end):
 
 
 def local_pose_to_global_pose(local_to_target, global_to_local):
+    """Get the global frame to target frame transformation matrix denoted in the
+    local_to_target format.
+
+    Args:
+        local_to_target: Transformation from the local frame to the target frame.
+        global_to_local: Transformation from the global frame to the local frame.
+
+    Returns:
+        Transformation from the global frame to the target frame.
+
+    Raises:
+        NotImplementedError if the input type is not supported.
+    """
     if type(local_to_target) != type(global_to_local):
         print_warn(
             "Local to target pose type {} is not the same as global to local pose {}".format(
@@ -416,6 +462,20 @@ def local_pose_to_global_pose(local_to_target, global_to_local):
 
 
 def local_aligned_pose_to_global_pose(local_aligned_to_target, global_to_local):
+    """Get the global frame to target frame transformation matrix denoted in the
+    local_aligned_to_target format.
+
+    Args:
+        local_aligned_to_target: Transformation from the local aligned frame to the target frame.
+                                 Align means the local frame's orientation is the same as the global frame.
+        global_to_local: Transformation from the global frame to the local frame.
+
+    Returns:
+        Transformation from the global frame to the target frame.
+
+    Raises:
+        NotImplementedError if the input type is not supported.
+    """
     if type(local_aligned_to_target) != type(global_to_local):
         print_warn(
             "Local aligned to target pose type {} is not the same as global to local pose {}".format(
@@ -600,6 +660,14 @@ def byte_to_uint8(data):
 
 
 def is_ip_valid(ip):
+    """Check if an ip string is legal.
+
+    Args:
+        ip: str IP string.
+
+    Returns:
+        True if the ip is legal, False otherwise.
+    """
     if not isinstance(ip, str):
         print_error("IP is not a string")
         return False
@@ -613,8 +681,16 @@ def is_ip_valid(ip):
 
 
 def is_port_valid(port):
+    """Check if the port number is legal.
+
+    Args:
+        port: int Port number.
+
+    Returns:
+        True if the number is an int, False otherwise.
+    """
     if not isinstance(port, int):
-        print_error("Port is not a int")
+        print_error("Port is not a int: {}".format(type(port)))
         return False
     return True
 
@@ -699,30 +775,3 @@ def create_service_proxies(namespace, service_ids, service_types):
         service_id = namespace + '/' + service_ids
         wait_for_service(service_id)
         return rospy.ServiceProxy(service_id, service_types)
-
-
-if __name__ == "__main__":
-    bgr = cv2.imread("/media/dzp/datasets/graspnet/scenes/scene_0000/realsense/rgb/0000.png")
-    bgr_encoded = encode_image_to_b64(bgr)
-    print(bgr_encoded)
-
-    ok, image = decode_b64_to_image(bgr_encoded)
-    if ok:
-        cv2.imshow("Encoded BGR", image)
-    else:
-        cv2.imshow("Original BGR", bgr)
-    cv2.waitKey()
-
-    depth = cv2.imread("/media/dzp/datasets/graspnet/scenes/scene_0000/realsense/depth/0000.png", cv2.IMREAD_ANYDEPTH)
-    depth_encoded = encode_image_to_b64(depth)
-    print(depth_encoded)
-
-    ok, image = decode_b64_to_image(depth_encoded, is_bgr=False)
-    # print(np.allclose(depth, image))
-    # Normalize to make the depth more obvious
-    cv2.normalize(image, image, alpha=0, beta=65025, norm_type=cv2.NORM_MINMAX)
-    if ok:
-        cv2.imshow("Encoded Depth", image)
-    else:
-        cv2.imshow("Original Depth", depth)
-    cv2.waitKey()
