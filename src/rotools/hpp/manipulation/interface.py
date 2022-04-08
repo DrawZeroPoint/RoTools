@@ -187,9 +187,6 @@ class HPPManipulationInterface(object):
             rospy.loginfo("Approaching location:\n{}".format(self._q_goal))
             rospy.loginfo("Current location:\n{}".format(self._q_current))
 
-            while input('Enter c to continue\n') != 'c':
-                rospy.sleep(0.01)
-
             res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
             self._problem_solver.setInitialConfig(q_init_proj)
             self._problem_solver.solve()
@@ -203,11 +200,12 @@ class HPPManipulationInterface(object):
                 path_player(self._last_path_id)
 
             path_length = self._problem_solver.pathLength(self._last_path_id)
+            r = rospy.Rate(1. / self._time_step * self._reduction_ratio)
             for t in np.arange(0, path_length, self._time_step):
                 j_q = self._problem_solver.configAtParam(self._last_path_id, t)
                 j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
                 self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol)
-                rospy.sleep(self._time_step / self._reduction_ratio)
+                r.sleep()
 
             j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
             j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
