@@ -194,19 +194,16 @@ class HPPManipulationInterface(object):
 
             res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
             self._problem_solver.setInitialConfig(q_init_proj)
-            try:
-                time_spent = self._problem_solver.solve()
-                rospy.loginfo('Approaching plan solved in {} h {} m {} s {} ms'.format(*time_spent))
-            except BaseException:
-                return False
+            time_spent = self._problem_solver.solve()
+            rospy.loginfo('Approaching plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
 
             self._problem_solver.optimizePath(self._last_path_id)
 
-            # if self._viewer_factory is not None:
-            #     viewer = self._viewer_factory.createViewer()
-            #     viewer(q_init_proj)
-            #     path_player = PathPlayer(viewer)
-            #     path_player(self._last_path_id)
+            if self._viewer_factory is not None:
+                viewer = self._viewer_factory.createViewer()
+                viewer(q_init_proj)
+                path_player = PathPlayer(viewer)
+                path_player(self._last_path_id)
 
             path_length = self._problem_solver.pathLength(self._last_path_id)
             r = rospy.Rate(1. / self._time_step * self._reduction_ratio)
@@ -245,12 +242,12 @@ class HPPManipulationInterface(object):
         for t in np.arange(0, path_length, self._time_step):
             j_q = self._problem_solver.configAtParam(self._last_path_id, t)
             j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
-            self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol)
+            self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol, check=False)
             r.sleep()
 
         j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
         j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
-        self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol)
+        self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol, check=False)
         self._stop_base()
 
     @property
@@ -293,7 +290,7 @@ class HPPManipulationInterface(object):
                                   object_pose.orientation.w, object_pose.orientation.x, object_pose.orientation.y,
                                   object_pose.orientation.z].copy()
 
-    def _publish_planning_results(self, j_q, j_dq, pos_tol, ori_tol):
+    def _publish_planning_results(self, j_q, j_dq, pos_tol, ori_tol, check=True):
         joint_cmd = JointState()
         for name in self._joint_names:
             joint_cmd.name.append(name)
@@ -304,7 +301,7 @@ class HPPManipulationInterface(object):
             joint_cmd.effort.append(0)  # TODO currently torque control is not supported
         self._joint_cmd_publisher.publish(joint_cmd)
 
-        if not self._check_location_goal_reached(pos_tol, ori_tol):
+        if check and not self._check_location_goal_reached(pos_tol, ori_tol):
             base_cmd = Twist()
             theta = math.atan2(j_q[3], j_q[2])
             rotation_2d = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])

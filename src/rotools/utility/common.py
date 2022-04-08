@@ -182,11 +182,12 @@ def sd_pose(pose, check=False):
         raise NotImplementedError
 
 
-def to_ros_pose(pose):
+def to_ros_pose(pose, w_first=False):
     """Convert the input pose to ROS geometry msg pose
 
     Args:
         pose: ndarray/list/tuple Input pose.
+        w_first: bool If true, will consider the w lies in the first place.
 
     Returns:
         geometry_msgs.Pose
@@ -208,10 +209,16 @@ def to_ros_pose(pose):
             msg.position.x = pose[0]
             msg.position.y = pose[1]
             msg.position.z = pose[2]
-            msg.orientation.x = pose[3]
-            msg.orientation.y = pose[4]
-            msg.orientation.z = pose[5]
-            msg.orientation.w = pose[6]
+            if w_first:
+                msg.orientation.w = pose[3]
+                msg.orientation.x = pose[4]
+                msg.orientation.y = pose[5]
+                msg.orientation.z = pose[6]
+            else:
+                msg.orientation.x = pose[3]
+                msg.orientation.y = pose[4]
+                msg.orientation.z = pose[5]
+                msg.orientation.w = pose[6]
             return msg
         elif pose.size == 12:
             rotation_matrix = pose[:9].reshape(3, 3)
@@ -223,23 +230,24 @@ def to_ros_pose(pose):
         else:
             raise NotImplementedError
     elif isinstance(pose, list) or isinstance(pose, tuple):
-        return to_ros_pose(np.asarray(pose))
+        return to_ros_pose(np.asarray(pose), w_first)
     else:
         raise NotImplementedError
 
 
-def to_ros_pose_stamped(pose, frame_id=''):
+def to_ros_pose_stamped(pose, frame_id='', w_first=False):
     """Convert a pose to PoseStamped.
 
     Args:
         pose: list/ndarray A 1-D array of a pose.
         frame_id: str The pose's reference frame.
+        w_first: bool If true, will consider the w lies in the first place.
 
     Returns:
         PoseStamped.
     """
     pose_stamped = geo_msg.PoseStamped()
-    ros_pose = to_ros_pose(pose)
+    ros_pose = to_ros_pose(pose, w_first)
     pose_stamped.pose = ros_pose
     pose_stamped.header.frame_id = frame_id
     return pose_stamped
@@ -262,6 +270,27 @@ def to_ros_poses(poses):
         return msg
     else:
         raise NotImplementedError
+
+
+def to_ros_twist(twist):
+    msg = geo_msg.Twist()
+    if isinstance(twist, list) or isinstance(twist, tuple):
+        if len(twist) == 6:
+            msg.linear.x = twist[0]
+            msg.linear.y = twist[1]
+            msg.linear.z = twist[2]
+            msg.angular.x = twist[3]
+            msg.angular.y = twist[4]
+            msg.angular.z = twist[5]
+        elif len(twist) == 3:
+            msg.linear.x = twist[0]
+            msg.linear.y = twist[1]
+            msg.angular.z = twist[2]
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
+    return msg
 
 
 def sd_position(position):

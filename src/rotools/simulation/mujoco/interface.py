@@ -8,7 +8,7 @@ from threading import Thread
 from mujoco_py import MjSim, MjSimState, MjViewer, load_model_from_path
 
 from rotools.utility.mjcf import find_elements, find_parent, array_to_string, string_to_array
-from rotools.utility.common import to_ros_pose, to_list
+from rotools.utility.common import to_ros_pose, to_ros_twist, to_list
 
 try:
     import rospy
@@ -252,29 +252,26 @@ class MuJoCoInterface(Thread):
         """
         odom = Odometry()
         xpos = self.sim.data.get_body_xpos(self.robot_name)
-        xquat = self.sim.data.get_body_xquat(self.robot_name)
+        xquat = self.sim.data.get_body_xquat(self.robot_name)  # w comes first
         xvelp = self.sim.data.get_body_xvelp(self.robot_name)
         xvelr = self.sim.data.get_body_xvelr(self.robot_name)
         odom.header.stamp = rospy.Time().now()
-        odom.pose.pose.position.x = xpos[0]
-        odom.pose.pose.position.y = xpos[1]
-        odom.pose.pose.position.z = xpos[2]
-        odom.pose.pose.orientation.w = xquat[0]
-        odom.pose.pose.orientation.x = xquat[1]
-        odom.pose.pose.orientation.y = xquat[2]
-        odom.pose.pose.orientation.z = xquat[3]
-        odom.twist.twist.linear.x = xvelp[0]
-        odom.twist.twist.linear.y = xvelp[1]
-        odom.twist.twist.linear.z = xvelp[2]
-        odom.twist.twist.angular.x = xvelr[0]
-        odom.twist.twist.angular.y = xvelr[1]
-        odom.twist.twist.angular.z = xvelr[2]
+        pose = to_ros_pose(to_list(xpos) + to_list(xquat), w_first=True)
+        twist = to_ros_twist(to_list(xvelp) + to_list(xvelr))
+        odom.pose.pose = pose
+        odom.twist.twist = twist
         return odom
 
     def get_object_pose(self):
+        """Get the pose of the object's geom.
+        The object body's name is hardcoded for now.
+
+        Returns:
+            Pose in the world frame.
+        """
         xpos = self.sim.data.get_body_xpos('object')
         xquat = self.sim.data.get_body_xquat('object')
-        return to_ros_pose(to_list(xpos) + to_list(xquat))
+        return to_ros_pose(to_list(xpos) + to_list(xquat), w_first=True)
 
     def set_joint_command(self, cmd):
         """Obtain joint commands according to the internally defined control types and apply the command to the robot.
