@@ -9,9 +9,13 @@ import math
 import numpy as np
 
 import rotools.utility.transform as transform
+import rotools.utility.common as common
 
 
 class Test(unittest.TestCase):
+    """
+    DO NOT USE PRINT TO SHOW VALUES, THEY COULD COME IN UNEXPECTED ORDER, USE ASSET.
+    """
 
     def test_transform(self):
         """
@@ -23,18 +27,6 @@ class Test(unittest.TestCase):
         90 * np.pi / 180, (0, 1, 0)  [0.         0.70710678 0.         0.70710678]
         -90 * np.pi / 180, (0, 1, 0)  [0.         -0.70710678 0.         0.70710678]
         """
-        R = transform.rotation_matrix(-180 * np.pi / 180, (1, 0, 0))
-        # print(np.array2string(R, separator=', '))
-        x_20 = transform.quaternion_from_matrix(R)
-        print(x_20)
-
-        R = transform.euler_matrix(180 * np.pi / 180., 0, 90 * np.pi / 180.)
-        x_20 = transform.quaternion_from_matrix(R)
-        print(x_20)
-
-        sin_20 = math.sin(20. / 180 * np.pi)  # 20. makes sure the result is a float
-        cos_20 = math.cos(20. / 180 * np.pi)
-
         homogeneous_matrix = np.array([
             [0., 0., 1., 0.084415],
             [1., 0., 0., 0.],
@@ -42,7 +34,6 @@ class Test(unittest.TestCase):
             [0., 0., 0., 1.]
         ], dtype=float)
         q = transform.quaternion_from_matrix(homogeneous_matrix)
-        # print(q)
 
         # walker base link to head l3
         homogeneous_matrix = np.array([
@@ -62,20 +53,6 @@ class Test(unittest.TestCase):
         180 deg: [0.000000e+00 0.000000e+00 1.000000e+00 6.123234e-17]
         270 deg: [ 0.          0.         -0.70710678  0.70710678]
         """
-        R1 = transform.rotation_matrix(135 * np.pi / 180., (0, 0, 1))
-        q1 = transform.quaternion_from_matrix(R1)
-        print('q1\n', q1)
-
-        Q1 = transform.quaternion_matrix([0.0, 0.0, 0.0533170029521, 0.998577654362])
-        print(transform.euler_from_matrix(Q1))
-
-        Q2 = transform.quaternion_matrix([0.0, 0.0, 0.0573195181787, 0.998355925083])
-        print(transform.euler_from_matrix(Q2))
-
-        Q3 = np.dot(transform.euler_matrix(0, -np.pi / 2, 0), transform.euler_matrix(173 * np.pi / 180., 0, 0))
-        e = transform.euler_from_matrix(Q3)
-        print('e', e)
-
         # Franka robot install on non-default pose (curiosity's left arm)
         qm_left = transform.quaternion_matrix([-0.40318, 0.52543, 0.097796, 0.74283])  # T_base_to_install
         print('qm_left\n', qm_left)
@@ -129,6 +106,12 @@ class Test(unittest.TestCase):
         v2_t = np.dot(R, np.array([-1, -2, 0, 1]).T)
         v3_t = np.dot(R, np.array([-1, 2, 0, 1]).T)
         # print(v0_t, v1_t, v2_t, v3_t)
+
+    def test_most_used_transforms(self):
+        # Output quaternion
+        # Only rotate around +Y axis
+        q = transform.quaternion_from_matrix(transform.euler_matrix(0, -np.pi * 0.5, 0))  # -90
+        self.assertTrue(common.all_close(q, [0., -0.70710678, 0., 0.70710678]))
 
 
 if __name__ == '__main__':
