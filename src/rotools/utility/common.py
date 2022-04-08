@@ -33,6 +33,11 @@ def print_info(content):
 
 def print_warn(content):
     """Print warning with yellow."""
+    print(''.join(['\033[1m\033[93m[Deprecated, use print_warning instead] ', content, '\033[0m']))
+
+
+def print_warning(content):
+    """Print a warning with yellow."""
     print(''.join(['\033[1m\033[93m', content, '\033[0m']))
 
 
@@ -55,6 +60,8 @@ def all_close(values_a, values_b, tolerance=1.e-8):
     Raises:
         NotImplementedError if the input type is not supported.
     """
+    if tolerance <= 0:
+        raise ValueError('Given tolerance {} should be larger than 0'.format(tolerance))
     return np.allclose(to_list(values_a), to_list(values_b), atol=tolerance)
 
 

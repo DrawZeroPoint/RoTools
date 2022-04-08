@@ -7,12 +7,45 @@ import unittest
 import math
 import numpy as np
 
-import geometry_msgs.msg as GeometryMsg
+import geometry_msgs.msg as geo_msg
 
 import rotools.utility.common as common
 
 
 class Test(unittest.TestCase):
+
+    def test_print(self):
+        common.print_debug('This is a debug msg')
+        common.print_info('This is a info msg')
+        common.print_warn('This is a warn msg')
+        common.print_warning('This is a warning msg')
+        common.print_error('This is a error msg')
+
+    def test_all_close(self):
+        values_a = [1, 2, 4]
+        values_b = np.array([1, 2, 3])
+        self.assertFalse(common.all_close(values_a, values_b))
+
+        values_a = geo_msg.Pose()
+        values_b = geo_msg.PoseStamped()
+        self.assertTrue(common.all_close(values_a, values_b))
+        with self.assertRaises(ValueError):
+            common.all_close(values_a, values_b, 0)
+
+        values_a = [1, 2]
+        values_b = np.array([1, 2, 3])
+        with self.assertRaises(ValueError):
+            self.assertFalse(common.all_close(values_a, values_b))
+
+    def test_to_list(self):
+        p = geo_msg.Pose()
+        self.assertEqual([0, 0, 0, 0, 0, 0, 0], common.to_list(p))
+
+    def test_offset_ros_pose(self):
+        pose = geo_msg.Pose()
+        offset = [1, -1, 2]
+        new_pose = common.offset_ros_pose(pose, offset)
+        self.assertEqual([1, -1, 2, 0, 0, 0, 0], common.to_list(new_pose))
 
     def test_sd_pose(self):
         """
@@ -28,7 +61,7 @@ class Test(unittest.TestCase):
           w: 3.20041176635e-12
         :return:
         """
-        ros_pose = GeometryMsg.Pose()
+        ros_pose = geo_msg.Pose()
         ros_pose.position.x = 0.307019570052
         ros_pose.position.y = 0
         ros_pose.position.z = 0.590269558277
