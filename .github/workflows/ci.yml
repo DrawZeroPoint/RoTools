@@ -105,7 +105,7 @@ jobs:
         run: |
           source /ros/devel/setup.bash
           pip install pytest
-          python -m pytest /ros/src/rotools/src/rotools/tests/test_*
+          pytest /ros/src/rotools/src/rotools/tests/test_*
 
 #    - name: Upload Tests to Artifacts
 #      uses: actions/upload-artifact@v2
