@@ -10,10 +10,10 @@ from rotools.utility.common import get_param, pretty_print_configs
 
 
 if __name__ == '__main__':
+    server_process = None
     if sys.version_info >= (3, 2):
         server_process = subprocess.Popen(["hppcorbaserver"], start_new_session=True)
     else:
-        server_process = None
         rospy.logwarn("You need to manually run 'hppcorbaserver' before launching this program")
 
     try:
