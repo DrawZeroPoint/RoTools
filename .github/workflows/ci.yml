@@ -104,9 +104,8 @@ jobs:
         shell:    bash
         run: |
           source /ros/devel/setup.bash
-          cd /ros
-          catkin_make run_tests -j1 # gazebo tests cannot run in parallel
-          catkin_test_results
+          cd /ros/rotools/src/rotools/tests
+          pytest test_*
 
 #    - name: Upload Tests to Artifacts
 #      uses: actions/upload-artifact@v2
