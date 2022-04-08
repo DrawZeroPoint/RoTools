@@ -183,10 +183,13 @@ def sd_pose(pose, check=False):
 
 
 def to_ros_pose(pose):
-    """Convert standard pose as 4x4 matrix to ROS geometry msg pose
+    """Convert the input pose to ROS geometry msg pose
 
-    :param pose: ndarray, standard pose matrix representing a single pose
-    :return: geometry_msgs.Pose
+    Args:
+        pose: ndarray/list/tuple Input pose.
+
+    Returns:
+        geometry_msgs.Pose
     """
     if isinstance(pose, np.ndarray):
         msg = geo_msg.Pose()
@@ -219,6 +222,8 @@ def to_ros_pose(pose):
             return to_ros_pose(m)
         else:
             raise NotImplementedError
+    elif isinstance(pose, list) or isinstance(pose, tuple):
+        return to_ros_pose(np.asarray(pose))
     else:
         raise NotImplementedError
 
