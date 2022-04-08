@@ -8,15 +8,18 @@ from threading import Thread
 from mujoco_py import MjSim, MjSimState, MjViewer, load_model_from_path
 
 from rotools.utility.mjcf import find_elements, find_parent, array_to_string, string_to_array
+from rotools.utility.common import to_ros_pose, to_list
 
 try:
     import rospy
     from sensor_msgs.msg import JointState
     from nav_msgs.msg import Odometry
+    from geometry_msgs.msg import Pose
 except ImportError:
     rospy = None
     JointState = None
     Odometry = None
+    Pose = None
 
 
 class MuJoCoInterface(Thread):
@@ -267,6 +270,11 @@ class MuJoCoInterface(Thread):
         odom.twist.twist.angular.y = xvelr[1]
         odom.twist.twist.angular.z = xvelr[2]
         return odom
+
+    def get_object_pose(self):
+        xpos = self.sim.data.get_body_xpos('object')
+        xquat = self.sim.data.get_body_xquat('object')
+        return to_ros_pose(to_list(xpos) + to_list(xquat))
 
     def set_joint_command(self, cmd):
         """Obtain joint commands according to the internally defined control types and apply the command to the robot.

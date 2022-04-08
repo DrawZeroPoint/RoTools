@@ -5,7 +5,7 @@ import rospy
 
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, Pose
 
 import rotools.simulation.mujoco.interface as interface
 from rotools.utility.robotics import mecanum_base_get_wheel_velocities
@@ -40,27 +40,40 @@ class MuJoCoServer(object):
 
         joint_state_topic_id = kwargs['joint_state_topic_id']
         self.joint_state_publisher = rospy.Publisher(joint_state_topic_id, JointState, queue_size=1)
-        self.js_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.joint_state_handle)
 
         if 'odom_topic_id' in kwargs.keys():
             odom_topic_id = kwargs['odom_topic_id']
             self.odom_publisher = rospy.Publisher(odom_topic_id, Odometry, queue_size=1)
-            self.odom_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.odom_handle)
+        else:
+            self.odom_publisher = None
+
+        if 'object_pose_topic_id' in kwargs.keys():
+            object_pose_topic_id = kwargs['object_pose_topic_id']
+            self.object_pose_publisher = rospy.Publisher(object_pose_topic_id, Pose, queue_size=1)
+        else:
+            self.object_pose_publisher = None
+
+        self._timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.publish_handle)
 
         # Get robot base params if available
         self.wheel_radius = kwargs['wheel_radius'] if 'wheel_radius' in kwargs.keys() else None
         self.base_width = kwargs['base_width'] if 'base_width' in kwargs.keys() else None
         self.base_length = kwargs['base_length'] if 'base_length' in kwargs.keys() else None
 
-    def joint_state_handle(self, _):
+    def publish_handle(self, _):
         joint_state_msg = self.interface.get_joint_states()
         if joint_state_msg:
             self.joint_state_publisher.publish(joint_state_msg)
 
-    def odom_handle(self, _):
-        odom_msg = self.interface.get_odom()
-        if odom_msg:
-            self.odom_publisher.publish(odom_msg)
+        if self.odom_publisher is not None:
+            odom_msg = self.interface.get_odom()
+            if odom_msg:
+                self.odom_publisher.publish(odom_msg)
+
+        if self.object_pose_publisher is not None:
+            object_pose_msg = self.interface.get_object_pose()
+            if object_pose_msg:
+                self.object_pose_publisher.publish(object_pose_msg)
 
     def joint_command_cb(self, cmd):
         if len(cmd.position) != len(cmd.velocity) or len(cmd.position) != len(cmd.effort):
