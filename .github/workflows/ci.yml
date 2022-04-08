@@ -95,19 +95,19 @@ jobs:
           source /ros/devel/setup.bash
           cmake --build /ros/build --target check-tidy
 
-#    - name: Run Tests
-#      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-#      uses: addnab/docker-run-action@v3
-#      with:
-#        image:    rotools:${{matrix.ros_distro}}
-#        options:  -v ${{github.workspace}}:/ros/
-#        shell:    bash
-#        run: |
-#          source /ros/devel/setup.bash
-#          cd /ros
-#          catkin_make run_tests -j1 # gazebo tests cannot run in parallel
-#          catkin_test_results
-#
+    - name: Run Tests
+      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
+      uses: addnab/docker-run-action@v3
+      with:
+        image:    rotools:${{matrix.ros_distro}}
+        options:  -v ${{github.workspace}}:/ros/
+        shell:    bash
+        run: |
+          source /ros/devel/setup.bash
+          cd /ros
+          catkin_make run_tests -j1 # gazebo tests cannot run in parallel
+          catkin_test_results
+
 #    - name: Upload Tests to Artifacts
 #      uses: actions/upload-artifact@v2
 #      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
