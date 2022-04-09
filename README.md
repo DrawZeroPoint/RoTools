@@ -10,16 +10,16 @@ simulation, and direct-/tele-manipulation control. It leverages BehaviorTree to 
 coordination, and provides various utilities to bridge the gap between real/simulated robot and the high level task
 scheduler.
 
-## :orange_book: Contents
+# :orange_book: Contents
 
 The packages compose of two components: roport and rotools.
 
-### roport
+## roport
 
 This module provides the application level entrance ports of the RoTools package. It is a middleware that allows using
 rotools cpp/python interfaces in ROS environment. It provides:
 
-#### Python based
+### Python based
 
 - [MoveIt Python Server](scripts/roport_moveit_py_server.py) for controlling the robot's single kinematic chain using
   MoveIt's Python interface.
@@ -36,7 +36,7 @@ rotools cpp/python interfaces in ROS environment. It provides:
 - [OptiTrack Client](scripts/roport_optitrack_client.py) converting streams from OptiTrack socket server to pose msgs.
 - Hardware/Simulation interfaces adapted for a variety types of robots.
 
-#### CPP based
+### CPP based
 
 - [MoveIt CPP Server](src/roport_moveit_cpp_server.cpp) simultaneously controlling multiple kinematic chains of a robot
   with MoveIt's action interface.
@@ -47,19 +47,19 @@ rotools cpp/python interfaces in ROS environment. It provides:
 - [Task Scheduler](src/roport_task_scheduler.cpp) using behavior tree for task scheduling. A bunch of general purpose
   services and a node [library](tree/palette.xml) are provided for building the task tree fast.
 
-### rotools
+## rotools
 
 This Python package hosted under `src/` is a versatile robotic toolbox aimed for fast prototyping. It includes
 foundational modules for robotic problems including path & trajectory planning, kinematics & dynamics calculation,
 sensing, transformation calculation, simulation, and so forth.
 
-## :hammer: Prerequisite
+# :hammer: Prerequisite
 
-### System
+## System
 
-This software is continuously tested on Ubuntu 18.04 and 20.04. ROS Indigo on Ubuntu 14.04 is not supported.
+This software is continuously tested on Ubuntu 18.04 and 20.04.
 
-### Supported Robots
+## Supported Robots
 
 This package has been developed as we use the following robots featuring sophisticated design, yet the package itself is
 agnostic to robot type and can be used to various types including robot arms and mobile manipulators.
@@ -67,9 +67,11 @@ agnostic to robot type and can be used to various types including robot arms and
 - Walker from UBTech
 - [CURI/Curiosity](https://github.com/DrawZeroPoint/curiosity) from CLOVER Lab CUHK
 
-### ROS
+## ROS
 
-#### Noetic
+The package has been developed targeting the following 2 ROS versions.
+
+### Noetic
 
 ```shell script
 ROS_DISTRO=noetic
@@ -79,7 +81,7 @@ ros-$ROS_DISTRO-webots-ros ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs ros-$
 ros-$ROS_DISTRO-eigen-conversions
 ```
 
-#### Melodic
+### Melodic
 
 ```shell script
 ROS_DISTRO=melodic
@@ -89,29 +91,23 @@ ros-$ROS_DISTRO-webots-ros ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs ros-$
 ros-$ROS_DISTRO-eigen-conversions
 ```
 
-#### Indigo
-
-Not supported.
-
-### Python
+## Python
 
 Run the following command to add `rotools` to your PYTHONPATH:
 
-#### If you use Bash
+### If you use Bash
 
 ```shell
 echo "export PYTHONPATH=$HOME/RoTools/src:\$PYTHONPATH" >> ~/.bashrc
 ```
 
-#### If you use Zsh
+### If you use Zsh
 
 ```shell
 echo "export PYTHONPATH=$HOME/RoTools/src:\$PYTHONPATH" >> ~/.zshrc
 ```
 
-### Optional
-
-#### Python Utilities
+### Python Utilities
 
 Optionally, you can install the following Python packages to activate helper utilities.
 
@@ -119,7 +115,7 @@ Optionally, you can install the following Python packages to activate helper uti
 sudo pip install playsound pynput requests
 ```
 
-#### Humanoid Path Planner
+## Humanoid Path Planner
 
 If the HPP interface is needed, you can install HPP and Pinocchio by:
 
@@ -199,9 +195,30 @@ If the HPP interface is needed, you can install HPP and Pinocchio by:
 The HPP interface will not be built if `hpp-core`, `hpp-fcl`, and `hpp-manipulation` libraries were not found. You
 should have these libs if HPP is properly installed.
 
-#### CartesI/O
+## CartesI/O
 
-#### MuJoCo and mujoco-py
+If tele-operation with CartesI/O is needed, you can install it via:
+
+<details>
+<summary>Click to expand</summary>
+
+Install the dependence (for MAT file I/O):
+
+```shell
+sudo apt-get install lib-matio
+```
+
+Go to https://github.com/ADVRHumanoids/XBotControl/releases, download the compressed file from the latest release
+according to your system. For 18.04, you should use `bionic`, while for 20.04, use `focal`.
+
+Extract the tar file and inside the folder, run `./install.sh`
+
+Add `source /opt/xbot/setup.sh` into your bashrc, this line should come after sourcing ROS.
+
+
+</details>
+
+## MuJoCo and mujoco-py
 
 If simulation in MuJoCo is needed, you can install necessary software via:
 
@@ -220,7 +237,7 @@ pip install numpy --upgrade
 
 </details>
 
-## :zap: Install
+# :zap: Install
 
 Clone the repo from GitHub to your $HOME folder:
 
@@ -245,7 +262,7 @@ cd ~/catkin_ws
 catkin_make  # We also support catkin build
 ```
 
-## :running: Use with MoveIt!
+# :running: Use with MoveIt!
 
 The pipeline of using RoTools for a particular robot involves:
 
@@ -270,12 +287,11 @@ After finishing these preparations, you can run the demo by
 3. Launch `<robot>_roport.launch`.
 4. Launch `<robot>_task.launch`.
 
-## :running: Use with CartesI/O
+# :running: Use with CartesI/O
 
 CartesI/O is a whole-body motion planning software developed
 in [ADVR, Istituto Italiano di Tecnologia](https://advr.iit.it/). It has not been added to the ROS distribution and
-hence [install](https://advrhumanoids.github.io/CartesianInterface/index.html)
-it is needed for proceeding the next steps.
+hence install it is needed for proceeding the next steps.
 
 1. Prepare the URDF file and SRDF file of the robot you use.
    [Certain rules](https://advrhumanoids.github.io/CartesianInterface/quickstart.html#setting-up-the-robot-description)
@@ -295,9 +311,9 @@ After the preparations, you can
 2. In RViz, right-click the interactive marker (IM) in scene, choose `continous control`, then you can control the robot
    by dragging the IM.
 
-## :running: Use with Xsens Motion Capture
+# :running: Use with Xsens Motion Capture
 
-### Launch process
+## Launch process
 
 The IMU based motion capture suit provided by [Xsens](https://www.xsens.com/) could be used as a direct tele-operation
 input source for controlling the robot. RoTools enables converting the motion capture stream sent via UDP to ROS
@@ -328,7 +344,7 @@ messages. To establish the conversion:
     roslaunch roport roport_xsens.launch
    ```
 
-### Converted topics
+## Converted topics
 
 By default, the server will publish poses on topics: `/xsens/all_poses`, `/xsens/body_poses`, `/xsens/left_tcp`,
 `/xsens/right_tcp`, `/xsens/left_sole`, `/xsens/right_sole`. The former two are in `PoseArray` format, the latter ones
@@ -356,7 +372,7 @@ states for each hand compose of 10 values ranging from 0 to 1, where 0 is fully 
 phalanges and intermediate/distal phalanges (distal is used only for the thumb). For the four fingers other than the
 thumb, the joints between intermediate and distal phalanges are not presented.*
 
-### State switch
+## State switch
 
 For safety concern, you need to activate the conversion by:
 
@@ -371,9 +387,9 @@ rosservice call /xsens/enable "data: true"
 
 The initial state is in deactivate state, to disable conversion, set `data` as false.
 
-## :running: Use with OptiTrack
+# :running: Use with OptiTrack
 
-### Launch process
+## Launch process
 
 First, you should start the server on the Windows side
 with [start_server.py](src/rotools/optitrack/windows/start_server.py):
@@ -388,9 +404,9 @@ Then, on the linux side, run:
 roslaunch roport roport_optitrack_client.launch
 ```
 
-## :page_facing_up: API reference
+# :page_facing_up: API reference
 
-### roport_robot_interface
+## roport_robot_interface
 
 This interface inherits the `hardware_interface` in `ros_control`. It gets measured joint states via one or more topics
 from the real robot or the simulator. Meanwhile, it sets the joint states commands down to the robot or the simulator
@@ -433,7 +449,7 @@ leading `/`. Besides, the `joint_states_name_group`
 should be set for each getter and setter topics. If it is not set, there should be only one getter and one setter topic,
 in this case, the algorithm will use all names set in the parameter `joint_name_param_id`.
 
-### roport_msg_converter
+## roport_msg_converter
 
 This converter will convert `sensor_msgs::JointState` type message from one topic (source) to another (target). Be
 different with `remap` which only change the topic's id but not touching the contents, it could:
@@ -468,7 +484,7 @@ To use this function, we need to define the following parameters in the launch f
 | `max_acc`             | map[str, double] | For each joint name, define its maximum acceleration during smooth movement.                                                                                                               |
 | `max_jerk`            | map[str, double] | For each joint name, define its maximum jerk during smooth movement.                                                                                                                       |
 
-### roport_snapshot_server
+## roport_snapshot_server
 
 This server records ROS msgs to local files depending on the msg types. Text types, like JointState, will be saved in
 CSV file. Image types are directly saved as images. Currently, we support:
@@ -484,11 +500,11 @@ Refer to [roport_snapshot_server.launch](launch/roport_snapshot_server.launch) f
 want to take snapshot must be registered with ROS parameters and be published by other nodes. You can specify which
 topic to record by calling aforementioned services By default, the saved files are located at `~`.
 
-## :memo: Coding Guide
+# :memo: Coding Guide
 
-### The services
+## The services
 
-#### Naming
+### Naming
 
 - The name should obey the CamelCase convention. Each word in the name should avoid meaningless abbreviation, for
   example, Object is better than Obj.
@@ -505,7 +521,7 @@ topic to record by calling aforementioned services By default, the saved files a
 - For the third and the following words, `Plan/Plans` means a trajectory, `Pose/Poses` means the 6-DoF Cartesian pose in
   workspace, `JointStates` means the joint values in C-space.
 
-#### Content
+### Content
 
 Add the following comment on top of each .srv file:
 Here `[opt]` stands for optional param, whose value could be not given. In this case, note that the default value will
@@ -533,9 +549,9 @@ uint8 result_status
 
 For these parameters the comment could be omitted.
 
-## :warning: Warning
+# :warning: Warning
 
-### Simultaneous execution
+## Simultaneous execution
 
 The MoveIt Python Server does not support simultaneously execution for multiple end-effectors. To circumvent this, you
 can use the MoveIt CPP Server instead.
