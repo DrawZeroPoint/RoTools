@@ -90,6 +90,8 @@ class HPPManipulationInterface(object):
         self._time_step = 0.01
         self._reduction_ratio = 0.5
 
+        self._object_transform = transform.rotation_matrix(-np.pi / 2, (0, 1, 0))
+
     def _create_robot(self, root_joint_type='planar'):
         class CompositeRobot(Parent):
             urdfFilename = "package://{}/urdf/{}.urdf".format(self._rm.pkg_name, self._rm.urdf_name)
@@ -221,6 +223,9 @@ class HPPManipulationInterface(object):
     def _make_grasping_plan(self, pos_tol, ori_tol):
         res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
         self._problem_solver.setInitialConfig(q_init_proj)
+
+        rospy.loginfo("Current location:\n{}".format(q_init_proj))
+
         self._problem_solver.setTargetState(self._constrain_graph.nodes[
                                                 "{}/{} grasps {}/{}".format(self._rm.name, self._gm.name,
                                                                             self._om.name, self._om.handle)])
@@ -281,11 +286,21 @@ class HPPManipulationInterface(object):
         config[2:4] = [math.cos(yaw), math.sin(yaw)]
 
     def _set_object_config(self, config, object_pose):
+        """According to the convention of HPP manipulation, the object's local frame should have its
+        x-axis be antipodal with the gripper's x-axis, which points from the gripper to the object.
+
+        Args:
+            config: list[double] The HPP configuration to update.
+            object_pose: Pose Object pose derived from ROS msg.
+
+        Returns:
+            None
+        """
         assert isinstance(object_pose, Pose)
         rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
-        config[rank: rank + 7] = [object_pose.position.x, object_pose.position.y, object_pose.position.z,
-                                  object_pose.orientation.x, object_pose.orientation.y,
-                                  object_pose.orientation.z, object_pose.orientation.w]
+        # Rotate around the y-axis of the object frame to make it X-up.
+        new_pose_matrix = np.dot(common.sd_pose(object_pose), self._object_transform)
+        config[rank: rank + 7] = common.to_list(common.to_ros_pose(new_pose_matrix))
 
     def _publish_planning_results(self, j_q, j_dq, pos_tol, ori_tol, check=True):
         joint_cmd = JointState()
