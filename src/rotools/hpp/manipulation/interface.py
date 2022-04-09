@@ -103,9 +103,9 @@ class HPPManipulationInterface(object):
             #        problem.
             # \param rootJointType type of root joint among ("freeflyer", "planar",
             #        "anchor"),
-            def __init__(self, compositeName, robotName, load=True,
-                         rootJointType="planar", **kwargs):
-                Parent.__init__(self, compositeName, robotName, rootJointType, load, **kwargs)
+            def __init__(self, composite_name, robot_name, load=True,
+                         root_joint="planar", **kwargs):
+                Parent.__init__(self, composite_name, robot_name, root_joint, load, **kwargs)
 
         robot = CompositeRobot('{}-{}'.format(self._rm.name, self._om.name), self._rm.name)
         return robot
@@ -157,12 +157,9 @@ class HPPManipulationInterface(object):
         else:
             rospy.logerr("Msg is not of type JointState/Odometry/Pose: {}".format(type(msg)))
 
-    def set_object_goal_config(self, object_pose):
+    def set_goal_config(self, object_pose, base_pose):
         self._q_goal = self._q_current[::]
         self._set_object_config(self._q_goal, object_pose)
-
-    def set_base_goal_config(self, base_pose):
-        self._q_goal = self._q_current[::]
         odom = Odometry()
         odom.pose.pose = base_pose
         self._set_robot_base_config(self._q_goal, odom)
@@ -189,11 +186,12 @@ class HPPManipulationInterface(object):
         self._problem_solver.addGoalConfig(q_goal_proj)
 
         while not self._check_location_goal_reached(pos_tol, ori_tol):
-            rospy.loginfo("Approaching location:\n{}".format(self._q_goal))
-            rospy.loginfo("Current location:\n{}".format(self._q_current))
-
             res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
             self._problem_solver.setInitialConfig(q_init_proj)
+
+            rospy.loginfo("Approaching location:\n{}".format(q_goal_proj))
+            rospy.loginfo("Current location:\n{}".format(q_init_proj))
+
             time_spent = self._problem_solver.solve()
             rospy.loginfo('Approaching plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
 
@@ -285,10 +283,9 @@ class HPPManipulationInterface(object):
     def _set_object_config(self, config, object_pose):
         assert isinstance(object_pose, Pose)
         rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
-        # TODO check the order is wxyz
         config[rank: rank + 7] = [object_pose.position.x, object_pose.position.y, object_pose.position.z,
-                                  object_pose.orientation.w, object_pose.orientation.x, object_pose.orientation.y,
-                                  object_pose.orientation.z].copy()
+                                  object_pose.orientation.x, object_pose.orientation.y,
+                                  object_pose.orientation.z, object_pose.orientation.w]
 
     def _publish_planning_results(self, j_q, j_dq, pos_tol, ori_tol, check=True):
         joint_cmd = JointState()
@@ -301,17 +298,19 @@ class HPPManipulationInterface(object):
             joint_cmd.effort.append(0)  # TODO currently torque control is not supported
         self._joint_cmd_publisher.publish(joint_cmd)
 
-        if check and not self._check_location_goal_reached(pos_tol, ori_tol):
-            base_cmd = Twist()
-            theta = math.atan2(j_q[3], j_q[2])
-            rotation_2d = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
-            local_linear = np.dot(rotation_2d.T, np.array([j_dq[0], j_dq[1]]).T)
-            base_cmd.linear.x = local_linear[0] * self._reduction_ratio
-            base_cmd.linear.y = local_linear[1] * self._reduction_ratio
-            base_cmd.angular.z = j_dq[2] * self._reduction_ratio
-            self._base_cmd_publisher.publish(base_cmd)
+        base_cmd = Twist()
+        rotation_2d = np.array([[j_q[2], -j_q[3]], [j_q[3], j_q[2]]])
+        local_linear = np.dot(rotation_2d.T, np.array([j_dq[0], j_dq[1]]).T)
+        base_cmd.linear.x = local_linear[0] * self._reduction_ratio
+        base_cmd.linear.y = local_linear[1] * self._reduction_ratio
+        base_cmd.angular.z = j_dq[2] * self._reduction_ratio * 1.5  # 1.5 is an empirical value
+        if check:
+            if not self._check_location_goal_reached(pos_tol, ori_tol):
+                self._base_cmd_publisher.publish(base_cmd)
+            else:
+                self._stop_base()
         else:
-            self._stop_base()
+            self._base_cmd_publisher.publish(base_cmd)
 
     def _stop_base(self):
         base_cmd = Twist()
