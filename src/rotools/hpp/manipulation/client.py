@@ -49,10 +49,8 @@ class HPPManipulationClient(object):
         base_global_pose = self.interface.get_current_base_global_pose()
 
         object_goal_pose = self._to_global_pose(req.object_goal_pose, req.object_goal_pose_type, base_global_pose)
-        self.interface.set_object_goal_config(object_goal_pose)
-
         base_goal_pose = self._to_global_pose(req.base_goal_pose, req.base_goal_pose_type, base_global_pose)
-        self.interface.set_base_goal_config(base_goal_pose)
+        self.interface.set_goal_config(object_goal_pose, base_goal_pose)
 
         ok = self.interface.make_plan(req.pos_tolerance, req.ori_tolerance)
         resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
