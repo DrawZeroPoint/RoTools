@@ -108,7 +108,7 @@ class Test(unittest.TestCase):
         # print(v0_t, v1_t, v2_t, v3_t)
 
     def test_most_used_transforms(self):
-        # Output quaternion
+        """This test output well-used transformations around x-, y-, and z- axes in quaternion"""
         # Only rotate around +Y axis
         q = transform.quaternion_from_matrix(transform.euler_matrix(0, -np.pi * 0.5, 0))  # -90
         self.assertTrue(common.all_close(q, [0., -0.70710678, 0., 0.70710678]))
