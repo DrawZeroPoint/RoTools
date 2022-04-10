@@ -265,10 +265,10 @@ auto PathPlanningInterface::executePathPlanningSrvCb(roport::ExecutePathPlanning
   }
 
   q_goal_ = q_current_;
-  setLocationConfig(req.goal_location, req.goal_type, q_goal_);
-  setJointConfig(req.goal_state, q_goal_, false);
-  position_tolerance_ = req.pos_tolerance;
-  orientation_tolerance_ = req.ori_tolerance;
+  setLocationConfig(req.base_goal_pose, req.base_goal_type, q_goal_);
+  setJointConfig(req.joint_goal_state, q_goal_, false);
+  position_tolerance_ = req.base_pos_tolerance;
+  orientation_tolerance_ = req.base_ori_tolerance;
 
   if (detectCollision(q_goal_)) {
     ROS_WARN("Goal state is in collision, aborted");

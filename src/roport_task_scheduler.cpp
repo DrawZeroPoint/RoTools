@@ -458,18 +458,18 @@ class ExecutePathPlanning : public RosServiceNode<roport::ExecutePathPlanning> {
   void onSendRequest(RequestType& request) override {
     int goal_type;
     getInput<int>("goal_type", goal_type);
-    request.goal_type = goal_type;
+    request.base_goal_type = goal_type;
 
     Pose goal_location{};
     getInput<Pose>("goal_location", goal_location);
-    request.goal_location = goal_location.toROS();
+    request.base_goal_pose = goal_location.toROS();
 
     JointState goal_state{};
     getInput<JointState>("goal_state", goal_state);
-    request.goal_state = goal_state.toROS();
+    request.joint_goal_state = goal_state.toROS();
 
-    getInput<double>("pos_tolerance", request.pos_tolerance);
-    getInput<double>("ori_tolerance", request.ori_tolerance);
+    getInput<double>("pos_tolerance", request.base_pos_tolerance);
+    getInput<double>("ori_tolerance", request.base_ori_tolerance);
   }
 };
 
