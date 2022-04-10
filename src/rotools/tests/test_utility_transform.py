@@ -112,6 +112,9 @@ class Test(unittest.TestCase):
         # Only rotate around +Y axis
         q = transform.quaternion_from_matrix(transform.euler_matrix(0, -np.pi * 0.5, 0))  # -90
         self.assertTrue(common.all_close(q, [0., -0.70710678, 0., 0.70710678]))
+        # Only rotate around +X axis
+        q = transform.quaternion_from_matrix(transform.euler_matrix(np.pi, 0, 0))  # 180
+        self.assertTrue(common.all_close(q, [1., 0., 0., 0.]))
 
 
 if __name__ == '__main__':
