@@ -7,6 +7,8 @@ from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Pose
 
+from roport.srv import *
+
 import rotools.simulation.mujoco.interface as interface
 from rotools.utility.robotics import mecanum_base_get_wheel_velocities
 
@@ -26,6 +28,10 @@ class MuJoCoServer(object):
 
         self.interface = interface.MuJoCoInterface(**kwargs)
         self.interface.start()
+
+        # Provided services
+        self._execute_gripper_control_srv = rospy.Service("execute_gripper_control", ExecuteBinaryAction,
+                                                          self.execute_gripper_control_handle)
 
         # Received msgs
         joint_command_topic_id = kwargs['joint_command_topic_id']
@@ -96,3 +102,10 @@ class MuJoCoServer(object):
             return
         vel = mecanum_base_get_wheel_velocities(cmd, self.wheel_radius, self.base_width, self.base_length)
         self.interface.set_base_command(vel)
+
+    def execute_gripper_control_handle(self, req):
+        resp = ExecuteBinaryActionResponse()
+        # req = ExecuteBinaryActionRequest()
+        ok = self.interface.set_gripper_command(req.device_names, req.value)
+        resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
+        return resp

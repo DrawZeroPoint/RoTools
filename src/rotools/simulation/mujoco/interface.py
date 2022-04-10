@@ -72,6 +72,8 @@ class MuJoCoInterface(Thread):
         velocity_actuators = find_elements(actuator_root, 'velocity', return_first=False)
         torque_actuators = find_elements(actuator_root, 'motor', return_first=False)
 
+        mimic_joints = find_elements(actuator_root, 'joint', return_first=False)
+
         torque_sensors = find_elements(actuator_root, 'torque', return_first=False)
         force_sensors = find_elements(actuator_root, 'force', return_first=False)
 
@@ -83,11 +85,15 @@ class MuJoCoInterface(Thread):
                        The value could be: position (0), velocity (1), torque (2).
         """
         self._actuated_joint_names = []
+        self._mimic_joint_names = []
         self.actuator_names = []
         self.control_types = []
+
         self._get_actuator_info(position_actuators, 0)
         self._get_actuator_info(velocity_actuators, 1)
         self._get_actuator_info(torque_actuators, 2)
+
+        self._get_mimic_joint_info(mimic_joints)
 
         self._actuator_num = len(self.actuator_names)
         self._actuator_ids = [self.sim.model.actuator_name2id(actuator_name) for actuator_name in self.actuator_names]
@@ -155,6 +161,19 @@ class MuJoCoInterface(Thread):
                 self._actuated_joint_names.append(actuator.attrib['joint'])
                 self.actuator_names.append(actuator.attrib['name'])
                 self.control_types.append(control_type)
+
+    def _get_mimic_joint_info(self, mimic_joint_elements):
+        for name in self._actuated_joint_names:
+            matched = False
+            for element in mimic_joint_elements:
+                joint1 = element.attrib['joint1']
+                joint2 = element.attrib['joint2']
+                if joint1 == name:
+                    self._mimic_joint_names.append(joint2)
+                    matched = True
+                    break
+            if not matched:
+                self._mimic_joint_names.append(None)
 
     def _get_wheel_actuator_info(self):
         wheel_actuator_ids = {'WHEEL_FR': -1, 'WHEEL_FL': -1, 'WHEEL_BL': -1, 'WHEEL_BR': -1}
@@ -318,3 +337,12 @@ class MuJoCoInterface(Thread):
             self._wheel_actuator_ids['WHEEL_FL'], self._wheel_actuator_ids['WHEEL_FR'],
             self._wheel_actuator_ids['WHEEL_BL'], self._wheel_actuator_ids['WHEEL_BR']
         ]] = vel
+
+    def set_gripper_command(self, device_names, value):
+        for device_name in device_names:
+            try:
+                idx = self._actuated_joint_names.index(device_name)
+                self.sim.data.ctrl[self._actuator_ids[idx]] = value
+            except ValueError:
+                return False
+        return True
