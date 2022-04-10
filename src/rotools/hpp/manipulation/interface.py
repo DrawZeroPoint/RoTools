@@ -60,10 +60,8 @@ class HPPManipulationInterface(object):
         self._robot = self._create_robot()
         self._problem_solver = ProblemSolver(self._robot)
 
-        if enable_viewer:
-            self._viewer_factory = self._create_viewer_factory()
-        else:
-            self._viewer_factory = None
+        self._enable_viewer = enable_viewer
+        self._viewer_factory = self._create_viewer_factory()  # need to create this no matter if enable_viewer
 
         self._robot.setJointBounds("{}/root_joint".format(self._rm.name), robot_bound)
         self._robot.setJointBounds("{}/root_joint".format(self._om.name), object_bound)
@@ -171,15 +169,15 @@ class HPPManipulationInterface(object):
             res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
             self._problem_solver.setInitialConfig(q_init_proj)
 
-            rospy.loginfo("Approaching location:\n{}".format(q_goal_proj))
-            rospy.loginfo("Current location:\n{}".format(q_init_proj))
+            rospy.logdebug("Approaching location:\n{}".format(q_goal_proj))
+            rospy.logdebug("Current location:\n{}".format(q_init_proj))
 
             time_spent = self._problem_solver.solve()
             rospy.loginfo('Approaching plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
 
             self._problem_solver.optimizePath(self._last_path_id)
 
-            if self._viewer_factory is not None:
+            if self._enable_viewer:
                 viewer = self._viewer_factory.createViewer()
                 viewer(q_init_proj)
                 path_player = PathPlayer(viewer)
@@ -224,7 +222,7 @@ class HPPManipulationInterface(object):
 
     def make_grasping_plan(self, base_goal_pose, joint_goal_state, object_goal_pose, base_pos_tol, base_ori_tol,
                            object_pos_tol, object_ori_tol):
-        """
+        """Make a grasping plan.
 
         Args:
             base_goal_pose: Pose Goal pose of the base in the global frame.
@@ -260,7 +258,7 @@ class HPPManipulationInterface(object):
 
         self._problem_solver.optimizePath(self._last_path_id)
 
-        if self._viewer_factory is not None:
+        if self._enable_viewer:
             viewer = self._viewer_factory.createViewer()
             viewer(q_init_proj)
             path_player = PathPlayer(viewer)
