@@ -67,7 +67,7 @@ class HPPManipulationInterface(object):
         self._robot.setJointBounds("{}/root_joint".format(self._om.name), object_bound)
 
         # robot.client.basic.problem.resetRoadmap ()
-        self._problem_solver.setErrorThreshold(1e-3)
+        self._problem_solver.setErrorThreshold(1e-2)
         self._problem_solver.setMaxIterProjection(40)
 
         # self._problem_solver.createTransformationConstraint("placement", '', "cube_30/root_joint",
@@ -143,43 +143,43 @@ class HPPManipulationInterface(object):
     def update_current_config(self, msg):
         if isinstance(msg, JointState):
             self._set_robot_joint_state_config(self._q_current, msg, add_name=True)
+            rospy.loginfo_once('First joint state received')
         elif isinstance(msg, Odometry):
             self._set_robot_base_config(self._q_current, msg)
+            rospy.loginfo_once('First odom received')
         elif isinstance(msg, Pose):
             self._set_object_config(self._q_current, msg)
+            rospy.loginfo_once('First object pose received')
         else:
             rospy.logerr("Msg is not of type JointState/Odometry/Pose: {}".format(type(msg)))
-
-    def set_goal_config(self, base_pose, object_pose=None):
-        self._q_goal = self._q_current[::]
-        if object_pose is not None:
-            self._set_object_config(self._q_goal, object_pose)
-        odom = Odometry()
-        odom.pose.pose = base_pose
-        self._set_robot_base_config(self._q_goal, odom)
 
     def get_current_base_global_pose(self):
         return self._get_robot_base_pose(self._q_current)
 
     def _make_plan(self, base_pos_tol, base_ori_tol, object_pos_tol=None, object_ori_tol=None):
-        res, q_goal_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_goal)
-        self._problem_solver.addGoalConfig(q_goal_proj)
+        # res, q_goal_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_goal)
+        # self._problem_solver.addGoalConfig(q_goal_proj)
+        self._problem_solver.addGoalConfig(self._q_goal)
 
         while not self._check_goal_reached(base_pos_tol, base_ori_tol, object_pos_tol, object_ori_tol):
-            res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
-            self._problem_solver.setInitialConfig(q_init_proj)
+            # res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
+            # self._problem_solver.setInitialConfig(q_init_proj)
+            self._problem_solver.setInitialConfig(self._q_current)
 
-            rospy.logdebug("Approaching location:\n{}".format(q_goal_proj))
-            rospy.logdebug("Current location:\n{}".format(q_init_proj))
+            # rospy.loginfo("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_goal_proj]))
+            # rospy.loginfo("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_init_proj]))
+            rospy.loginfo("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_goal]))
+            rospy.loginfo("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_current]))
 
             time_spent = self._problem_solver.solve()
-            rospy.loginfo('Approaching plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
+            rospy.loginfo('Plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
 
             self._problem_solver.optimizePath(self._last_path_id)
 
             if self._enable_viewer:
                 viewer = self._viewer_factory.createViewer()
-                viewer(q_init_proj)
+                # viewer(q_init_proj)
+                viewer(self._q_current)
                 path_player = PathPlayer(viewer)
                 path_player(self._last_path_id)
 
@@ -333,6 +333,7 @@ class HPPManipulationInterface(object):
         """
         assert isinstance(object_pose, Pose)
         rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
+        object_pose.position.z += 0.002  # Avoid false positive collision due to measurement error
         # Rotate around the y-axis of the object frame to make it X-up.
         new_pose_matrix = np.dot(common.sd_pose(object_pose), self._object_transform)
         config[rank: rank + 7] = common.to_list(common.to_ros_pose(new_pose_matrix))
