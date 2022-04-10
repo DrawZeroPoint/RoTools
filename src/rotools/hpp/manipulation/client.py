@@ -23,6 +23,9 @@ class HPPManipulationClient(object):
 
         self.interface = interface.HPPManipulationInterface(**kwargs)
 
+        self._srv_execute_path_planning = rospy.Service('execute_path_planning', ExecutePathPlanning,
+                                                        self.execute_path_planning_handle)
+
         self._srv_execute_manipulation_planning = rospy.Service('execute_manipulation_planning',
                                                                 ExecuteManipulationPlanning,
                                                                 self.execute_manipulation_planning_handle)
@@ -44,15 +47,25 @@ class HPPManipulationClient(object):
         except KeyError:
             rospy.logwarn("Object pose topic is not provided")
 
+    def execute_path_planning_handle(self, req):
+        resp = ExecutePathPlanningResponse()
+        # req = ExecutePathPlanningRequest()
+        base_current_global_pose = self.interface.get_current_base_global_pose()
+        base_goal_pose = self._to_global_pose(req.base_goal_pose, req.base_goal_type, base_current_global_pose)
+        ok = self.interface.make_approaching_plan(base_goal_pose, req.joint_goal_state, req.base_pos_tolerance,
+                                                  req.base_ori_tolerance)
+        resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
+        return resp
+
     def execute_manipulation_planning_handle(self, req):
         resp = ExecuteManipulationPlanningResponse()
-        base_global_pose = self.interface.get_current_base_global_pose()
-
-        object_goal_pose = self._to_global_pose(req.object_goal_pose, req.object_goal_pose_type, base_global_pose)
-        base_goal_pose = self._to_global_pose(req.base_goal_pose, req.base_goal_pose_type, base_global_pose)
-        self.interface.set_goal_config(object_goal_pose, base_goal_pose)
-
-        ok = self.interface.make_plan(req.pos_tolerance, req.ori_tolerance)
+        base_current_global_pose = self.interface.get_current_base_global_pose()
+        object_goal_pose = self._to_global_pose(req.object_goal_pose, req.object_goal_pose_type,
+                                                base_current_global_pose)
+        base_goal_pose = self._to_global_pose(req.base_goal_pose, req.base_goal_pose_type, base_current_global_pose)
+        ok = self.interface.make_grasping_plan(base_goal_pose, req.joint_goal_state, object_goal_pose,
+                                               req.base_pos_tolerance, req.base_ori_tolerance, req.object_pos_tolerance,
+                                               req.object_ori_tolerance)
         resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
         return resp
 
