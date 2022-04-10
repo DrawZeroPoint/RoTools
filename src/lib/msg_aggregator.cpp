@@ -8,7 +8,7 @@ namespace roport {
 
 MsgAggregator::MsgAggregator(const ros::NodeHandle& node_handle, const ros::NodeHandle& pnh)
     : nh_(node_handle), pnh_(pnh) {
-  panda_left_sub_ = new message_filters::Subscriber<sensor_msgs::JointState>(nh_, "/panda_left/joint_states", 1);
+  panda_left_sub_ = new message_filters::Subscriber<sensor_msgs::JointState>(nh_, "/panda_left/joint_states", 1);  // NOLINT
   panda_right_sub_ = new message_filters::Subscriber<sensor_msgs::JointState>(nh_, "/panda_right/joint_states", 1);
   panda_left_finger_sub_ =
       new message_filters::Subscriber<sensor_msgs::JointState>(nh_, "/panda_left/gripper/joint_states", 1);
