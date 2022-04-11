@@ -85,6 +85,7 @@ class MuJoCoInterface(Thread):
                        The value could be: position (0), velocity (1), torque (2).
         """
         self._actuated_joint_names = []
+        self._actuated_joint_ranges = {}
         self._mimic_joint_names = []
         self.actuator_names = []
         self.control_types = []
@@ -94,6 +95,7 @@ class MuJoCoInterface(Thread):
         self._get_actuator_info(torque_actuators, 2)
 
         self._get_mimic_joint_info(mimic_joints)
+        self._get_actuated_joint_ranges(kinematics_root)
 
         self._actuator_num = len(self.actuator_names)
         self._actuator_ids = [self.sim.model.actuator_name2id(actuator_name) for actuator_name in self.actuator_names]
@@ -103,7 +105,8 @@ class MuJoCoInterface(Thread):
         rospy.loginfo('Controlled joints #{}:\n{}'.format(
             self._actuator_num, array_to_string(self._actuated_joint_names))
         )
-        rospy.loginfo('Control types:\n{}'.format(array_to_string(self.control_types)))
+        rospy.loginfo(
+            'Control types: position (0), velocity (1), torque (2).\n{}'.format(array_to_string(self.control_types)))
 
         self._null_sensor = 'none'
         self.effort_sensor_names = [self._null_sensor] * self._actuator_num
@@ -174,6 +177,17 @@ class MuJoCoInterface(Thread):
                     break
             if not matched:
                 self._mimic_joint_names.append(None)
+
+    def _get_actuated_joint_ranges(self, kinematics_root):
+        for name in self._actuated_joint_names:
+            joint = find_elements(kinematics_root, 'joint', {'name': name})
+            try:
+                joint_range = string_to_array(joint.attrib['range'])
+                self._actuated_joint_ranges[name] = joint_range
+            except KeyError:
+                self._actuated_joint_ranges[name] = None
+                # Silently handle actuated joints with no range defined, which could be continuous joints
+                pass
 
     def _get_wheel_actuator_info(self):
         wheel_actuator_ids = {'WHEEL_FR': -1, 'WHEEL_FL': -1, 'WHEEL_BL': -1, 'WHEEL_BR': -1}
@@ -248,17 +262,30 @@ class MuJoCoInterface(Thread):
 
     def get_joint_states(self):
         """Convert the robot_states to ROS JointState message.
+        The values will be clapped to the joint's ranges if that exist.
 
         Returns:
             None if the robot_state is not available, otherwise return JointState
         """
         if self._robot_states is None:
-            rospy.logwarn('MuJoCo robot state has not been set')
+            rospy.logwarn_throttle(1, 'MuJoCo robot state has not been set')
             return None
         joint_state_msg = JointState()
         joint_state_msg.header.stamp = rospy.Time.now()
         joint_state_msg.name = self._actuated_joint_names
-        joint_state_msg.position = self._robot_states[:, 0].tolist()
+        q_clapped = []
+        q_raw = self._robot_states[:, 0].tolist()
+        for i, r in enumerate(self._actuated_joint_ranges.values()):
+            if r is None:
+                q_clapped.append(q_raw[i])
+            else:
+                if q_raw[i] < r[0]:
+                    q_clapped.append(r[0])
+                elif q_raw[i] > r[1]:
+                    q_clapped.append(r[1])
+                else:
+                    q_clapped.append(q_raw[i])
+        joint_state_msg.position = q_clapped
         joint_state_msg.velocity = self._robot_states[:, 1].tolist()
         joint_state_msg.effort = self._robot_states[:, 2].tolist()
         return joint_state_msg
