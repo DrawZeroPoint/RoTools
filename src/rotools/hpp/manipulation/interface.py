@@ -5,6 +5,7 @@ import numpy as np
 
 import rospy
 
+import hpp_idl
 from hpp.corbaserver.manipulation.robot import Robot as Parent
 from hpp.corbaserver.manipulation import ProblemSolver, ConstraintGraph, Rule, \
     Constraints, ConstraintGraphFactory, Client
@@ -171,8 +172,13 @@ class HPPManipulationInterface(object):
             rospy.loginfo("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_goal]))
             rospy.loginfo("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_current]))
 
-            time_spent = self._problem_solver.solve()
-            rospy.loginfo('Plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
+            try:
+                time_spent = self._problem_solver.solve()
+                rospy.loginfo('Plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
+            except BaseException as e:
+                rospy.logwarn('Failed to solve due to {}'.format(e))
+                self._problem_solver.resetGoalConfigs()
+                return False
 
             self._problem_solver.optimizePath(self._last_path_id)
 
