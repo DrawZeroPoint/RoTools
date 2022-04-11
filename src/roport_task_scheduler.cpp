@@ -22,6 +22,7 @@
 #include <roport/ExecuteGroupPosition.h>
 #include <roport/ExecuteGroupShift.h>
 #include <roport/ExecuteJointPosition.h>
+#include <roport/ExecuteManipulationPlanning.h>
 #include <roport/ExecuteMirroredPose.h>
 #include <roport/ExecutePathPlanning.h>
 #include <roport/ExecuteRemoveCollision.h>
@@ -451,25 +452,72 @@ class ExecutePathPlanning : public RosServiceNode<roport::ExecutePathPlanning> {
       : RosServiceNode<roport::ExecutePathPlanning>(node_handle, name, cfg) {}
 
   static auto providedPorts() -> BT::PortsList {
-    return {InputPort<Header>("header"),      InputPort<int>("goal_type"),        InputPort<JointState>("goal_state"),
-            InputPort<Pose>("goal_location"), InputPort<double>("pos_tolerance"), InputPort<double>("ori_tolerance")};
+    return {InputPort<Header>("header"),
+            InputPort<int>("base_goal_type"),
+            InputPort<JointState>("joint_goal_state"),
+            InputPort<Pose>("base_goal_pose"),
+            InputPort<double>("base_pos_tolerance"),
+            InputPort<double>("base_ori_tolerance")};
   }
 
   void onSendRequest(RequestType& request) override {
-    int goal_type;
-    getInput<int>("goal_type", goal_type);
-    request.base_goal_type = goal_type;
+    int base_goal_type;
+    getInput<int>("base_goal_type", base_goal_type);
+    request.base_goal_type = base_goal_type;
 
-    Pose goal_location{};
-    getInput<Pose>("goal_location", goal_location);
-    request.base_goal_pose = goal_location.toROS();
+    Pose base_goal_pose{};
+    getInput<Pose>("base_goal_pose", base_goal_pose);
+    request.base_goal_pose = base_goal_pose.toROS();
 
-    JointState goal_state{};
-    getInput<JointState>("goal_state", goal_state);
-    request.joint_goal_state = goal_state.toROS();
+    JointState joint_goal_state{};
+    getInput<JointState>("joint_goal_state", joint_goal_state);
+    request.joint_goal_state = joint_goal_state.toROS();
 
-    getInput<double>("pos_tolerance", request.base_pos_tolerance);
-    getInput<double>("ori_tolerance", request.base_ori_tolerance);
+    getInput<double>("base_pos_tolerance", request.base_pos_tolerance);
+    getInput<double>("base_ori_tolerance", request.base_ori_tolerance);
+  }
+};
+
+class ExecuteManipulationPlanning : public RosServiceNode<roport::ExecuteManipulationPlanning> {
+ public:
+  ExecuteManipulationPlanning(const ros::NodeHandle& node_handle,
+                              const std::string& name,
+                              const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteManipulationPlanning>(node_handle, name, cfg) {}
+
+  static auto providedPorts() -> BT::PortsList {
+    return {InputPort<int>("object_goal_pose_type"),   InputPort<int>("base_goal_pose_type"),
+            InputPort<JointState>("joint_goal_state"), InputPort<Pose>("object_goal_pose"),
+            InputPort<Pose>("base_goal_pose"),         InputPort<double>("base_pos_tolerance"),
+            InputPort<double>("base_ori_tolerance"),   InputPort<double>("object_pos_tolerance"),
+            InputPort<double>("object_ori_tolerance")};
+  }
+
+  void onSendRequest(RequestType& request) override {
+    int object_goal_pose_type = 0;
+    getInput<int>("object_goal_pose_type", object_goal_pose_type);
+    request.object_goal_pose_type = object_goal_pose_type;
+
+    int base_goal_pose_type = 0;
+    getInput<int>("base_goal_pose_type", base_goal_pose_type);
+    request.base_goal_pose_type = base_goal_pose_type;
+
+    Pose object_goal_pose{};
+    getInput<Pose>("object_goal_pose", object_goal_pose);
+    request.object_goal_pose = object_goal_pose.toROS();
+
+    Pose base_goal_pose{};
+    getInput<Pose>("base_goal_pose", base_goal_pose);
+    request.base_goal_pose = base_goal_pose.toROS();
+
+    JointState joint_goal_state{};
+    getInput<JointState>("joint_goal_state", joint_goal_state);
+    request.joint_goal_state = joint_goal_state.toROS();
+
+    getInput<double>("base_pos_tolerance", request.base_pos_tolerance);
+    getInput<double>("base_ori_tolerance", request.base_ori_tolerance);
+    getInput<double>("object_pos_tolerance", request.object_pos_tolerance);
+    getInput<double>("object_ori_tolerance", request.object_ori_tolerance);
   }
 };
 
@@ -716,6 +764,7 @@ auto main(int argc, char** argv) -> int {
   BT::registerRosService<bt::ExecuteGroupPlan>(factory, "ExecuteGroupPlan", node_handle);
   BT::registerRosService<bt::ExecuteGroupPose>(factory, "ExecuteGroupPose", node_handle);
   BT::registerRosService<bt::ExecutePathPlanning>(factory, "ExecutePathPlanning", node_handle);
+  BT::registerRosService<bt::ExecuteManipulationPlanning>(factory, "ExecuteManipulationPlanning", node_handle);
   BT::registerRosService<bt::ExecuteGroupPosition>(factory, "ExecuteGroupPosition", node_handle);
   BT::registerRosService<bt::ExecuteGroupShift>(factory, "ExecuteGroupShift", node_handle);
   BT::registerRosService<bt::ExecuteJointPosition>(factory, "ExecuteJointPosition", node_handle);
