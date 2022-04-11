@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import os
+import time
 import numpy as np
 import xml.etree.ElementTree as ElementTree
 
@@ -15,11 +16,13 @@ try:
     from sensor_msgs.msg import JointState
     from nav_msgs.msg import Odometry
     from geometry_msgs.msg import Pose
+    from rosgraph_msgs.msg import Clock
 except ImportError:
     rospy = None
     JointState = None
     Odometry = None
     Pose = None
+    Clock = None
 
 
 class MuJoCoInterface(Thread):
@@ -121,16 +124,22 @@ class MuJoCoInterface(Thread):
 
         self._robot_states = None
 
+        self._clock_publisher = rospy.Publisher('/clock', Clock, queue_size=1)
+
     @property
     def n_actuator(self):
         return self._actuator_num
 
     def run(self):
+        start = time.time()
+        clock_msg = Clock()
         while not rospy.is_shutdown():
             self._get_robot_states()
             self.sim.step()
             if self.viewer is not None:
                 self.viewer.render()
+            clock_msg.clock = clock_msg.clock.from_sec(time.time() - start)
+            self._clock_publisher.publish(clock_msg)
 
     def _set_initial_state(self, initial_keyframe):
         if initial_keyframe is not None:
