@@ -258,10 +258,8 @@ class ExecuteBinaryAction : public RosServiceNode<roport::ExecuteBinaryAction> {
 
   static auto providedPorts() -> BT::PortsList {
     return {
-        InputPort<Header>("header"),
-        InputPort<StringArray>("device_names"),
-        InputPort<int>("device_id"),
-        InputPort<int>("enable"),
+        InputPort<Header>("header"), InputPort<StringArray>("device_names"),
+        InputPort<int>("device_id"), InputPort<int>("enable"),
         InputPort<double>("value"),
     };
   }
