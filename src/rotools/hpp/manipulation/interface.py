@@ -2,10 +2,10 @@ from __future__ import print_function
 
 import math
 import numpy as np
+from collections import namedtuple
 
 import rospy
 
-import hpp_idl
 from hpp.corbaserver.manipulation.robot import Robot as Parent
 from hpp.corbaserver.manipulation import ProblemSolver, ConstraintGraph, Rule, \
     Constraints, ConstraintGraphFactory, Client
@@ -61,6 +61,11 @@ class HPPManipulationInterface(object):
         self._robot = self._create_robot()
         self._problem_solver = ProblemSolver(self._robot)
 
+        self._problem_solver.loadPlugin('manipulation-spline-gradient-based.so')
+        # To show available path optimizers:
+        # print(self._problem_solver.getAvailable('PathOptimizer'))
+        self._problem_solver.addPathOptimizer('Graph-RandomShortcut')
+
         self._enable_viewer = enable_viewer
         self._viewer_factory = self._create_viewer_factory()  # need to create this no matter if enable_viewer
 
@@ -71,7 +76,16 @@ class HPPManipulationInterface(object):
         self._problem_solver.setErrorThreshold(1e-2)
         self._problem_solver.setMaxIterProjection(40)
 
-        # self._problem_solver.createTransformationConstraint("placement", '', "cube_30/root_joint",
+        # Use this one or the next to limit solving time:
+        # self._problem_solver.setMaxIterPathPlanning(40)
+        self._problem_solver.setTimeOutPathPlanning(60)
+
+        # ['PathOptimizer', 'PathProjector', 'PathPlanner', 'ConfigurationShooter', 'PathValidation',
+        #  'ConfigValidation', 'SteeringMethod', 'Distance', 'NumericalConstraint', 'CenterOfMass', 'Problem',
+        #  'Parameter', 'DefaultParameter', 'Gripper', 'Handle', 'RobotContact', 'EnvContact', 'ConstraintGraph']
+        # print(self._problem_solver.getAvailable('type'))
+
+        # self._problem_solver.createTransformationConstraint("placement", '', "{}/root_joint".format(self._om.name),
         #                                                     [0, 0, 1, 0, 0, 0, 1],
         #                                                     [True, True, True, True, True, True])
 
@@ -90,6 +104,14 @@ class HPPManipulationInterface(object):
         self._reduction_ratio = 0.5
 
         self._object_transform = transform.rotation_matrix(-np.pi / 2, (0, 1, 0))
+
+        self._work_modes = namedtuple("work_modes", "idle approach grasp")
+        self._mode = self._work_modes.idle
+
+        self._base_p_tol = 0.01
+        self._base_o_tol = 0.02
+        self._object_p_tol = 0.01
+        self._object_o_tol = 0.02
 
     def _create_robot(self, root_joint_type='planar'):
         class CompositeRobot(Parent):
@@ -157,20 +179,20 @@ class HPPManipulationInterface(object):
     def get_current_base_global_pose(self):
         return self._get_robot_base_pose(self._q_current)
 
-    def _make_plan(self, base_pos_tol, base_ori_tol, object_pos_tol=None, object_ori_tol=None):
+    def _make_plan(self):
         # res, q_goal_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_goal)
         # self._problem_solver.addGoalConfig(q_goal_proj)
         self._problem_solver.addGoalConfig(self._q_goal)
 
-        while not self._check_goal_reached(base_pos_tol, base_ori_tol, object_pos_tol, object_ori_tol):
+        while not self._check_goal_reached():
             # res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
             # self._problem_solver.setInitialConfig(q_init_proj)
             self._problem_solver.setInitialConfig(self._q_current)
 
-            # rospy.loginfo("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_goal_proj]))
-            # rospy.loginfo("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_init_proj]))
-            rospy.logdebug("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_goal]))
-            rospy.logdebug("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_current]))
+            # rospy.loginfo("Current projected configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_init_proj]))
+            # rospy.loginfo("Goal projected configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_goal_proj]))
+            rospy.loginfo("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_current]))
+            rospy.loginfo("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_goal]))
 
             try:
                 time_spent = self._problem_solver.solve()
@@ -178,6 +200,7 @@ class HPPManipulationInterface(object):
             except BaseException as e:
                 rospy.logwarn('Failed to solve due to {}'.format(e))
                 self._problem_solver.resetGoalConfigs()
+                self._mode = self._work_modes.idle
                 return False
 
             self._problem_solver.optimizePath(self._last_path_id)
@@ -194,17 +217,18 @@ class HPPManipulationInterface(object):
             for t in np.arange(0, path_length, self._time_step):
                 j_q = self._problem_solver.configAtParam(self._last_path_id, t)
                 j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
-                self._publish_planning_results(j_q, j_dq, base_pos_tol, base_ori_tol)
+                self._publish_planning_results(j_q, j_dq)
                 r.sleep()
 
             r_final = rospy.Rate(1. / (path_length % self._time_step) * self._reduction_ratio)
             j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
             j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
-            self._publish_planning_results(j_q, j_dq, base_pos_tol, base_ori_tol)
+            self._publish_planning_results(j_q, j_dq)
             r_final.sleep()
             self._stop_base()
 
         self._problem_solver.resetGoalConfigs()
+        self._mode = self._work_modes.idle
         return True
 
     def make_approaching_plan(self, base_goal_pose, joint_goal_state, base_pos_tol, base_ori_tol):
@@ -224,7 +248,10 @@ class HPPManipulationInterface(object):
         odom.pose.pose = base_goal_pose
         self._set_robot_base_config(self._q_goal, odom)
         self._set_robot_joint_state_config(self._q_goal, joint_goal_state)
-        return self._make_plan(base_pos_tol, base_ori_tol)
+        self._base_p_tol = base_pos_tol if base_pos_tol > 0 else self._base_p_tol
+        self._base_o_tol = base_ori_tol if base_ori_tol > 0 else self._base_o_tol
+        self._mode = self._work_modes.approach
+        return self._make_plan()
 
     def make_grasping_plan(self, base_goal_pose, joint_goal_state, object_goal_pose, base_pos_tol, base_ori_tol,
                            object_pos_tol, object_ori_tol):
@@ -248,7 +275,12 @@ class HPPManipulationInterface(object):
         self._set_robot_base_config(self._q_goal, odom)
         self._set_robot_joint_state_config(self._q_goal, joint_goal_state)
         self._set_object_config(self._q_goal, object_goal_pose)
-        return self._make_plan(base_pos_tol, base_ori_tol, object_pos_tol, object_ori_tol)
+        self._base_p_tol = base_pos_tol if base_pos_tol > 0 else self._base_p_tol
+        self._base_o_tol = base_ori_tol if base_ori_tol > 0 else self._base_o_tol
+        self._object_p_tol = object_pos_tol if object_pos_tol > 0 else self._object_p_tol
+        self._object_o_tol = object_ori_tol if object_ori_tol > 0 else self._object_o_tol
+        self._mode = self._work_modes.grasp
+        return self._make_plan()
 
     def _make_grasping_plan(self, pos_tol, ori_tol):
         res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
@@ -344,7 +376,7 @@ class HPPManipulationInterface(object):
         new_pose_matrix = np.dot(common.sd_pose(object_pose), self._object_transform)
         config[rank: rank + 7] = common.to_list(common.to_ros_pose(new_pose_matrix))
 
-    def _publish_planning_results(self, j_q, j_dq, base_pos_tol, base_ori_tol, check=True):
+    def _publish_planning_results(self, j_q, j_dq):
         joint_cmd = JointState()
         for name in self._joint_names:
             joint_cmd.name.append(name)
@@ -361,8 +393,8 @@ class HPPManipulationInterface(object):
         base_cmd.linear.x = local_linear[0] * self._reduction_ratio
         base_cmd.linear.y = local_linear[1] * self._reduction_ratio
         base_cmd.angular.z = j_dq[2] * self._reduction_ratio * 1.2  # 1.2 is an empirical value
-        if check:
-            if not self._check_goal_reached(base_pos_tol, base_ori_tol):
+        if self._mode == self._work_modes.grasp:
+            if not self._check_goal_reached():
                 self._base_cmd_publisher.publish(base_cmd)
             else:
                 self._stop_base()
@@ -373,14 +405,8 @@ class HPPManipulationInterface(object):
         base_cmd = Twist()
         self._base_cmd_publisher.publish(base_cmd)
 
-    def _check_goal_reached(self, base_pos_tol, base_ori_tol, object_pos_tol=None, object_ori_tol=None):
+    def _check_goal_reached(self):
         """Check if the object and optionally the base has reached the goal pose.
-
-        Args:
-            base_pos_tol: double Base position tolerance.
-            base_ori_tol: double Base orientation tolerance.
-            object_pos_tol: double Base position tolerance.
-            object_ori_tol: double Base orientation tolerance.
 
         Returns:
             True if both position and orientation errors are within tolerance.
@@ -389,16 +415,16 @@ class HPPManipulationInterface(object):
         base_curr_pos = self._q_current[:2]
         base_goal_ori = self._q_goal[2:4]
         base_curr_ori = self._q_current[2:4]
-        if object_pos_tol is None or object_ori_tol is None:
-            return common.all_close(base_goal_pos, base_curr_pos, base_pos_tol) & \
-                   common.all_close(base_goal_ori, base_curr_ori, base_ori_tol)
+        if self._mode == self._work_modes.approach:
+            return common.all_close(base_goal_pos, base_curr_pos, self._base_p_tol) & \
+                   common.all_close(base_goal_ori, base_curr_ori, self._base_o_tol)
 
         rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
         obj_curr_pos = self._q_current[rank: rank + 3]
         obj_goal_pos = self._q_goal[rank: rank + 3]
         obj_curr_ori = self._q_current[rank + 3: rank + 7]
         obj_goal_ori = self._q_goal[rank + 3: rank + 7]
-        return common.all_close(obj_goal_pos, obj_curr_pos, object_pos_tol) & \
-               common.all_close(obj_goal_ori, obj_curr_ori, object_ori_tol) & \
-               common.all_close(base_goal_pos, base_curr_pos, base_pos_tol) & \
-               common.all_close(base_goal_ori, base_curr_ori, base_ori_tol)
+        return common.all_close(obj_goal_pos, obj_curr_pos, self._object_p_tol) & \
+               common.all_close(obj_goal_ori, obj_curr_ori, self._object_o_tol) & \
+               common.all_close(base_goal_pos, base_curr_pos, self._base_p_tol) & \
+               common.all_close(base_goal_ori, base_curr_ori, self._base_o_tol)
