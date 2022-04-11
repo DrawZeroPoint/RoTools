@@ -169,8 +169,8 @@ class HPPManipulationInterface(object):
 
             # rospy.loginfo("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_goal_proj]))
             # rospy.loginfo("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_init_proj]))
-            rospy.loginfo("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_goal]))
-            rospy.loginfo("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_current]))
+            rospy.logdebug("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_goal]))
+            rospy.logdebug("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_current]))
 
             try:
                 time_spent = self._problem_solver.solve()
