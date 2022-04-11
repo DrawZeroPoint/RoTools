@@ -259,6 +259,7 @@ class ExecuteBinaryAction : public RosServiceNode<roport::ExecuteBinaryAction> {
   static auto providedPorts() -> BT::PortsList {
     return {
         InputPort<Header>("header"),
+        InputPort<StringArray>("device_names"),
         InputPort<int>("device_id"),
         InputPort<int>("enable"),
         InputPort<double>("value"),
@@ -266,10 +267,13 @@ class ExecuteBinaryAction : public RosServiceNode<roport::ExecuteBinaryAction> {
   }
 
   void onSendRequest(RequestType& request) override {
-    int device_id;
+    StringArray device_names{};
+    getInput<StringArray>("device_names", device_names);
+    request.device_names = device_names.toROS();
+    int device_id = 0;
     getInput<int>("device_id", device_id);
     request.device_id = static_cast<uint8_t>(device_id);
-    int enable;
+    int enable = 0;
     getInput<int>("enable", enable);
     request.enable = bool(enable);
     getInput<double>("value", request.value);
