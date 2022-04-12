@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+
+  <node pkg="roport" type="roport_mujoco_server.py" name="roport_mujoco_server" output="screen"/>
+
+</launch>
