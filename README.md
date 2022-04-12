@@ -223,7 +223,16 @@ If simulation in MuJoCo is needed, you can install necessary software via:
 <details>
 <summary>Click to expand</summary>
 
-Currently, we recommend following the instructions in https://github.com/openai/mujoco-py
+Currently, we have shifted the Python backend for MuJoCo from `mujoco-py` to the official provided `mujoco`.
+The official version could be easily install by:
+
+```shell
+pip install mujoco
+```
+
+This version has the simulator along with it, so you may not need install that independently.
+
+If `mujoco-py` is still preferred, you can follow the instructions at https://github.com/openai/mujoco-py
 
 Some dependencies you may need:
 
