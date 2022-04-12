@@ -14,8 +14,8 @@ from rotools.utility.robotics import mecanum_base_get_wheel_velocities
 
 
 class MuJoCoServer(object):
-    """The RoPort server using the RoTools MuJoCoServer interface to provide some
-    handy services for controlling serial robot arm.
+    """This RoPort server using the RoTools MuJoCoInterface to provide some
+    handy services for interacting with the simulated robot in the MuJoCo simulator.
     """
 
     def __init__(self, kwargs):
@@ -34,18 +34,20 @@ class MuJoCoServer(object):
                                                           self.execute_gripper_control_handle)
 
         # Received msgs
-        joint_command_topic_id = kwargs['joint_command_topic_id']
-        self.joint_command_subscriber = rospy.Subscriber(joint_command_topic_id, JointState, self.joint_command_cb)
+        if 'joint_command_topic_id' in kwargs.keys():
+            joint_command_topic_id = kwargs['joint_command_topic_id']
+            self.joint_command_subscriber = rospy.Subscriber(joint_command_topic_id, JointState, self.joint_command_cb)
 
         if 'base_command_topic_id' in kwargs.keys():
             base_command_topic_id = kwargs['base_command_topic_id']
             self.base_command_subscriber = rospy.Subscriber(base_command_topic_id, Twist, self.base_command_cb)
 
         # Published msgs
-        rate = kwargs['publish_rate']
+        rate = kwargs['publish_rate'] if 'publish_rate' in kwargs.keys() else 60
 
-        joint_state_topic_id = kwargs['joint_state_topic_id']
-        self.joint_state_publisher = rospy.Publisher(joint_state_topic_id, JointState, queue_size=1)
+        if 'joint_state_topic_id' in kwargs.keys():
+            joint_state_topic_id = kwargs['joint_state_topic_id']
+            self.joint_state_publisher = rospy.Publisher(joint_state_topic_id, JointState, queue_size=1)
 
         if 'odom_topic_id' in kwargs.keys():
             odom_topic_id = kwargs['odom_topic_id']
