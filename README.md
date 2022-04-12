@@ -224,7 +224,8 @@ If simulation in MuJoCo is needed, you can install necessary software via:
 <summary>Click to expand</summary>
 
 ```diff
-+ Currently, we have shifted the Python backend for MuJoCo from `mujoco-py` to the official provided `mujoco`. 
++ Currently, we have shifted the Python backend for MuJoCo from `mujoco-py` 
++ to the official Python binding `mujoco`. 
 ```
 
 The official version could be easily install by (only support Python 3):
