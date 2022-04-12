@@ -216,14 +216,17 @@ Add `source /opt/xbot/setup.sh` into your bashrc, this line should come after so
 
 </details>
 
-## MuJoCo and mujoco-py
+## MuJoCo
 
 If simulation in MuJoCo is needed, you can install necessary software via:
 
 <details>
 <summary>Click to expand</summary>
 
-Currently, we have shifted the Python backend for MuJoCo from `mujoco-py` to the official provided `mujoco`.
+```diff
++ Currently, we have shifted the Python backend for MuJoCo from `mujoco-py` to the official provided `mujoco`. 
+```
+
 The official version could be easily install by:
 
 ```shell
