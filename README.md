@@ -130,9 +130,7 @@ If the HPP interface is needed, you can install HPP and Pinocchio by:
    deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -sc) robotpkg
    EOF
    
-   curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key |
-   
-   sudo apt-key add -
+   curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key | sudo apt-key add -
    
    sudo apt update
    
