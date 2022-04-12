@@ -2,15 +2,14 @@ from __future__ import print_function
 
 import os
 import time
-import glob
 import mujoco
-import mujoco_viewer
 
 import numpy as np
 import xml.etree.ElementTree as ElementTree
 
 from threading import Thread
 
+from rotools.simulation.mujoco.mujoco_viewer import MujocoViewer
 from rotools.utility.mjcf import find_elements, find_parent, array_to_string, string_to_array
 from rotools.utility.common import to_ros_pose, to_ros_twist, to_list
 
@@ -152,7 +151,7 @@ class MuJoCoInterface(Thread):
         # The model, data, and viewer must be initialized here.
         self._model = mujoco.MjModel.from_xml_path(self._model_path)
         self._data = mujoco.MjData(self._model)
-        self._viewer = mujoco_viewer.MujocoViewer(self._model, self._data) if self._enable_viewer else None
+        self._viewer = MujocoViewer(self._model, self._data) if self._enable_viewer else None
 
         start = time.time()
         clock_msg = Clock()
