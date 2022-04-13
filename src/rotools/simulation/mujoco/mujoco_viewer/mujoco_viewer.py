@@ -22,7 +22,7 @@ class MujocoViewer:
         self._paused = False
         self._transparent = False
         self._contacts = False
-        self._render_every_frame = True
+        self._render_every_frame = False
         self._image_idx = 0
         self._image_path = "/tmp/frame_%07d.png"
         self._time_per_render = 1 / 60.0
