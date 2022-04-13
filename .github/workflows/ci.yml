@@ -62,17 +62,17 @@ jobs:
           cd /ros
           catkin_make -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-    - name: Run Python Tests
-      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-      uses: addnab/docker-run-action@v3
-      with:
-        image:    rotools:${{matrix.ros_distro}}
-        options:  -v ${{github.workspace}}:/ros/
-        shell:    bash
-        run: |
-          source /ros/devel/setup.bash
-          pip install pytest
-          pytest /ros/src/rotools/src/rotools/tests/test_*
+#    - name: Run Python Tests
+#      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
+#      uses: addnab/docker-run-action@v3
+#      with:
+#        image:    rotools:${{matrix.ros_distro}}
+#        options:  -v ${{github.workspace}}:/ros/
+#        shell:    bash
+#        run: |
+#          source /ros/devel/setup.bash
+#          pip install pytest
+#          pytest /ros/src/rotools/src/rotools/tests/test_*
 
     - name: Check C++ Format
       if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
