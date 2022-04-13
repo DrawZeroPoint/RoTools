@@ -1,6 +1,8 @@
 from __future__ import print_function
 
 import math
+import time
+
 import numpy as np
 from collections import namedtuple
 
@@ -64,7 +66,7 @@ class HPPManipulationInterface(object):
         self._problem_solver.loadPlugin('manipulation-spline-gradient-based.so')
         # To show available path optimizers:
         # print(self._problem_solver.getAvailable('PathOptimizer'))
-        self._problem_solver.addPathOptimizer('Graph-RandomShortcut')
+        self._problem_solver.addPathOptimizer('RandomShortcut')
 
         self._enable_viewer = enable_viewer
         self._viewer_factory = self._create_viewer_factory()  # need to create this no matter if enable_viewer
@@ -100,8 +102,8 @@ class HPPManipulationInterface(object):
         self._joint_cmd_publisher = rospy.Publisher(joint_cmd_topic, JointState, queue_size=1)
         self._base_cmd_publisher = rospy.Publisher(base_cmd_topic, Twist, queue_size=1)
 
-        self._time_step = 0.01
-        self._reduction_ratio = 0.5
+        self._time_step = 0.002
+        self._reduction_ratio = 1.
 
         self._object_transform = transform.rotation_matrix(-np.pi / 2, (0, 1, 0))
 
@@ -122,10 +124,8 @@ class HPPManipulationInterface(object):
             # \param compositeName name of the composite robot that will be built later,
             # \param robotName name of the first robot that is loaded now,
             # \param load whether to actually load urdf files. Set to false if you only
-            #        want to initialize a corba client to an already initialized
-            #        problem.
-            # \param rootJointType type of root joint among ("freeflyer", "planar",
-            #        "anchor"),
+            #        want to initialize a corba client to an already initialized problem.
+            # \param rootJointType type of root joint among ("freeflyer", "planar", "anchor"),
             def __init__(self, composite_name, robot_name, load=True,
                          root_joint="planar", **kwargs):
                 Parent.__init__(self, composite_name, robot_name, root_joint, load, **kwargs)
@@ -158,6 +158,7 @@ class HPPManipulationInterface(object):
                            [["{}/{}".format(self._om.name, self._om.handle), ], ],
                            [["{}/{}".format(self._om.name, self._om.surface), ], ])
         factory.setRules([Rule([".*"], [".*"], True), ])
+        factory.setPreplacementDistance('{}'.format(self._om.name), 0.1)
         factory.generate()
         constrain_graph.addConstraints(graph=True, constraints=Constraints(numConstraints=self._lock_hand))
         constrain_graph.initialize()
@@ -213,18 +214,24 @@ class HPPManipulationInterface(object):
                 path_player(self._last_path_id)
 
             path_length = self._problem_solver.pathLength(self._last_path_id)
-            r = rospy.Rate(1. / self._time_step * self._reduction_ratio)
+            msgs = []
             for t in np.arange(0, path_length, self._time_step):
                 j_q = self._problem_solver.configAtParam(self._last_path_id, t)
                 j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
-                self._publish_planning_results(j_q, j_dq)
-                r.sleep()
-
-            r_final = rospy.Rate(1. / (path_length % self._time_step) * self._reduction_ratio)
+                msgs.append(self._derive_joint_and_base_cmd(j_q, j_dq))
             j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
             j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
-            self._publish_planning_results(j_q, j_dq)
-            r_final.sleep()
+            joint_cmd, base_cmd = self._derive_joint_and_base_cmd(j_q, j_dq)
+
+            global_start = time.time()
+            r = rospy.Rate(1. / self._time_step * self._reduction_ratio)
+            for j_cmd, base_cmd in msgs:
+                self._publish_planning_results(j_cmd, base_cmd)
+                r.sleep()
+
+            self._publish_planning_results(joint_cmd, base_cmd)
+            rospy.Rate(1. / (path_length % self._time_step) * self._reduction_ratio).sleep()
+            print(time.time() - global_start, path_length)
             self._stop_base()
 
         self._problem_solver.resetGoalConfigs()
@@ -307,12 +314,12 @@ class HPPManipulationInterface(object):
         for t in np.arange(0, path_length, self._time_step):
             j_q = self._problem_solver.configAtParam(self._last_path_id, t)
             j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
-            self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol, check=False)
+            self._publish_planning_results(j_q, j_dq)
             r.sleep()
 
         j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
         j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
-        self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol, check=False)
+        self._publish_planning_results(j_q, j_dq)
         self._stop_base()
 
     @property
@@ -376,7 +383,19 @@ class HPPManipulationInterface(object):
         new_pose_matrix = np.dot(common.sd_pose(object_pose), self._object_transform)
         config[rank: rank + 7] = common.to_list(common.to_ros_pose(new_pose_matrix))
 
-    def _publish_planning_results(self, j_q, j_dq):
+    def _publish_planning_results(self, joint_cmd, base_cmd):
+        if self._mode == self._work_modes.grasp:
+            if not self._check_goal_reached():
+                self._joint_cmd_publisher.publish(joint_cmd)
+                self._base_cmd_publisher.publish(base_cmd)
+            else:
+                self._joint_cmd_publisher.publish(joint_cmd)
+                self._stop_base()
+        else:
+            self._joint_cmd_publisher.publish(joint_cmd)
+            self._base_cmd_publisher.publish(base_cmd)
+
+    def _derive_joint_and_base_cmd(self, j_q, j_dq):
         joint_cmd = JointState()
         for name in self._joint_names:
             joint_cmd.name.append(name)
@@ -385,21 +404,14 @@ class HPPManipulationInterface(object):
             rank = self._robot.rankInVelocity['{}/{}'.format(self._rm.name, name)]
             joint_cmd.velocity.append(j_dq[rank])
             joint_cmd.effort.append(0)  # TODO currently torque control is not supported
-        self._joint_cmd_publisher.publish(joint_cmd)
 
         base_cmd = Twist()
         rotation_2d = np.array([[j_q[2], -j_q[3]], [j_q[3], j_q[2]]])
         local_linear = np.dot(rotation_2d.T, np.array([j_dq[0], j_dq[1]]).T)
         base_cmd.linear.x = local_linear[0] * self._reduction_ratio
         base_cmd.linear.y = local_linear[1] * self._reduction_ratio
-        base_cmd.angular.z = j_dq[2] * self._reduction_ratio * 1.2  # 1.2 is an empirical value
-        if self._mode == self._work_modes.grasp:
-            if not self._check_goal_reached():
-                self._base_cmd_publisher.publish(base_cmd)
-            else:
-                self._stop_base()
-        else:
-            self._base_cmd_publisher.publish(base_cmd)
+        base_cmd.angular.z = j_dq[2] * self._reduction_ratio
+        return [joint_cmd, base_cmd]
 
     def _stop_base(self):
         base_cmd = Twist()
