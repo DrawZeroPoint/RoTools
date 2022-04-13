@@ -80,7 +80,7 @@ class HPPManipulationInterface(object):
 
         # Use this one or the next to limit solving time:
         # self._problem_solver.setMaxIterPathPlanning(40)
-        self._problem_solver.setTimeOutPathPlanning(60)
+        self._problem_solver.setTimeOutPathPlanning(300)
 
         # ['PathOptimizer', 'PathProjector', 'PathPlanner', 'ConfigurationShooter', 'PathValidation',
         #  'ConfigValidation', 'SteeringMethod', 'Distance', 'NumericalConstraint', 'CenterOfMass', 'Problem',
@@ -190,10 +190,24 @@ class HPPManipulationInterface(object):
             # self._problem_solver.setInitialConfig(q_init_proj)
             self._problem_solver.setInitialConfig(self._q_current)
 
+            if self._mode == self._work_modes.grasp:
+                self._problem_solver.createLockedJoint("fixed_base",
+                                                       "{}/root_joint".format(self._rm.name), [0, 0, 1, 0])
+                for e in self._constrain_graph.edges.keys():
+                    self._constrain_graph.addConstraints(edge=e, constraints=Constraints(
+                        numConstraints=["fixed_base"]))
+                self._constrain_graph.initialize()
+                # self._constrain_graph.display(open=False)
+
+            # TODO
+            # res, q0, err = self._constrain_graph.generateTargetConfig('curi/l_gripper > cube_30/cube_30_handle2 | f',
+            #                                                           self._q_current, self._q_current)
+            # print(q0)
+
             # rospy.loginfo("Current projected configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_init_proj]))
             # rospy.loginfo("Goal projected configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_goal_proj]))
-            rospy.loginfo("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_current]))
-            rospy.loginfo("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_goal]))
+            rospy.logdebug("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_current]))
+            rospy.logdebug("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_goal]))
 
             try:
                 time_spent = self._problem_solver.solve()
@@ -231,7 +245,7 @@ class HPPManipulationInterface(object):
 
             self._publish_planning_results(joint_cmd, base_cmd)
             rospy.Rate(1. / (path_length % self._time_step) * self._reduction_ratio).sleep()
-            print(time.time() - global_start, path_length)
+            print('Path length: {:.4f}; Actual elapsed time: {:.4f}'.format(path_length, time.time() - global_start))
             self._stop_base()
 
         self._problem_solver.resetGoalConfigs()
