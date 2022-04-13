@@ -213,23 +213,16 @@ class HPPManipulationInterface(object):
                 path_player(self._last_path_id)
 
             path_length = self._problem_solver.pathLength(self._last_path_id)
-            r = rospy.Rate(1. / self._time_step * self._reduction_ratio)
-            start = time.time()
-            cnt = 0
             for t in np.arange(0, path_length, self._time_step):
                 j_q = self._problem_solver.configAtParam(self._last_path_id, t)
                 j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
                 self._publish_planning_results(j_q, j_dq)
-                r.sleep()
-                cnt += 1
-            ela = time.time() - start
-            print(ela, cnt, path_length)
+                time.sleep(self._time_step / self._reduction_ratio)
 
-            r_final = rospy.Rate(1. / (path_length % self._time_step) * self._reduction_ratio)
             j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
             j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
             self._publish_planning_results(j_q, j_dq)
-            r_final.sleep()
+            time.sleep((path_length % self._time_step) / self._reduction_ratio)
             self._stop_base()
 
         self._problem_solver.resetGoalConfigs()
