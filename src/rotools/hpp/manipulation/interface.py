@@ -1,6 +1,8 @@
 from __future__ import print_function
 
 import math
+import time
+
 import numpy as np
 from collections import namedtuple
 
@@ -100,8 +102,8 @@ class HPPManipulationInterface(object):
         self._joint_cmd_publisher = rospy.Publisher(joint_cmd_topic, JointState, queue_size=1)
         self._base_cmd_publisher = rospy.Publisher(base_cmd_topic, Twist, queue_size=1)
 
-        self._time_step = 0.01
-        self._reduction_ratio = 0.5
+        self._time_step = 0.002
+        self._reduction_ratio = 1
 
         self._object_transform = transform.rotation_matrix(-np.pi / 2, (0, 1, 0))
 
@@ -122,10 +124,8 @@ class HPPManipulationInterface(object):
             # \param compositeName name of the composite robot that will be built later,
             # \param robotName name of the first robot that is loaded now,
             # \param load whether to actually load urdf files. Set to false if you only
-            #        want to initialize a corba client to an already initialized
-            #        problem.
-            # \param rootJointType type of root joint among ("freeflyer", "planar",
-            #        "anchor"),
+            #        want to initialize a corba client to an already initialized problem.
+            # \param rootJointType type of root joint among ("freeflyer", "planar", "anchor"),
             def __init__(self, composite_name, robot_name, load=True,
                          root_joint="planar", **kwargs):
                 Parent.__init__(self, composite_name, robot_name, root_joint, load, **kwargs)
@@ -214,11 +214,16 @@ class HPPManipulationInterface(object):
 
             path_length = self._problem_solver.pathLength(self._last_path_id)
             r = rospy.Rate(1. / self._time_step * self._reduction_ratio)
+            start = time.time()
+            cnt = 0
             for t in np.arange(0, path_length, self._time_step):
                 j_q = self._problem_solver.configAtParam(self._last_path_id, t)
                 j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
                 self._publish_planning_results(j_q, j_dq)
                 r.sleep()
+                cnt += 1
+            ela = time.time() - start
+            print(ela, cnt, path_length)
 
             r_final = rospy.Rate(1. / (path_length % self._time_step) * self._reduction_ratio)
             j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
@@ -307,12 +312,12 @@ class HPPManipulationInterface(object):
         for t in np.arange(0, path_length, self._time_step):
             j_q = self._problem_solver.configAtParam(self._last_path_id, t)
             j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
-            self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol, check=False)
+            self._publish_planning_results(j_q, j_dq)
             r.sleep()
 
         j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
         j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
-        self._publish_planning_results(j_q, j_dq, pos_tol, ori_tol, check=False)
+        self._publish_planning_results(j_q, j_dq)
         self._stop_base()
 
     @property
@@ -392,7 +397,7 @@ class HPPManipulationInterface(object):
         local_linear = np.dot(rotation_2d.T, np.array([j_dq[0], j_dq[1]]).T)
         base_cmd.linear.x = local_linear[0] * self._reduction_ratio
         base_cmd.linear.y = local_linear[1] * self._reduction_ratio
-        base_cmd.angular.z = j_dq[2] * self._reduction_ratio * 1.2  # 1.2 is an empirical value
+        base_cmd.angular.z = j_dq[2] * self._reduction_ratio
         if self._mode == self._work_modes.grasp:
             if not self._check_goal_reached():
                 self._base_cmd_publisher.publish(base_cmd)
