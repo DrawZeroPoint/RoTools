@@ -33,6 +33,9 @@ class MuJoCoServer(object):
         self._execute_gripper_control_srv = rospy.Service("execute_gripper_control", ExecuteBinaryAction,
                                                           self.execute_gripper_control_handle)
 
+        self._execute_object_reset_srv = rospy.Service("execute_object_reset", ExecuteBinaryAction,
+                                                       self.execute_object_reset_handle)
+
         # Received msgs
         if 'joint_command_topic_id' in kwargs.keys():
             joint_command_topic_id = kwargs['joint_command_topic_id']
@@ -109,5 +112,12 @@ class MuJoCoServer(object):
         resp = ExecuteBinaryActionResponse()
         # req = ExecuteBinaryActionRequest()
         ok = self.interface.set_gripper_command(req.device_names, req.value)
+        resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
+        return resp
+
+    def execute_object_reset_handle(self, req):
+        resp = ExecuteBinaryActionResponse()
+        # req = ExecuteBinaryActionRequest()
+        ok = self.interface.reset_object(req.device_id)
         resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
         return resp

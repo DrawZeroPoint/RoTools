@@ -135,6 +135,7 @@ class MuJoCoInterface(Thread):
         self._clock_publisher = rospy.Publisher('/clock', Clock, queue_size=1)
 
         self._tracked_object_name = 'object'
+        self._object_initial_pose = None
 
     def set_tracked_object(self, name):
         try:
@@ -346,7 +347,7 @@ class MuJoCoInterface(Thread):
 
     def get_object_pose(self):
         """Get the pose of the object's geom.
-        The object body's name is hardcoded for now.
+        The object body's name (object) is hardcoded for now.
 
         Returns:
             Pose in the world frame.
@@ -358,6 +359,8 @@ class MuJoCoInterface(Thread):
             tracked_object = self._data.body(self._tracked_object_name)
             xpos = tracked_object.xpos
             xquat = tracked_object.xquat
+            if self._object_initial_pose is None:
+                self._object_initial_pose = [xpos, xquat]
             return to_ros_pose(to_list(xpos) + to_list(xquat), w_first=True)
         except KeyError:
             return None
@@ -421,3 +424,18 @@ class MuJoCoInterface(Thread):
                 rospy.logwarn(e)
                 return False
         return True
+
+    def reset_object(self, object_id=0):
+        # FIXME currently not functional
+        if self._data is None:
+            # The data could be None when the simulation just started, but this should not last long.
+            return False
+        try:
+            tracked_object = self._data.body(self._tracked_object_name)
+            tracked_object.xpos = self._object_initial_pose[0]
+            tracked_object.xquat = self._object_initial_pose[1]
+            # mujoco.mj_forward(self._model, self._data)
+            return True
+        except KeyError:
+            return False
+
