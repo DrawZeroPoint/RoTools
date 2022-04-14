@@ -75,12 +75,12 @@ class HPPManipulationInterface(object):
         self._robot.setJointBounds("{}/root_joint".format(self._om.name), object_bound)
 
         # An absolute value, if the threshold is surpassed, will raise the error `A configuration has no node`
-        self._problem_solver.setErrorThreshold(5e-2)
+        self._problem_solver.setErrorThreshold(1e-2)
         self._problem_solver.setMaxIterProjection(80)
 
         # Use this one or the next to limit solving time:
         # self._problem_solver.setMaxIterPathPlanning(40)
-        self._problem_solver.setTimeOutPathPlanning(60)
+        self._problem_solver.setTimeOutPathPlanning(20)
 
         # ['PathOptimizer', 'PathProjector', 'PathPlanner', 'ConfigurationShooter', 'PathValidation',
         #  'ConfigValidation', 'SteeringMethod', 'Distance', 'NumericalConstraint', 'CenterOfMass', 'Problem',
@@ -95,7 +95,7 @@ class HPPManipulationInterface(object):
         self._q_current = self._robot.getCurrentConfig()
         self._q_goal = self._q_current[::]
 
-        self._lock_hand = self._create_lock_hand()
+        self._lock_hand = self._create_locks()
 
         self._constrain_graph = self._create_constrain_graph()
 
@@ -141,7 +141,7 @@ class HPPManipulationInterface(object):
         viewer_factory.loadEnvironmentModel(environment, self._em.name)
         return viewer_factory
 
-    def _create_lock_hand(self):
+    def _create_locks(self):
         lock_hand = self._gm.fingers
         for i in range(self._gm.dof):
             self._problem_solver.createLockedJoint(
@@ -163,6 +163,15 @@ class HPPManipulationInterface(object):
         constrain_graph.addConstraints(graph=True, constraints=Constraints(numConstraints=self._lock_hand))
         constrain_graph.initialize()
         return constrain_graph
+
+    def _update_constrains(self):
+        # self._problem_solver.hppcorba.problem.resetConstraints()
+        # Open the working gripper for all modes
+        if self._mode == self._work_modes.grasp:
+            self._problem_solver.createLockedJoint("fix_base", "{}/root_joint".format(self._rm.name), [0, 0, 1, 0])
+            for e in self._constrain_graph.edges.keys():
+                self._constrain_graph.addConstraints(edge=e, constraints=Constraints(numConstraints=["fix_base"]))
+            self._constrain_graph.initialize()
 
     def update_current_config(self, msg):
         if isinstance(msg, JointState):
@@ -190,27 +199,12 @@ class HPPManipulationInterface(object):
             # self._problem_solver.setInitialConfig(q_init_proj)
             self._problem_solver.setInitialConfig(self._q_current)
 
-            if self._mode == self._work_modes.grasp:
-                self._problem_solver.createLockedJoint("fixed_base",
-                                                       "{}/root_joint".format(self._rm.name), [0, 0, 1, 0])
-                for e in self._constrain_graph.edges.keys():
-                    self._constrain_graph.addConstraints(edge=e, constraints=Constraints(
-                        numConstraints=["fixed_base"]))
-                self._constrain_graph.initialize()
-                # for e in self._constrain_graph.edges.keys():
-                #     print(self._constrain_graph.displayEdgeConstraints(e))
-                # self._constrain_graph.display(open=False)
-
-            # TODO
-            # res, q0, err = self._constrain_graph.generateTargetConfig('curi/l_gripper > cube_30/cube_30_handle2 | f',
-            #                                                           self._q_current, self._q_current)
-            # print(q0)
-
             # rospy.loginfo("Current projected configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_init_proj]))
             # rospy.loginfo("Goal projected configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_goal_proj]))
             rospy.logdebug("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_current]))
             rospy.logdebug("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_goal]))
 
+            self._update_constrains()
             try:
                 time_spent = self._problem_solver.solve()
                 rospy.loginfo('Plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
@@ -233,15 +227,19 @@ class HPPManipulationInterface(object):
             grasp_stamps = []
             release_stamps = []
             if self._mode == self._work_modes.grasp:
+                # waypoints is a list of configurations, each configuration corresponds to a node (or state)
+                # in the graph, time stamp to reach that state is recorded in times.
                 waypoints, times = self._problem_solver.getWaypoints(self._last_path_id)
                 temp = [[wp, t] for wp, t in zip(waypoints, times)]
                 for i in range(len(temp) - 1):
                     if self._constrain_graph.getNode(temp[i][0]) == 'free' and 'grasp' in self._constrain_graph.getNode(
                             temp[i + 1][0]):
                         grasp_stamps.append(temp[i + 1][1])
+                        rospy.loginfo('Added grasp stamp at {}'.format(temp[i + 1][1]))
                     if self._constrain_graph.getNode(temp[i + 1][0]) == 'free' and \
                             'grasp' in self._constrain_graph.getNode(temp[i][0]):
                         release_stamps.append(temp[i + 1][1])
+                        rospy.loginfo('Added release stamp at {}'.format(temp[i + 1][1]))
 
             path_length = self._problem_solver.pathLength(self._last_path_id)
             msgs = []
@@ -270,7 +268,7 @@ class HPPManipulationInterface(object):
 
             self._publish_planning_results(joint_cmd, base_cmd)
             rospy.Rate(1. / (path_length % self._time_step) * self._reduction_ratio).sleep()
-            rospy.loginfo('Path length: {:.4f}; Actual elapsed time: {:.4f}'.format(
+            rospy.loginfo('Path length: {:.4f}; actual elapsed time: {:.4f}'.format(
                 path_length, (time.time() - global_start) * self._reduction_ratio))
             self._stop_base()
 
@@ -441,7 +439,6 @@ class HPPManipulationInterface(object):
             joint_cmd.name.append(name)
             rank = self._robot.rankInConfiguration['{}/{}'.format(self._rm.name, name)]
             if name in self._gm.joints and close_gripper:
-                rospy.logwarn('gripper closed')
                 joint_cmd.position.append(0)
             else:
                 joint_cmd.position.append(j_q[rank])
