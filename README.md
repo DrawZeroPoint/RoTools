@@ -224,7 +224,7 @@ If simulation in MuJoCo is needed, you can install necessary software via:
 
 ```diff
 + Currently, we have shifted the Python backend for MuJoCo from `mujoco-py` 
-+ to the official Python binding `mujoco`. 
++ to the official Python binding `mujoco` >= 2.1.5. 
 ```
 
 The official version could be easily install by (only support Python 3):
@@ -243,6 +243,36 @@ Some dependencies you may need:
 sudo apt-get install patchelf
 
 pip install numpy --upgrade
+```
+
+</details>
+
+## Groot
+
+Groot is a Graphical Editor, written in C++ and Qt, to create BehaviorTrees. The [tree](tree) files should be better
+edited using this software. 
+
+<details>
+<summary>Click to expand</summary>
+
+Follow these steps to install it:
+
+```shell
+sudo apt install qtbase5-dev libqt5svg5-dev libzmq3-dev libdw-dev
+
+git clone https://github.com/BehaviorTree/Groot.git && cd Groot
+   
+git submodule update --init --recursive
+
+mkdir build; cd build
+
+cmake .. && make
+```
+
+Run the script in `Groot/build` to start it:
+
+```shell
+./Groot
 ```
 
 </details>
