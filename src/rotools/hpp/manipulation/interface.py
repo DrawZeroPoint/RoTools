@@ -74,8 +74,8 @@ class HPPManipulationInterface(object):
         self._robot.setJointBounds("{}/root_joint".format(self._rm.name), robot_bound)
         self._robot.setJointBounds("{}/root_joint".format(self._om.name), object_bound)
 
-        # robot.client.basic.problem.resetRoadmap ()
-        self._problem_solver.setErrorThreshold(1e-1)
+        # An absolute value, if the threshold is surpassed, will raise the error `A configuration has no node`
+        self._problem_solver.setErrorThreshold(5e-2)
         self._problem_solver.setMaxIterProjection(80)
 
         # Use this one or the next to limit solving time:
@@ -103,7 +103,7 @@ class HPPManipulationInterface(object):
         self._base_cmd_publisher = rospy.Publisher(base_cmd_topic, Twist, queue_size=1)
 
         self._time_step = 0.002
-        self._reduction_ratio = 1.
+        self._reduction_ratio = 0.5
 
         self._object_transform = transform.rotation_matrix(-np.pi / 2, (0, 1, 0))
 
@@ -230,17 +230,18 @@ class HPPManipulationInterface(object):
                 path_player(self._last_path_id)
 
             # Get waypoints information
-            waypoints, times = self._problem_solver.getWaypoints(self._last_path_id)
-            temp = [[wp, t] for wp, t in zip(waypoints, times)]
             grasp_stamps = []
             release_stamps = []
-            for i in range(len(temp) - 1):
-                if self._constrain_graph.getNode(temp[i][0]) == 'free' and 'grasp' in self._constrain_graph.getNode(
-                        temp[i + 1][0]):
-                    grasp_stamps.append(temp[i + 1][1])
-                if self._constrain_graph.getNode(temp[i + 1][0]) == 'free' and 'grasp' in self._constrain_graph.getNode(
-                        temp[i][0]):
-                    release_stamps.append(temp[i + 1][1])
+            if self._mode == self._work_modes.grasp:
+                waypoints, times = self._problem_solver.getWaypoints(self._last_path_id)
+                temp = [[wp, t] for wp, t in zip(waypoints, times)]
+                for i in range(len(temp) - 1):
+                    if self._constrain_graph.getNode(temp[i][0]) == 'free' and 'grasp' in self._constrain_graph.getNode(
+                            temp[i + 1][0]):
+                        grasp_stamps.append(temp[i + 1][1])
+                    if self._constrain_graph.getNode(temp[i + 1][0]) == 'free' and \
+                            'grasp' in self._constrain_graph.getNode(temp[i][0]):
+                        release_stamps.append(temp[i + 1][1])
 
             path_length = self._problem_solver.pathLength(self._last_path_id)
             msgs = []
@@ -440,6 +441,7 @@ class HPPManipulationInterface(object):
             joint_cmd.name.append(name)
             rank = self._robot.rankInConfiguration['{}/{}'.format(self._rm.name, name)]
             if name in self._gm.joints and close_gripper:
+                rospy.logwarn('gripper closed')
                 joint_cmd.position.append(0)
             else:
                 joint_cmd.position.append(j_q[rank])
