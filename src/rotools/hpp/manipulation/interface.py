@@ -75,12 +75,12 @@ class HPPManipulationInterface(object):
         self._robot.setJointBounds("{}/root_joint".format(self._om.name), object_bound)
 
         # robot.client.basic.problem.resetRoadmap ()
-        self._problem_solver.setErrorThreshold(1e-2)
-        self._problem_solver.setMaxIterProjection(40)
+        self._problem_solver.setErrorThreshold(1e-1)
+        self._problem_solver.setMaxIterProjection(80)
 
         # Use this one or the next to limit solving time:
         # self._problem_solver.setMaxIterPathPlanning(40)
-        self._problem_solver.setTimeOutPathPlanning(300)
+        self._problem_solver.setTimeOutPathPlanning(60)
 
         # ['PathOptimizer', 'PathProjector', 'PathPlanner', 'ConfigurationShooter', 'PathValidation',
         #  'ConfigValidation', 'SteeringMethod', 'Distance', 'NumericalConstraint', 'CenterOfMass', 'Problem',
@@ -158,7 +158,7 @@ class HPPManipulationInterface(object):
                            [["{}/{}".format(self._om.name, self._om.handle), ], ],
                            [["{}/{}".format(self._om.name, self._om.surface), ], ])
         factory.setRules([Rule([".*"], [".*"], True), ])
-        factory.setPreplacementDistance('{}'.format(self._om.name), 0.1)
+        # factory.setPreplacementDistance('{}'.format(self._om.name), 0.1)
         factory.generate()
         constrain_graph.addConstraints(graph=True, constraints=Constraints(numConstraints=self._lock_hand))
         constrain_graph.initialize()
@@ -197,6 +197,8 @@ class HPPManipulationInterface(object):
                     self._constrain_graph.addConstraints(edge=e, constraints=Constraints(
                         numConstraints=["fixed_base"]))
                 self._constrain_graph.initialize()
+                # for e in self._constrain_graph.edges.keys():
+                #     print(self._constrain_graph.displayEdgeConstraints(e))
                 # self._constrain_graph.display(open=False)
 
             # TODO
@@ -227,15 +229,37 @@ class HPPManipulationInterface(object):
                 path_player = PathPlayer(viewer)
                 path_player(self._last_path_id)
 
+            # Get waypoints information
+            waypoints, times = self._problem_solver.getWaypoints(self._last_path_id)
+            temp = [[wp, t] for wp, t in zip(waypoints, times)]
+            grasp_stamps = []
+            release_stamps = []
+            for i in range(len(temp) - 1):
+                if self._constrain_graph.getNode(temp[i][0]) == 'free' and 'grasp' in self._constrain_graph.getNode(
+                        temp[i + 1][0]):
+                    grasp_stamps.append(temp[i + 1][1])
+                if self._constrain_graph.getNode(temp[i + 1][0]) == 'free' and 'grasp' in self._constrain_graph.getNode(
+                        temp[i][0]):
+                    release_stamps.append(temp[i + 1][1])
+
             path_length = self._problem_solver.pathLength(self._last_path_id)
             msgs = []
+            close_gripper = False
             for t in np.arange(0, path_length, self._time_step):
                 j_q = self._problem_solver.configAtParam(self._last_path_id, t)
                 j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
-                msgs.append(self._derive_joint_and_base_cmd(j_q, j_dq))
+                for g_s in grasp_stamps:
+                    if t <= g_s < t + self._time_step:
+                        close_gripper = True
+                        break
+                for r_s in release_stamps:
+                    if t <= r_s < t + self._time_step:
+                        close_gripper = False
+                        break
+                msgs.append(self._derive_command_msgs(j_q, j_dq, close_gripper))
             j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
             j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
-            joint_cmd, base_cmd = self._derive_joint_and_base_cmd(j_q, j_dq)
+            joint_cmd, base_cmd = self._derive_command_msgs(j_q, j_dq)
 
             global_start = time.time()
             r = rospy.Rate(1. / self._time_step * self._reduction_ratio)
@@ -245,7 +269,8 @@ class HPPManipulationInterface(object):
 
             self._publish_planning_results(joint_cmd, base_cmd)
             rospy.Rate(1. / (path_length % self._time_step) * self._reduction_ratio).sleep()
-            print('Path length: {:.4f}; Actual elapsed time: {:.4f}'.format(path_length, time.time() - global_start))
+            rospy.loginfo('Path length: {:.4f}; Actual elapsed time: {:.4f}'.format(
+                path_length, (time.time() - global_start) * self._reduction_ratio))
             self._stop_base()
 
         self._problem_solver.resetGoalConfigs()
@@ -409,12 +434,15 @@ class HPPManipulationInterface(object):
             self._joint_cmd_publisher.publish(joint_cmd)
             self._base_cmd_publisher.publish(base_cmd)
 
-    def _derive_joint_and_base_cmd(self, j_q, j_dq):
+    def _derive_command_msgs(self, j_q, j_dq, close_gripper=False):
         joint_cmd = JointState()
         for name in self._joint_names:
             joint_cmd.name.append(name)
             rank = self._robot.rankInConfiguration['{}/{}'.format(self._rm.name, name)]
-            joint_cmd.position.append(j_q[rank])
+            if name in self._gm.joints and close_gripper:
+                joint_cmd.position.append(0)
+            else:
+                joint_cmd.position.append(j_q[rank])
             rank = self._robot.rankInVelocity['{}/{}'.format(self._rm.name, name)]
             joint_cmd.velocity.append(j_dq[rank])
             joint_cmd.effort.append(0)  # TODO currently torque control is not supported
