@@ -259,20 +259,17 @@ Follow these steps to install it:
 
 ```shell
 sudo apt install qtbase5-dev libqt5svg5-dev libzmq3-dev libdw-dev
-
-git clone https://github.com/BehaviorTree/Groot.git && cd Groot
-   
+cd ~ && git clone https://github.com/BehaviorTree/Groot.git && cd Groot
 git submodule update --init --recursive
-
 mkdir build; cd build
-
-cmake .. && make
+cmake ..
+make
 ```
 
 Run the script in `Groot/build` to start it:
 
 ```shell
-./Groot
+~/Groot/build/Groot
 ```
 
 </details>
@@ -282,8 +279,7 @@ Run the script in `Groot/build` to start it:
 Clone the repo from GitHub to your $HOME folder:
 
 ```shell
-cd ~
-git clone https://github.com/DrawZeroPoint/RoTools.git
+cd ~ && git clone https://github.com/DrawZeroPoint/RoTools.git
 ```
 
 Make a symlink under the ROS workspace (assume `~/catkin_ws` here). Note that the symlink trick enables flexible
@@ -297,9 +293,7 @@ cd ~/RoTools
 Then, you can build your ROS packages:
 
 ```shell
-cd ~/catkin_ws
-
-catkin_make  # We also support catkin build
+cd ~/catkin_ws && catkin_make  # We also support catkin build
 ```
 
 # :running: Use with MoveIt!
