@@ -418,6 +418,6 @@ class MuJoCoInterface(Thread):
                 actuator = self._data.actuator(self.actuator_names[idx])
                 actuator.ctrl = value
             except BaseException as e:
-                print(e)
+                rospy.logwarn(e)
                 return False
         return True
