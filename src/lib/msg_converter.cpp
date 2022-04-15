@@ -237,7 +237,7 @@ auto MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
           filtered_msg.effort.push_back(src_msg->effort[idx]);
         }
       } else {
-        ROS_ERROR_STREAM(prefix << "Source joint state msg does not define " << name);
+        ROS_ERROR_STREAM_ONCE(prefix << "Source joint state msg does not define " << name);
         return false;
       }
     }
