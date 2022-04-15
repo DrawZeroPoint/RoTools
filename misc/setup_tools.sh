@@ -86,7 +86,7 @@ install_hpp() {
   sudo sh -c 'echo "deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -sc) robotpkg" > /etc/apt/sources.list.d/robotpkg.list'
   curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key | sudo apt-key add -
   sudo apt update
-  sudo apt-get install robotpkg-py${PYVER}-hpp-manipulation-corba robotpkg-py${PYVER}-qt5-hpp-gepetto-viewer \
+  sudo apt-get install -y robotpkg-py${PYVER}-hpp-manipulation-corba robotpkg-py${PYVER}-qt5-hpp-gepetto-viewer \
     robotpkg-py${PYVER}-hpp-tutorial robotpkg-py${PYVER}-qt5-hpp-gui robotpkg-py${PYVER}-qt5-hpp-plot \
     robotpkg-py${PYVER}-hpp-environments robotpkg-py${PYVER}-eigenpy
 
@@ -138,7 +138,7 @@ install_sublime_text() {
   wget -qO - https://download.sublimetext.com/sublimehq-pub.gpg | sudo apt-key add -
   echo "deb https://download.sublimetext.com/ apt/stable/" | sudo tee /etc/apt/sources.list.d/sublime-text.list
   sudo apt-get update
-  sudo apt-get install sublime-text
+  sudo apt-get install -y sublime-text
   echo_success "Successfully installed Sublime Text"
 }
 
@@ -157,7 +157,7 @@ install_jetbrains_toolbox() {
 }
 
 sudo apt update
-sudo apt install wget apt-transport-https lib-matio
+sudo apt install -y wget apt-transport-https lib-matio
 
 install_ros
 install_cartesio
