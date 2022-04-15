@@ -114,9 +114,10 @@ auto MsgConverter::init() -> bool {
     rotools::RuckigOptimizer* optimizer;
     if (smooth_start_flag > 0) {
       enable_smooth_start_flags_.push_back(true);
+      auto start_ref_topic = start_ref_topics[group_id];
       auto subscriber = nh_.subscribe<sensor_msgs::JointState>(
-          start_ref_topics[group_id], 1, [this, group_id, source_names](auto&& ph1) {
-            return smoothStartCb(std::forward<decltype(ph1)>(ph1), group_id, source_names);
+          start_ref_topic, 1, [this, group_id, start_ref_topic, source_names](auto&& ph1) {
+            return smoothStartCb(std::forward<decltype(ph1)>(ph1), group_id, start_ref_topic, source_names);
           });
       start_ref_subscribers_.push_back(subscriber);
       finished_smooth_start_flags_.push_back(false);
@@ -153,11 +154,12 @@ auto MsgConverter::init() -> bool {
       continue;
     }
 
+    auto source_topic = source_js_topics[group_id];
     ros::Subscriber subscriber = nh_.subscribe<sensor_msgs::JointState>(
-        source_js_topics[group_id], 1,
-        [this, group_id, publisher, target_type, target_arg, source_names, target_names](auto&& ph1) {
-          return jointStateCb(std::forward<decltype(ph1)>(ph1), group_id, publisher, target_type, target_arg,
-                              source_names, target_names);
+        source_topic, 1,
+        [this, group_id, source_topic, publisher, target_type, target_arg, source_names, target_names](auto&& ph1) {
+          return jointStateCb(std::forward<decltype(ph1)>(ph1), group_id, source_topic, publisher, target_type,
+                              target_arg, source_names, target_names);
         });
     publishers_.push_back(publisher);
     subscribers_.push_back(subscriber);
@@ -167,13 +169,14 @@ auto MsgConverter::init() -> bool {
 
 void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
                                 const size_t& group_id,
+                                const std::string& source_topic,
                                 const ros::Publisher& publisher,
                                 const std::string& type,
                                 const int& arg,
                                 const std::vector<std::string>& source_names,
                                 const std::vector<std::string>& target_names) {
   sensor_msgs::JointState filtered_msg;
-  if (!filterJointState(msg, source_names, filtered_msg)) {
+  if (!filterJointState(msg, source_names, source_topic, filtered_msg)) {
     return;
   }
 
@@ -199,13 +202,14 @@ void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
 
 auto MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg,
                                     const std::vector<std::string>& filtered_names,
+                                    const std::string& source_topic,
                                     sensor_msgs::JointState& filtered_msg) -> bool {
   if (src_msg->position.empty()) {
-    ROS_ERROR_STREAM_THROTTLE(3, prefix << "Source JointState message defines no position");
+    ROS_ERROR_STREAM_THROTTLE(3, prefix << "Source msg " << source_topic << " defines no position");
     return false;
   }
   if (src_msg->position.size() < filtered_names.size()) {
-    ROS_ERROR_STREAM_THROTTLE(3, prefix << "Source JointState message have fewer positions ("
+    ROS_ERROR_STREAM_THROTTLE(3, prefix << "Source msg " << source_topic << " have fewer positions ("
                                         << src_msg->position.size() << ") than expected (" << filtered_names.size()
                                         << ")");
     return false;
@@ -226,9 +230,9 @@ auto MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
         filtered_msg.effort.push_back(src_msg->effort[result.second]);
       }
     } else {
-      ROS_WARN_STREAM_ONCE(prefix << "No name in the source joint state msg match the selected name '" << name
-                                  << "' (print only once)");
       if (src_msg->position.size() == filtered_names.size()) {
+        ROS_WARN_STREAM_ONCE(prefix << "Mutely convert source msg " << source_topic << " to '" << name
+                                    << "' since they have the same size (print only once)");
         filtered_msg.position.push_back(src_msg->position[idx]);
         if (src_msg->velocity.size() == filtered_names.size()) {
           filtered_msg.velocity.push_back(src_msg->velocity[idx]);
@@ -237,7 +241,8 @@ auto MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
           filtered_msg.effort.push_back(src_msg->effort[idx]);
         }
       } else {
-        ROS_ERROR_STREAM_ONCE(prefix << "Source joint state msg does not define " << name);
+        ROS_ERROR_STREAM_ONCE(prefix << "Source msg " << source_topic << " does not define '" << name
+                                     << "' (print only once)");
         return false;
       }
     }
@@ -268,13 +273,14 @@ auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
 
 void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
                                  const int& group_id,
+                                 const std::string& source_topic,
                                  const std::vector<std::string>& source_names) {
   if (finished_smooth_start_flags_[group_id] || !optimizers_[group_id]->isTargetStateSet()) {
     return;
   }
 
   sensor_msgs::JointState filtered_msg;
-  if (!filterJointState(msg, source_names, filtered_msg)) {
+  if (!filterJointState(msg, source_names, source_topic, filtered_msg)) {
     return;
   }
 
@@ -297,7 +303,7 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
 
   if (std::chrono::steady_clock::now() - starts_[group_id] > std::chrono::seconds(20)) {
     finished_smooth_start_flags_[group_id] = true;
-    std::string name = source_names[violated_i];
+    const std::string& name = source_names[violated_i];
     ROS_WARN("Unable to move group %d to the start position in 20 sec due to joint #%zu: %s. Residual %f. Aborted.",
              group_id, violated_i, name.c_str(), residual);
   }

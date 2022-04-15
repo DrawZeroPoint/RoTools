@@ -86,6 +86,7 @@ class MsgConverter {
    * Callback function for one of the source_js_topics.
    * @param msg Source joint state msg.
    * @param group_id The id of the joint group.
+   * @param source_topic Name of the source topic.
    * @param publisher Publisher to target topic.
    * @param type Target msg type.
    * @param arg Target msg arg.
@@ -94,6 +95,7 @@ class MsgConverter {
    */
   void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
                     const size_t& group_id,
+                    const std::string& source_topic,
                     const ros::Publisher& publisher,
                     const std::string& type,
                     const int& arg,
@@ -108,11 +110,13 @@ class MsgConverter {
    * they have the same size as source_names.
    * @param src_msg Source joint state message.
    * @param filtered_names Names of the joints to be selected.
+   * @param source_topic Name of the source topic.
    * @retval filtered_msg Filtered joint state message.
    * @return True if filtering is succeed, false otherwise.
    */
   auto filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg,
                         const std::vector<std::string>& filtered_names,
+                        const std::string& source_topic,
                         sensor_msgs::JointState& filtered_msg) -> bool;
 
   static auto smoothJointState(const sensor_msgs::JointState& msg,
@@ -145,6 +149,7 @@ class MsgConverter {
    */
   void smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
                      const int& group_id,
+                     const std::string& source_topic,
                      const std::vector<std::string>& source_names);
 
   /**
