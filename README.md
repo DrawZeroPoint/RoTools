@@ -145,13 +145,14 @@ If the HPP interface is needed, you can install HPP and Pinocchio by:
    After the installation, add the following to your bashrc (change 3.8 if your version is different):
 
    ```shell
-   export PATH=/opt/openrobots/bin:${PATH}
-   export LD_LIBRARY_PATH=/opt/openrobots/lib:${LD_LIBRARY_PATH}
-   export PYTHONPATH=/opt/openrobots/lib/python3.8/site-packages:${PYTHONPATH}
-   export ROS_PACKAGE_PATH=/opt/openrobots/share:${ROS_PACKAGE_PATH}
-
-   export CMAKE_PREFIX_PATH=/opt/openrobots:${CMAKE_PREFIX_PATH}
-   export PKG_CONFIG_PATH=/opt/openrobots:${PKG_CONFIG_PATH}
+   echo "" >> ~/.bashrc
+   echo "# HPP" >> ~/.bashrc
+   echo "export PATH=/opt/openrobots/bin:\$PATH" >> ~/.bashrc
+   echo "export LD_LIBRARY_PATH=/opt/openrobots/lib:\$LD_LIBRARY_PATH" >> ~/.bashrc
+   echo "export PYTHONPATH=/opt/openrobots/lib/python3.8/site-packages:\$PYTHONPATH" >> ~/.bashrc
+   echo "export ROS_PACKAGE_PATH=/opt/openrobots/share:\$ROS_PACKAGE_PATH" >> ~/.bashrc
+   echo "export CMAKE_PREFIX_PATH=/opt/openrobots:\$CMAKE_PREFIX_PATH" >> ~/.bashrc
+   echo "export PKG_CONFIG_PATH=/opt/openrobots:\$PKG_CONFIG_PATH" >> ~/.bashrc
    ```
 
    </details>
@@ -164,27 +165,25 @@ If the HPP interface is needed, you can install HPP and Pinocchio by:
    <summary>Click to expand</summary>
 
    ```shell
+   cd ~
    git clone --recursive https://github.com/stack-of-tasks/pinocchio
-   
    cd pinocchio/ && git checkout master
-   
    mkdir build && cd build
-   
    cmake -DBUILD_WITH_COLLISION_SUPPORT=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
-   
    make -j4
-   
    sudo make install
    ```
 
    After building, add the following to your bashrc (change 3.8 if your version is different):
 
    ```shell
-   export PATH=/usr/local/bin:$PATH
-   export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
-   export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-   export PYTHONPATH=/usr/local/lib/python3.8/site-packages:$PYTHONPATH
-   export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
+   echo "" >> ~/.bashrc
+   echo "# pinocchio" >> ~/.bashrc
+   echo "export PATH=/usr/local/bin:\$PATH" >> ~/.bashrc
+   echo "export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:\$PKG_CONFIG_PATH" >>~/.bashrc
+   echo "export LD_LIBRARY_PATH=/usr/local/lib:\$LD_LIBRARY_PATH" >>~/.bashrc
+   echo "export PYTHONPATH=/usr/local/lib/python3.8/site-packages:\$PYTHONPATH" >>~/.bashrc
+   echo "export CMAKE_PREFIX_PATH=/usr/local:\$CMAKE_PREFIX_PATH" >>~/.bashrc
    ```
 
    </details>
@@ -211,7 +210,6 @@ according to your system. For 18.04, you should use `bionic`, while for 20.04, u
 Extract the tar file and inside the folder, run `./install.sh`
 
 Add `source /opt/xbot/setup.sh` into your bashrc, this line should come after sourcing ROS.
-
 
 </details>
 
