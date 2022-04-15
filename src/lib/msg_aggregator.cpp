@@ -21,7 +21,7 @@ MsgAggregator::MsgAggregator(const ros::NodeHandle& node_handle, const ros::Node
       CuriJointStateSyncPolicy(10), *curi_head_sub_, *panda_left_sub_, *panda_left_finger_sub_, *panda_right_sub_,
       *panda_right_finger_sub_, *curi_torso_sub_);
   joint_states_sync_->registerCallback(boost::bind(&MsgAggregator::curiJointStatesCB, this, _1, _2, _3, _4, _5, _6));
-  curi_joint_states_pub_ = nh_.advertise<sensor_msgs::JointState>("/joint_states", 1);
+  curi_joint_states_pub_ = nh_.advertise<sensor_msgs::JointState>("/joint_state", 1);
   have_velocity_head_ = false;
   have_velocity_panda_left_ = false;
   have_velocity_panda_left_finger_ = false;
