@@ -43,6 +43,7 @@ if __name__ == '__main__':
             'joint_cmd_topic': get_param('~joint_cmd_topic'),
             'base_cmd_topic': get_param('~base_cmd_topic'),
             'enable_viewer': get_param('~enable_viewer'),
+            'reduction_ratio': get_param('~reduction_ratio', 0.2),
         }
 
         viewer_process = None

@@ -48,6 +48,7 @@ class HPPManipulationInterface(object):
             joint_cmd_topic,
             base_cmd_topic,
             enable_viewer=True,
+            reduction_ratio=0.2,
             **kwargs
     ):
         super(HPPManipulationInterface, self).__init__()
@@ -103,7 +104,7 @@ class HPPManipulationInterface(object):
         self._base_cmd_publisher = rospy.Publisher(base_cmd_topic, Twist, queue_size=1)
 
         self._time_step = 0.002
-        self._reduction_ratio = 0.5
+        self._reduction_ratio = reduction_ratio
 
         self._object_transform = transform.rotation_matrix(-np.pi / 2, (0, 1, 0))
 
