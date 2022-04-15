@@ -201,7 +201,7 @@ If tele-operation with CartesI/O is needed, you can install it via:
 Install the dependence (for MAT file I/O):
 
 ```shell
-sudo apt-get install lib-matio
+sudo apt-get install libmatio-dev
 ```
 
 Go to https://github.com/ADVRHumanoids/XBotControl/releases, download the compressed file from the latest release

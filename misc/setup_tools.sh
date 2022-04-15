@@ -157,7 +157,7 @@ install_jetbrains_toolbox() {
 }
 
 sudo apt update
-sudo apt install -y wget apt-transport-https lib-matio
+sudo apt install -y wget apt-transport-https libmatio-dev
 
 install_ros
 install_cartesio
