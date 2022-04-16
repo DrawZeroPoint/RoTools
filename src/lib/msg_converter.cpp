@@ -3,6 +3,7 @@
 //
 
 #include "roport/msg_converter.h"
+#include "roport/common.h"
 
 namespace roport {
 
@@ -294,7 +295,7 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
   optimizers_[group_id]->getTargetPosition(q_desired);
   size_t violated_i = 0;
   double residual = 0.;
-  if (allClose<double>(filtered_msg.position, q_desired, violated_i, residual)) {
+  if (roport::allClose<double>(filtered_msg.position, q_desired, violated_i, residual)) {
     finished_smooth_start_flags_[group_id] = true;
     ROS_INFO("Successfully moved group %d to the start position.", group_id);
   } else {

@@ -8,7 +8,6 @@
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 
-#include "roport/common.h"
 #include "roport/online_trajectory_optimizer.h"
 #include "ruckig/ruckig.hpp"
 
