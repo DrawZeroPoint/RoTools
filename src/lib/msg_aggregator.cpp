@@ -9,7 +9,15 @@ namespace roport {
 MsgAggregator::MsgAggregator(const ros::NodeHandle& node_handle, const ros::NodeHandle& pnh)
     : nh_(node_handle), pnh_(pnh) {
   init();
-  publisher_ = nh_.advertise<sensor_msgs::JointState>("/joint_state", 1);
+
+  std::string target_js_topic = "/joint_state";
+  if (!pnh_.param<std::string>("target_js_topic", target_js_topic, "/joint_state")) {
+    if (!nh_.param<std::string>("target_js_topic", target_js_topic, "/joint_state")) {
+      ROS_WARN_STREAM(prefix << "Param target_js_topic is not set, using default: " << target_js_topic);
+    }
+  }
+  ROS_INFO_STREAM(prefix << "Publish to the target topic: " << target_js_topic);
+  publisher_ = nh_.advertise<sensor_msgs::JointState>(target_js_topic, 1);
 }
 
 void MsgAggregator::init() {
