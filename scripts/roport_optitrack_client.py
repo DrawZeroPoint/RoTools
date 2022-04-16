@@ -17,6 +17,7 @@ if __name__ == '__main__':
             'odom_topic': get_param('~odom_topic'),
             'pose_topic': get_param('~pose_topic'),
             'rate': get_param('~rate', 100.),
+            'transform': get_param('~transform', [0., 0., 0., 0., 0., 0., 1.]),
         }
 
         if not is_ip_valid(configs['ip']) or not is_port_valid(configs['port']):

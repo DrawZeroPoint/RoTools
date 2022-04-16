@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import socket
 
 import rospy
@@ -8,8 +6,10 @@ import nav_msgs
 import geometry_msgs
 
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Pose, Point, Quaternion
+from geometry_msgs.msg import Pose
 import re
+
+from rotools.utility.common import to_ros_pose, sd_pose, get_transform_same_target
 
 
 def data_process(data):
@@ -38,6 +38,9 @@ class OptiTrackClient(object):
             topics = kwargs['odom_topic']
             self.register_topic(topics, nav_msgs.msg.Odometry)
 
+        if kwargs['transform'] is not None:
+            self._transform = sd_pose(kwargs['transform'], check=True)
+
     def register_topic(self, topics, msg_type):
         if isinstance(topics, str):
             publisher = self.create_publisher(topics, msg_type)
@@ -53,21 +56,21 @@ class OptiTrackClient(object):
     def create_publisher(topic_id, msg_type):
         return rospy.Publisher(topic_id, msg_type, queue_size=1)
 
-    def _socket_cb(self, event):
+    def _socket_cb(self, _):
         utf_data = self._client.recv(1024).decode('utf-8')
-        position, orientation = data_process(utf_data)
-        position = Point(*position)
-        orientation = Quaternion(*orientation)
+        raw_position, raw_orientation = data_process(utf_data)
+        raw_pose = sd_pose(raw_position + raw_orientation, check=True)
+        transformed_pose = to_ros_pose(get_transform_same_target(raw_pose, self._transform))
         for _, entity in self._advertise_dict.items():
             msg_type, publisher = entity
             if msg_type is geometry_msgs.msg.Pose:
                 msg = Pose()
-                msg.position = position
-                msg.orientation = orientation
+                msg.position = transformed_pose.position
+                msg.orientation = transformed_pose.orientation
             elif msg_type is nav_msgs.msg.Odometry:
                 msg = Odometry()
-                msg.pose.pose.position = position
-                msg.pose.pose.orientation = orientation
+                msg.pose.pose.position = transformed_pose.position
+                msg.pose.pose.orientation = transformed_pose.orientation
             else:
                 raise NotImplementedError
             publisher.publish(msg)
