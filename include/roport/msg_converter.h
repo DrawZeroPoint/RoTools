@@ -82,7 +82,8 @@ class MsgConverter {
   auto init() -> bool;
 
   /**
-   * Callback function for one of the source_js_topics.
+   * Callback function for each of the source_js_topics. If the source msg cannot be filtered or smoothed (if enabled),
+   * no target msg will be published.
    * @param msg Source joint state msg.
    * @param group_id The id of the joint group.
    * @param source_topic Name of the source topic.
@@ -118,9 +119,10 @@ class MsgConverter {
                         const std::string& source_topic,
                         sensor_msgs::JointState& filtered_msg) -> bool;
 
-  static auto smoothJointState(const sensor_msgs::JointState& msg,
-                               rotools::RuckigOptimizer* oto,
-                               sensor_msgs::JointState& smoothed_msg) -> bool;
+  auto smoothJointState(const sensor_msgs::JointState& msg,
+                        const std::string& source_topic,
+                        rotools::RuckigOptimizer* oto,
+                        sensor_msgs::JointState& smoothed_msg) -> bool;
 
   /**
    * Get the map under the given param_name. Each element in the map is a pair <joint_name, value>.

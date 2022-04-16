@@ -183,7 +183,7 @@ void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
 
   sensor_msgs::JointState smoothed_msg;
   if (enable_smooth_start_flags_[group_id] && !finished_smooth_start_flags_[group_id]) {
-    if (!smoothJointState(filtered_msg, optimizers_[group_id], smoothed_msg)) {
+    if (!smoothJointState(filtered_msg, source_topic, optimizers_[group_id], smoothed_msg)) {
       return;
     }
   } else {
@@ -253,10 +253,13 @@ auto MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
 }
 
 auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
+                                    const std::string& source_topic,
                                     rotools::RuckigOptimizer* oto,
                                     sensor_msgs::JointState& smoothed_msg) -> bool {
   oto->setTargetState(msg);
   if (!oto->isInitialStateSet()) {
+    ROS_WARN_STREAM_DELAYED_THROTTLE(
+        5, prefix << "Topic " << source_topic << "'s online optimizer initial state has not been set");
     return false;
   }
 
@@ -265,7 +268,9 @@ auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
 
   std::vector<double> q_cmd;
   std::vector<double> dq_cmd;
-  oto->update(q_cmd, dq_cmd);
+  if (!oto->update(q_cmd, dq_cmd)) {
+    return false;
+  }
   smoothed_msg.position = q_cmd;
   smoothed_msg.velocity = dq_cmd;
   smoothed_msg.effort = msg.effort;  // effort is not tackled
