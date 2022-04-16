@@ -302,7 +302,6 @@ class MuJoCoInterface(Thread):
             None if the robot_state is not available, otherwise return JointState
         """
         if self._robot_states is None:
-            rospy.logwarn_throttle(1, 'MuJoCo robot state has not been set')
             return None
         joint_state_msg = JointState()
         joint_state_msg.header.stamp = rospy.Time.now()
