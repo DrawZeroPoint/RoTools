@@ -68,6 +68,8 @@ class MuJoCoInterface(Thread):
         self._actuated_joint_ranges = {}
         self._mimic_joint_names = []
         self.actuator_names = []
+        # We consider the ctrl range of the actuator could be different with that of the joint.
+        self._actuator_ctrl_ranges = {}
         self.control_types = []
 
         if os.path.exists(kinematics_path):
@@ -97,9 +99,6 @@ class MuJoCoInterface(Thread):
             torque_sensors = find_elements(actuator_root, 'torque', return_first=False)
             force_sensors = find_elements(actuator_root, 'force', return_first=False)
 
-            # Set the initial state of the simulation (t=0). Assume the keyframe tag is in the actuator xml
-            initial_keyframe = find_elements(actuator_root, 'key')
-
             """
             control_types: list[int] How the actuator is controlled.
                            The value could be: position (0), velocity (1), torque (2).
@@ -110,6 +109,7 @@ class MuJoCoInterface(Thread):
 
             self._get_mimic_joint_info(mimic_joints)
             self._get_actuated_joint_ranges(kinematics_root)
+            self._get_actuator_ctrl_ranges(actuator_root)
 
             self._actuator_num = len(self.actuator_names)
             rospy.loginfo('Controlled joints #{}:\n{}'.format(
@@ -126,7 +126,6 @@ class MuJoCoInterface(Thread):
 
             rospy.loginfo('Effort sensors:\n{}'.format(array_to_string(self.effort_sensor_names)))
 
-            self._set_initial_state(initial_keyframe)
         else:
             rospy.logwarn("Actuator XML file '{}' does not exist".format(actuator_path))
 
@@ -136,6 +135,8 @@ class MuJoCoInterface(Thread):
 
         self._tracked_object_name = 'object'
         self._object_initial_pose = None
+
+        self._neutral_initialized = False
 
     def set_tracked_object(self, name):
         try:
@@ -157,6 +158,9 @@ class MuJoCoInterface(Thread):
         start = time.time()
         clock_msg = Clock()
         while not rospy.is_shutdown():
+            if not self._neutral_initialized:
+                self._neutral_initialization()
+                self._neutral_initialized = True
             self._get_robot_states()
             mujoco.mj_step(self._model, self._data)
             if self._viewer is not None:
@@ -165,19 +169,28 @@ class MuJoCoInterface(Thread):
             self._clock_publisher.publish(clock_msg)
         self._viewer.close()
 
-    def _set_initial_state(self, initial_keyframe):
-        if initial_keyframe is not None:
-            qpos_str = ' '.join(initial_keyframe.attrib['qpos'].split())
-            qpos = string_to_array(qpos_str)
-            if len(qpos) != self._model.nq:
-                rospy.logwarn(
-                    'Keyframe qpos size {} does not match internal state {}'.format(len(qpos), self._model.nq))
-                return
-            qvel = np.zeros(self._model.nv)
-            # TODO
-            rospy.loginfo('Set initial state with keyframe values')
-        else:
-            rospy.loginfo('No initial state from keyframe values')
+    def _neutral_initialization(self):
+        """Set the initial control signal for the actuator as 'neutral', which means that it must lie in the
+        limit range of the control. This prevents the initial configuration of the robot violate the limits.
+        The initialization only applies to the position controlled actuators with ctrl range defined.
+
+        Returns:
+            None
+        """
+        for i, t in enumerate(self.control_types):
+            if t == 0:
+                actuator_name = self.actuator_names[i]
+                ctrl_range = self._actuator_ctrl_ranges[actuator_name]
+                if ctrl_range is not None:
+                    low, high = ctrl_range
+                    if 0. <= low:
+                        neutral = low + (high - low) / 10.
+                    elif high <= 0.:
+                        neutral = high - (high - low) / 10.
+                    else:
+                        neutral = 0.
+                    actuator = self._data.actuator(actuator_name)
+                    actuator.ctrl = neutral
 
     def _get_actuator_info(self, actuators, control_type):
         """Given actuator XML elements, get their names and corresponding joint attributes and control types,
@@ -220,6 +233,27 @@ class MuJoCoInterface(Thread):
             except KeyError:
                 self._actuated_joint_ranges[name] = None
                 # Silently handle actuated joints with no range defined, which could be continuous joints
+                pass
+
+    def _get_actuator_ctrl_ranges(self, actuator_root):
+        if actuator_root is None:
+            return
+        for i, name in enumerate(self.actuator_names):
+            if self.control_types[i] == 0:
+                actuator = find_elements(actuator_root, 'position', {'name': name})
+            elif self.control_types[i] == 1:
+                actuator = find_elements(actuator_root, 'velocity', {'name': name})
+            elif self.control_types[i] == 2:
+                actuator = find_elements(actuator_root, 'motor', {'name': name})
+            else:
+                raise NotImplementedError
+
+            try:
+                ctrl_range = string_to_array(actuator.attrib['ctrlrange'])
+                self._actuator_ctrl_ranges[name] = ctrl_range
+            except KeyError:
+                self._actuator_ctrl_ranges[name] = None
+                # Silently handle actuators with no ctrl range defined
                 pass
 
     def _get_effort_sensor_info(self, kinematics_root, sensors):
