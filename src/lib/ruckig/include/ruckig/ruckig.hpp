@@ -1,9 +1,9 @@
 #pragma once
 
+#include <math.h>
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <cmath>
 #include <iostream>
 #include <limits>
 #include <numeric>
@@ -25,6 +25,9 @@ class Ruckig {
   //! Current input, only for comparison for recalculation
   InputParameter<DOFs> current_input;
 
+  //! Flag that indicates if the current_input was properly initialized
+  bool current_input_initialized{false};
+
   //! Calculator for new trajectories
   Calculator<DOFs> calculator;
 
@@ -37,7 +40,7 @@ class Ruckig {
   size_t degrees_of_freedom;
 
   //! Time step between updates (cycle time) in [s]
-  const double delta_time;
+  const double delta_time{0.0};
 
   template <size_t D = DOFs, typename std::enable_if<D >= 1, int>::type = 0>
   explicit Ruckig() : degrees_of_freedom(DOFs), delta_time(-1.0), max_number_of_waypoints(0) {}
@@ -234,6 +237,10 @@ class Ruckig {
       }
     }
 
+    if (delta_time <= 0.0 && input.duration_discretization != DurationDiscretization::Continuous) {
+      return false;
+    }
+
     return true;
   }
 
@@ -265,13 +272,14 @@ class Ruckig {
 
     output.new_calculation = false;
 
-    if (input != current_input) {
+    if (input != current_input || !current_input_initialized) {
       Result result = calculate(input, output.trajectory, output.was_calculation_interrupted);
       if (result != Result::Working) {
         return result;
       }
 
       current_input = input;
+      current_input_initialized = true;
       output.time = 0.0;
       output.new_calculation = true;
     }
