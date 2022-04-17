@@ -38,6 +38,7 @@ class MuJoCoInterface(Thread):
             kinematics_path=None,
             actuator_path=None,
             enable_viewer=True,
+            verbose=False,
             **kwargs
     ):
         """Initialize the MuJoCoInterface.
@@ -47,6 +48,7 @@ class MuJoCoInterface(Thread):
             kinematics_path: str [Optional] Path to the XML file containing the kinematic tree of the robot.
             actuator_path: str [Optional] Path to the XML file containing the actuator and sensor of the robot.
             enable_viewer: bool If true, the MuJoCo Viewer will be displayed.
+            verbose: bool If true, detailed information will be shown.
             **kwargs: DO NOT REMOVE!
         """
         super(MuJoCoInterface, self).__init__()
@@ -70,6 +72,7 @@ class MuJoCoInterface(Thread):
         self.actuator_names = []
         # We consider the ctrl range of the actuator could be different with that of the joint.
         self._actuator_ctrl_ranges = {}
+        self._actuator_force_ranges = {}
         self.control_types = []
 
         if os.path.exists(kinematics_path):
@@ -109,7 +112,7 @@ class MuJoCoInterface(Thread):
 
             self._get_mimic_joint_info(mimic_joints)
             self._get_actuated_joint_ranges(kinematics_root)
-            self._get_actuator_ctrl_ranges(actuator_root)
+            self._get_actuator_ranges(actuator_root)
 
             self._actuator_num = len(self.actuator_names)
             rospy.loginfo('Controlled joints #{}:\n{}'.format(
@@ -137,6 +140,8 @@ class MuJoCoInterface(Thread):
         self._object_initial_pose = None
 
         self._neutral_initialized = False
+
+        self._verbose = verbose
 
     def set_tracked_object(self, name):
         try:
@@ -235,7 +240,7 @@ class MuJoCoInterface(Thread):
                 # Silently handle actuated joints with no range defined, which could be continuous joints
                 pass
 
-    def _get_actuator_ctrl_ranges(self, actuator_root):
+    def _get_actuator_ranges(self, actuator_root):
         if actuator_root is None:
             return
         for i, name in enumerate(self.actuator_names):
@@ -252,9 +257,15 @@ class MuJoCoInterface(Thread):
                 ctrl_range = string_to_array(actuator.attrib['ctrlrange'])
                 self._actuator_ctrl_ranges[name] = ctrl_range
             except KeyError:
-                self._actuator_ctrl_ranges[name] = None
                 # Silently handle actuators with no ctrl range defined
-                pass
+                self._actuator_ctrl_ranges[name] = None
+
+            try:
+                force_range = string_to_array(actuator.attrib['forcerange'])
+                self._actuator_force_ranges[name] = force_range
+            except KeyError:
+                # Silently handle actuators with no ctrl range defined
+                self._actuator_force_ranges[name] = None
 
     def _get_effort_sensor_info(self, kinematics_root, sensors):
         if sensors is not None:
@@ -299,6 +310,18 @@ class MuJoCoInterface(Thread):
                 joint_qtau = 0.
             joint_state = [joint_qpos, joint_qvel, joint_qtau]
             robot_states.append(joint_state)
+
+            if not self._verbose:
+                continue
+            force_range = self._actuator_force_ranges[self.actuator_names[i]]
+            if force_range is not None:
+                low, high = force_range
+                if joint_qtau < low:
+                    rospy.logwarn(
+                        "Joint {} effort {:.4f} is lower than lower limit {:.4f}".format(joint_name, joint_qtau, low))
+                if joint_qtau > high:
+                    rospy.logwarn(
+                        "Joint {} effort {:.4f} is larger than upper limit {:.4f}".format(joint_name, joint_qtau, high))
         self._robot_states = np.array(robot_states)
 
     def _get_effort_sensor_data(self, sensor_name, axis='z'):
@@ -471,4 +494,3 @@ class MuJoCoInterface(Thread):
             return True
         except KeyError:
             return False
-
