@@ -99,8 +99,12 @@ void MsgAggregator::highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg
                                     const sensor_msgs::JointState::ConstPtr& msg_3) {
   sensor_msgs::JointState joint_state;
   size_t name_dim = 0;
-  for (auto& name_group : high_frequency_name_groups_) {
+  std::vector<std::string> names;
+  for (const auto& name_group : high_frequency_name_groups_) {
     name_dim += name_group.size();
+    for (const auto& name : name_group) {
+      names.push_back(name);
+    }
   }
   size_t position_dim = msg_1->position.size() + msg_2->position.size() + msg_3->position.size();
 
@@ -114,6 +118,8 @@ void MsgAggregator::highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg
   joint_state.position.resize(name_dim);
   joint_state.velocity.resize(name_dim);
   joint_state.effort.resize(name_dim);
+
+  std::copy(names.begin(), names.end(), joint_state.name.begin());
 
   std::copy(msg_1->position.begin(), msg_1->position.end(), joint_state.position.begin());
   if (msg_1->velocity.size() == msg_1->position.size()) {
@@ -153,6 +159,15 @@ void MsgAggregator::lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_
                                  << " does not match position size " << position_dim);
     return;
   }
+
+  std::vector<std::string> names;
+  for (const auto& name_group : low_frequency_name_groups_) {
+    for (const auto& name : name_group) {
+      names.push_back(name);
+    }
+  }
+
+  std::copy(names.begin(), names.end(), low_frequency_joint_state_.name.begin());
 
   std::copy(msg_1->position.begin(), msg_1->position.end(), low_frequency_joint_state_.position.begin());
   if (msg_1->velocity.size() == msg_1->position.size()) {
