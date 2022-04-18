@@ -242,8 +242,8 @@ auto MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
           filtered_msg.effort.push_back(src_msg->effort[idx]);
         }
       } else {
-        ROS_ERROR_STREAM_ONCE(prefix << "Source msg " << source_topic << " does not define '" << name
-                                     << "' (print only once)");
+        ROS_WARN_STREAM_ONCE(prefix << "Source msg " << source_topic << " defines no '" << name
+                                    << "', it will not be converted (print only once)");
         return false;
       }
     }
