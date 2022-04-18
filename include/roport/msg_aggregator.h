@@ -56,15 +56,13 @@ class MsgAggregator {
     ROS_ASSERT(param_value.getType() == XmlRpc::XmlRpcValue::TypeArray);
   }
 
-  void highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
-                       const sensor_msgs::JointState::ConstPtr& msg_2);
+  void highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1, const sensor_msgs::JointState::ConstPtr& msg_2);
 
   void highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
                        const sensor_msgs::JointState::ConstPtr& msg_2,
                        const sensor_msgs::JointState::ConstPtr& msg_3);
 
-  void lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
-                      const sensor_msgs::JointState::ConstPtr& msg_2);
+  void lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1, const sensor_msgs::JointState::ConstPtr& msg_2);
 
   void lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
                       const sensor_msgs::JointState::ConstPtr& msg_2,
