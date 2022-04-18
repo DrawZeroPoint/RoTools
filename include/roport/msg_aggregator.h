@@ -29,11 +29,13 @@ class MsgAggregator {
 
   ros::Publisher publisher_;
 
+  size_t high_frequency_num_;
   std::vector<std::string> high_frequency_topics_;
   std::vector<std::vector<std::string>> high_frequency_name_groups_;
   std::vector<std::shared_ptr<MsgSubscriber>> high_frequency_subscribers_;
   std::shared_ptr<PolicySynchronizer> high_frequency_synchronizer_;
 
+  size_t low_frequency_num_;
   std::vector<std::string> low_frequency_topics_;
   std::vector<std::vector<std::string>> low_frequency_name_groups_;
   std::vector<std::shared_ptr<MsgSubscriber>> low_frequency_subscribers_;
@@ -55,8 +57,14 @@ class MsgAggregator {
   }
 
   void highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
+                       const sensor_msgs::JointState::ConstPtr& msg_2);
+
+  void highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
                        const sensor_msgs::JointState::ConstPtr& msg_2,
                        const sensor_msgs::JointState::ConstPtr& msg_3);
+
+  void lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
+                      const sensor_msgs::JointState::ConstPtr& msg_2);
 
   void lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
                       const sensor_msgs::JointState::ConstPtr& msg_2,
