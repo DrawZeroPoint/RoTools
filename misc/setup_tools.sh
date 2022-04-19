@@ -163,10 +163,10 @@ sudo apt update
 sudo apt install -y wget apt-transport-https libmatio-dev screen
 
 install_ros
-#install_cartesio
-#install_hpp
-#install_pinocchio
-#install_sublime_text
-#install_jetbrains_toolbox
+install_cartesio
+install_hpp
+install_pinocchio
+install_sublime_text
+install_jetbrains_toolbox
 
 exit 0
