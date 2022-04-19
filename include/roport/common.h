@@ -169,7 +169,7 @@ template <typename T>
 inline void logWarningList(const T& list, const std::string& title = "List in focus:") {
   ROS_WARN_STREAM(title << " In total " << list.size() << " values");
   for (size_t idx = 0; idx < list.size(); ++idx) {
-    ROS_WARN_STREAM(list[idx]);
+    ROS_WARN_STREAM("# " << idx << " " << list[idx]);
   }
 }
 }  // namespace roport

@@ -92,6 +92,11 @@ bool RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq
   for (unsigned long i = 0; i < kSteps; i++) {
     auto result = trajectory_generator_->update(*input_param_, *output_param_);
     if (result != ruckig::Working && result != ruckig::Finished) {
+      if (result == ruckig::ErrorInvalidInput) {
+        // If the input state was changed, reinitialize it
+        *is_initial_state_set_ = false;
+        return false;
+      }
       ROS_ERROR_STREAM("Ruckig is on error " << result << ", make sure the max limits are not close to 0");
       roport::logWarningList<std::array<double, capacity_>>(output_param_->new_position, "Output new position");
       roport::logWarningList<std::array<double, capacity_>>(output_param_->new_velocity, "Output new velocity");
