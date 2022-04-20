@@ -83,14 +83,15 @@ class HPPManipulationInterface(object):
         self._problem_solver.setErrorThreshold(1e-2)
         self._problem_solver.setMaxIterProjection(80)
 
-        # Use this one or the next to limit solving time:
+        # Use this one and/or the next to limit solving time. MaxIterPathPlanning is a fairly large value if not set.
         # self._problem_solver.setMaxIterPathPlanning(40)
         self._problem_solver.setTimeOutPathPlanning(20)
 
         # ['PathOptimizer', 'PathProjector', 'PathPlanner', 'ConfigurationShooter', 'PathValidation',
         #  'ConfigValidation', 'SteeringMethod', 'Distance', 'NumericalConstraint', 'CenterOfMass', 'Problem',
         #  'Parameter', 'DefaultParameter', 'Gripper', 'Handle', 'RobotContact', 'EnvContact', 'ConstraintGraph']
-        # print(self._problem_solver.getAvailable('type'))
+        rospy.loginfo('Using path planner {}, available planners are: {}'.format(
+            self._problem_solver.getSelected('PathPlanner'), self._problem_solver.getAvailable('PathPlanner')))
 
         # self._problem_solver.createTransformationConstraint("placement", '', "{}/root_joint".format(self._om.name),
         #                                                     [0, 0, 1, 0, 0, 0, 1],
@@ -156,7 +157,7 @@ class HPPManipulationInterface(object):
         self._graph_id += 1
         graph_name = 'graph_{}'.format(self._graph_id)
         constraint_graph = ConstraintGraph(self._robot, graph_name)
-        rospy.loginfo('Created new constrain graph {}'.format(graph_name))
+        rospy.loginfo('Created new constraint graph: {}'.format(graph_name))
         factory = ConstraintGraphFactory(constraint_graph)
         factory.setGrippers(["{}/{}".format(self._rm.name, self._gm.name), ])
         factory.environmentContacts(["{}/{}".format(self._em.name, self._em.surface), ])
