@@ -61,6 +61,10 @@ class HPPManipulationInterface(object):
         self._em = Model(env_name, env_pkg_name, surface=env_surface)
         self._gm = Gripper(self._rm, gripper_name, fingers, finger_joints, finger_joint_values)
 
+        self._work_modes = namedtuple("work_modes", "idle approach grasp")
+        self._previous_mode = self._work_modes.idle
+        self._mode = self._work_modes.idle
+
         self._robot = self._create_robot()
         self._problem_solver = ProblemSolver(self._robot)
 
@@ -98,7 +102,8 @@ class HPPManipulationInterface(object):
 
         self._lock_hand = self._create_locks()
 
-        self._constrain_graph = self._create_constrain_graph()
+        self._graph_id = 0
+        self._constraint_graph = self._create_constraint_graph()
 
         self._joint_cmd_publisher = rospy.Publisher(joint_cmd_topic, JointState, queue_size=1)
         self._base_cmd_publisher = rospy.Publisher(base_cmd_topic, Twist, queue_size=1)
@@ -107,9 +112,6 @@ class HPPManipulationInterface(object):
         self._reduction_ratio = reduction_ratio
 
         self._object_transform = transform.rotation_matrix(-np.pi / 2, (0, 1, 0))
-
-        self._work_modes = namedtuple("work_modes", "idle approach grasp")
-        self._mode = self._work_modes.idle
 
         self._base_p_tol = 0.01
         self._base_o_tol = 0.02
@@ -150,9 +152,12 @@ class HPPManipulationInterface(object):
             )
         return lock_hand
 
-    def _create_constrain_graph(self):
-        constrain_graph = ConstraintGraph(self._robot, 'graph')
-        factory = ConstraintGraphFactory(constrain_graph)
+    def _create_constraint_graph(self):
+        self._graph_id += 1
+        graph_name = 'graph_{}'.format(self._graph_id)
+        constraint_graph = ConstraintGraph(self._robot, graph_name)
+        rospy.loginfo('Created new constrain graph {}'.format(graph_name))
+        factory = ConstraintGraphFactory(constraint_graph)
         factory.setGrippers(["{}/{}".format(self._rm.name, self._gm.name), ])
         factory.environmentContacts(["{}/{}".format(self._em.name, self._em.surface), ])
         factory.setObjects([self._om.name, ],
@@ -161,18 +166,27 @@ class HPPManipulationInterface(object):
         factory.setRules([Rule([".*"], [".*"], True), ])
         # factory.setPreplacementDistance('{}'.format(self._om.name), 0.1)
         factory.generate()
-        constrain_graph.addConstraints(graph=True, constraints=Constraints(numConstraints=self._lock_hand))
-        constrain_graph.initialize()
-        return constrain_graph
+        constraint_graph.addConstraints(graph=True, constraints=Constraints(numConstraints=self._lock_hand))
+        constraint_graph.initialize()
+        return constraint_graph
 
-    def _update_constrains(self):
-        # self._problem_solver.hppcorba.problem.resetConstraints()
-        # Open the working gripper for all modes
-        if self._mode == self._work_modes.grasp:
+    def _update_constraints(self):
+        """Update the constraints if 1) Working mode turned from other modes to the grasp mode. In this mode,
+        we need to add extra constraints to the edges such that the base do not move during grasping. 2) Working
+        mode turned from grasping to other modes, where we need to create a new graph since the original constrained
+        graph cannot be used. When new graph is created, we increase the count of graph_id to prevent naming ambiguous.
+
+        Returns:
+            None
+        """
+        if self._previous_mode == self._work_modes.grasp and self._mode != self._work_modes.grasp:
+            self._constraint_graph = self._create_constraint_graph()
+        if self._previous_mode != self._work_modes.grasp and self._mode == self._work_modes.grasp:
             self._problem_solver.createLockedJoint("fix_base", "{}/root_joint".format(self._rm.name), [0, 0, 1, 0])
-            for e in self._constrain_graph.edges.keys():
-                self._constrain_graph.addConstraints(edge=e, constraints=Constraints(numConstraints=["fix_base"]))
-            self._constrain_graph.initialize()
+            for e in self._constraint_graph.edges.keys():
+                self._constraint_graph.addConstraints(edge=e, constraints=Constraints(numConstraints=["fix_base"]))
+            self._constraint_graph.initialize()
+        self._previous_mode = self._mode
 
     def update_current_config(self, msg):
         if isinstance(msg, JointState):
@@ -205,7 +219,7 @@ class HPPManipulationInterface(object):
             rospy.logdebug("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_current]))
             rospy.logdebug("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_goal]))
 
-            self._update_constrains()
+            self._update_constraints()
             try:
                 time_spent = self._problem_solver.solve()
                 rospy.loginfo('Plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
@@ -233,14 +247,15 @@ class HPPManipulationInterface(object):
                 waypoints, times = self._problem_solver.getWaypoints(self._last_path_id)
                 temp = [[wp, t] for wp, t in zip(waypoints, times)]
                 for i in range(len(temp) - 1):
-                    if self._constrain_graph.getNode(temp[i][0]) == 'free' and 'grasp' in self._constrain_graph.getNode(
+                    if self._constraint_graph.getNode(
+                            temp[i][0]) == 'free' and 'grasp' in self._constraint_graph.getNode(
                             temp[i + 1][0]):
                         grasp_stamps.append(temp[i + 1][1])
-                        rospy.loginfo('Added grasp stamp at {}'.format(temp[i + 1][1]))
-                    if self._constrain_graph.getNode(temp[i + 1][0]) == 'free' and \
-                            'grasp' in self._constrain_graph.getNode(temp[i][0]):
+                        rospy.loginfo('Will grasp at {:.4f} s'.format(temp[i + 1][1]))
+                    if self._constraint_graph.getNode(temp[i + 1][0]) == 'free' and \
+                            'grasp' in self._constraint_graph.getNode(temp[i][0]):
                         release_stamps.append(temp[i + 1][1])
-                        rospy.loginfo('Added release stamp at {}'.format(temp[i + 1][1]))
+                        rospy.loginfo('Will release at {:.4f} s'.format(temp[i + 1][1]))
 
             path_length = self._problem_solver.pathLength(self._last_path_id)
             msgs = []
@@ -329,12 +344,12 @@ class HPPManipulationInterface(object):
         return self._make_plan()
 
     def _make_grasping_plan(self, pos_tol, ori_tol):
-        res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
+        res, q_init_proj, err = self._constraint_graph.applyNodeConstraints("free", self._q_current)
         self._problem_solver.setInitialConfig(q_init_proj)
 
         rospy.loginfo("Current location:\n{}".format(q_init_proj))
 
-        self._problem_solver.setTargetState(self._constrain_graph.nodes[
+        self._problem_solver.setTargetState(self._constraint_graph.nodes[
                                                 "{}/{} grasps {}/{}".format(self._rm.name, self._gm.name,
                                                                             self._om.name, self._om.handle)])
         time_spent = self._problem_solver.solve()
