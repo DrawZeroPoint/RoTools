@@ -80,7 +80,7 @@ class HPPManipulationInterface(object):
         self._robot.setJointBounds("{}/root_joint".format(self._om.name), object_bound)
 
         # An absolute value, if the threshold is surpassed, will raise the error `A configuration has no node`
-        self._problem_solver.setErrorThreshold(1e-2)
+        self._problem_solver.setErrorThreshold(5e-3)
         self._problem_solver.setMaxIterProjection(80)
 
         # Use this one and/or the next to limit solving time. MaxIterPathPlanning is a fairly large value if not set.
@@ -208,17 +208,17 @@ class HPPManipulationInterface(object):
     def _make_plan(self):
         # res, q_goal_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_goal)
         # self._problem_solver.addGoalConfig(q_goal_proj)
-        self._problem_solver.addGoalConfig(self._q_goal)
 
         while not self._check_goal_reached():
+            self._problem_solver.addGoalConfig(self._q_goal)
             # res, q_init_proj, err = self._constrain_graph.applyNodeConstraints("free", self._q_current)
             # self._problem_solver.setInitialConfig(q_init_proj)
             self._problem_solver.setInitialConfig(self._q_current)
 
             # rospy.loginfo("Current projected configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_init_proj]))
             # rospy.loginfo("Goal projected configuration:\n{}".format(["{0:0.2f}".format(i) for i in q_goal_proj]))
-            rospy.logdebug("Current configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_current]))
-            rospy.logdebug("Goal configuration:\n{}".format(["{0:0.2f}".format(i) for i in self._q_goal]))
+            rospy.loginfo("Current configuration:\n{}".format(["{0:0.8f}".format(i) for i in self._q_current]))
+            rospy.loginfo("Goal configuration:\n{}".format(["{0:0.8f}".format(i) for i in self._q_goal]))
 
             self._update_constraints()
             try:
@@ -288,8 +288,8 @@ class HPPManipulationInterface(object):
             rospy.loginfo('Path length: {:.4f}; actual elapsed time: {:.4f}'.format(
                 path_length, (time.time() - global_start) * self._reduction_ratio))
             self._stop_base()
+            self._problem_solver.resetGoalConfigs()
 
-        self._problem_solver.resetGoalConfigs()
         self._mode = self._work_modes.idle
         return True
 
