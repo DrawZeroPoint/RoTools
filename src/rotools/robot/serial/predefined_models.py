@@ -48,16 +48,20 @@ def puma560():  # pragma: no cover
 def ur10e_mdh_model():
     """Get UR10e MDH model."""
 
-    return np.array(
-        [
-            [0, 0, 0, 0.1807],
-            [np.pi / 2, 0, np.pi, 0],
-            [0, 0.6127, 0, 0],
-            [0, 0.57155, 0, 0.17415],
-            [-np.pi / 2, 0, 0, 0.11985],
-            [np.pi / 2, 0, np.pi, 0.11655],
-        ]
-    )
+    mdh = np.array([
+        [0, 0, 0, 0.1807],
+        [np.pi / 2, 0, np.pi, 0],
+        [0, 0.6127, 0, 0],
+        [0, 0.57155, 0, 0.17415],
+        [-np.pi / 2, 0, 0, 0.11985],
+        [np.pi / 2, 0, np.pi, 0.11655],
+    ])
+
+    q_limits = np.array([
+        [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi],
+    ])
+
+    return mdh, q_limits
 
 
 def ur10e_poe_model():
@@ -77,9 +81,13 @@ def ur10e_poe_model():
         [0, 1, 0, -0.1807, 0, 1.18425],  # -H1 L1+L2
         [0, 0, -1, -0.17415, 1.18425, 0],  # -W1 L1+L2
         [0, 1, 0, -0.06085, 0, 1.18425],  # H2-H1 L1+L2
+    ]).T
+
+    q_limits = np.array([
+        [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi],
     ])
 
-    return M, screw_axes
+    return [M, screw_axes], q_limits
 
 
 def ur10_poe_model():
@@ -184,7 +192,11 @@ def walker_left_arm_poe():
 
 
 def panda_poe_model():
-    """Get panda product of exponential model."""
+    """Get panda product of exponential model.
+
+    Returns:
+        list[ndarray], ndarray POE params and joint limits.
+    """
 
     M = np.array([
         [1, 0, 0, 0.088],
@@ -203,21 +215,30 @@ def panda_poe_model():
         [0, 0, -1, 0, 0.088, 0],
     ]).T
 
-    return M, screw_axes
+    q_limits = np.array([
+        [-2.8973, 2.8973], [-1.7628, 1.7628], [-2.8973, 2.8973], [-3.0718, -0.0698], [-2.8973, 2.8973],
+        [-0.0175, 3.7525], [-2.8973, 2.8973]
+    ])
+
+    return [M, screw_axes], q_limits
 
 
 def panda_mdh_model():
-    """MDH parameters in alpha, a, theta, d order, with units be meter or radius
+    """MDH parameters in 'alpha, a, theta, d' order, with units are meter or radian.
 
-    note:
-    alpha is z axis rotation around x axis
-    a is distance along +x axis
-    theta is x axis rotation around z axis
-    d is distance along +z axis
+    Notes:
+        'alpha' is z-axis' rotation around x-axis
+        'a' is the translation distance along +x-axis
+        'theta' is x-axis' rotation around z-axis
+        'd' is the translation distance along +z-axis
 
-    Refer: https://raw.githubusercontent.com/petercorke/robotics-toolbox-matlab/master/models/mdl_panda.m
+    References:
+        https://raw.githubusercontent.com/petercorke/robotics-toolbox-matlab/master/models/mdl_panda.m
+
+    Returns:
+        ndarray of size (7, 4), the MDH parameters.
     """
-    return np.array(
+    mdh = np.array(
         [
             [0, 0, 0, 0.333],  # theta in [-2.8973 2.8973] 0 -> 1
             [-np.pi / 2, 0, 0, 0],  # theta in [-1.7628 1.7628] 1 -> 2
@@ -226,5 +247,13 @@ def panda_mdh_model():
             [-np.pi / 2, -0.0825, 0, 0.384],  # theta in [-2.8973 2.8973] 4 -> 5
             [np.pi / 2, 0, 0, 0],  # theta in [-0.0175 3.7525] 5 -> 6
             [np.pi / 2, 0.088, 0, 0.107],  # theta in [-2.8973 2.8973], 0.107 is distance between link 6 and 8
-        ]
+        ],
+        dtype=np.float
     )
+
+    q_limits = np.array([
+        [-2.8973, 2.8973], [-1.7628, 1.7628], [-2.8973, 2.8973], [-3.0718, -0.0698], [-2.8973, 2.8973],
+        [-0.0175, 3.7525], [-2.8973, 2.8973]
+    ])
+
+    return mdh, q_limits

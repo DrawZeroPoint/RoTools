@@ -1,13 +1,13 @@
 """Kinematic chain module."""
 import logging
 from abc import abstractmethod
-from typing import Any, Optional, Sequence, Sized, Union
+from typing import Sequence, Sized, Union
 
 import attr
 import numpy as np  # type: ignore
 
-from json_encoder import JSONEncoder
-from _link import Link, MDHLink, RevoluteMDHLink
+from rotools.utility.json_encoder import JSONEncoder
+from rotools.robot.serial.link import MDHLink, RevoluteMDHLink, POEScrewAxis
 
 # set logging
 logger = logging.getLogger(__name__)
@@ -194,3 +194,56 @@ class MDHKinematicChain(KinematicChain):
         # noinspection PyProtectedMember
         value = np.array(value).reshape((-1, MDHLink._size))
         self.matrix = value
+
+
+@attr.s
+class POEKinematicChain(Sized):
+    """Kinematic Chain of POE links."""
+
+    _home_matrix = attr.ib(type=np.ndarray)
+    _screw_axes = attr.ib(type=Union[Sequence[POEScrewAxis], np.ndarray])
+
+    def __attrs_post_init__(self):
+        """Post-attrs initialization."""
+        pass
+
+    @classmethod
+    def from_parameters(cls, poe):
+        """Construct Kinematic Chain from parameters."""
+        assert len(poe) == 2, print('POE params should contain home matrix and screw axes')
+        home_matrix = poe[0]
+        screw_axes = poe[1]
+        kc = cls(home_matrix=home_matrix, screw_axes=screw_axes)
+        return kc
+
+    @property
+    def home_matrix(self):
+        """
+        Convert chain to matrix of link parameters.
+
+        Rows = links
+        Columns = parameters
+        """
+        return self._home_matrix
+
+    @home_matrix.setter
+    def home_matrix(self, value):
+        """Set home matrix of link parameters."""
+        self._home_matrix = value
+
+    @property
+    def screw_axes(self):
+        """Get screw axes."""
+        return self._screw_axes
+
+    @screw_axes.setter
+    def screw_axes(self, value):
+        """Set screw axes.
+
+        :param value: Union[Sequence[POEScrewAxis], np.ndarray]
+        """
+        self._screw_axes = value
+
+    def __len__(self):
+        """Get dof."""
+        return self._screw_axes.shape[-1]

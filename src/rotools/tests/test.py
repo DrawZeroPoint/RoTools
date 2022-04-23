@@ -17,7 +17,7 @@ class Test(unittest.TestCase):
         q = [0, -np.pi / 2, 0, 0, np.pi / 2, 0]
 
         ur5_poe_param = predefined.ur5_poe_model()
-        ur5_poe = serial_model.RobotModel.from_poe_parameters(ur5_poe_param)
+        ur5_poe = serial_model.RobotModel.get_model_from_poe(ur5_poe_param)
 
         pose_poe = ur5_poe.fk(q)
         print('ur5 poe \n', pose_poe)
@@ -26,13 +26,13 @@ class Test(unittest.TestCase):
         q = [np.pi / 2, 0, 0, 0, 0, 0]
 
         ur10e_poe_param = predefined.ur10e_poe_model()
-        ur10e_poe = serial_model.RobotModel.from_poe_parameters(ur10e_poe_param)
+        ur10e_poe = serial_model.RobotModel.get_model_from_poe(ur10e_poe_param)
 
         pose_poe = ur10e_poe.fk(q)
         print('ur10e poe \n', pose_poe)
 
         ur10e_mdh_param = predefined.ur10e_mdh_model()
-        ur10e_mdh = serial_model.RobotModel.from_mdh_parameters(ur10e_mdh_param)
+        ur10e_mdh = serial_model.RobotModel.get_model_from_mdh(ur10e_mdh_param)
 
         pose_mdh = ur10e_mdh.fk(q)
         print('ur10e mdh \n', pose_mdh)
@@ -43,7 +43,7 @@ class Test(unittest.TestCase):
         # q = [np.pi/2, 0, 0, 0, 0, 0]
 
         panda_poe_param = predefined.panda_poe_model()
-        panda_poe = serial_model.RobotModel.from_poe_parameters(panda_poe_param)
+        panda_poe = serial_model.RobotModel.get_model_from_poe(panda_poe_param)
 
         pose_poe = panda_poe.fk(q)
         print('panda poe \n', pose_poe)
@@ -51,7 +51,7 @@ class Test(unittest.TestCase):
         print(transform.quaternion_from_matrix(pose_poe))
 
         panda_mdh_param = predefined.panda_mdh_model()
-        panda_mdh = serial_model.RobotModel.from_mdh_parameters(panda_mdh_param)
+        panda_mdh = serial_model.RobotModel.get_model_from_mdh(panda_mdh_param)
 
         pose_mdh = panda_mdh.fk(q)
         print('panda mdh \n', pose_mdh)
