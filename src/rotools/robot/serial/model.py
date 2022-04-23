@@ -109,7 +109,7 @@ class RobotModel(Sized):
         pose_eef_in_arm_base = self.fk(q)
         return np.dot(self.arm_base_to_robot_base_trans, pose_eef_in_arm_base)
 
-    def ik(self, target_pose, current_q):
+    def ik_in_space(self, target_pose, current_q):
         """Solve the inverse kinematics.
 
         Args:
@@ -120,7 +120,11 @@ class RobotModel(Sized):
             ndarray/None
         """
         target_pose = common.sd_pose(target_pose, check=True)
-        self.q = current_q
+        if self.poe is not None:
+            target_q, ok = robotics.ik_in_space(self.poe.screw_axes, self.poe.home_matrix, target_pose,
+                                                current_q, 1e-2, 1e-3)
+            return target_q if ok else None
+
         result = scipy.optimize.least_squares(fun=_ik_cost_function, x0=current_q,
                                               bounds=self.q_limits, args=(self, target_pose))
 
@@ -151,7 +155,7 @@ class RobotModel(Sized):
         """Set joints."""
         if np.any(value < self.q_limits[0]) or np.any(value > self.q_limits[1]):
             raise ValueError
-        self.q = value
+        self._q = value
 
     @property
     def dq(self):
@@ -167,7 +171,7 @@ class RobotModel(Sized):
         """
         if np.any(value < self.dq_limits[0]) or np.any(value > self.dq_limits[1]):
             raise ValueError('Velocity to set {} out of permissible range'.format(value))
-        self.dq = value
+        self._dq = value
 
     @property
     def dq_limits(self):

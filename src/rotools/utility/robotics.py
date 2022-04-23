@@ -650,9 +650,9 @@ def jacobian_space(Slist, q_list):
 '''
 
 
-def IkinBody(Blist, M, T, q_list0, eomg, ev):
+def ik_in_body(S_body, M, T, q_list0, eomg, ev):
     """Computes inverse kinematics in the body frame for an open chain robot
-    :param Blist: The joint screw axes in the end-effector frame when the
+    :param S_body: The joint screw axes in the end-effector frame when the
                   manipulator is at the home position, in the format of a
                   matrix with axes as the columns
     :param M: The home configuration of the end-effector
@@ -696,32 +696,32 @@ def IkinBody(Blist, M, T, q_list0, eomg, ev):
     q_list = np.array(q_list0).copy()
     i = 0
     maxiterations = 20
-    Vb = se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(fk_in_body(M, Blist,
+    Vb = se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(fk_in_body(M, S_body,
                                                                 q_list)), T)))
     err = np.linalg.norm([Vb[0], Vb[1], Vb[2]]) > eomg \
           or np.linalg.norm([Vb[3], Vb[4], Vb[5]]) > ev
     while err and i < maxiterations:
         q_list = q_list \
-                 + np.dot(np.linalg.pinv(jacobian_body(Blist,
+                 + np.dot(np.linalg.pinv(jacobian_body(S_body,
                                                        q_list)), Vb)
         i = i + 1
         Vb \
-            = se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(fk_in_body(M, Blist,
+            = se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(fk_in_body(M, S_body,
                                                                      q_list)), T)))
         err = np.linalg.norm([Vb[0], Vb[1], Vb[2]]) > eomg \
               or np.linalg.norm([Vb[3], Vb[4], Vb[5]]) > ev
     return q_list, not err
 
 
-def IkinSpace(Slist, M, T, q_list0, eomg, ev):
+def ik_in_space(S_space, M, T, q_list0, eomg, ev):
     """Computes inverse kinematics in the space frame for an open chain robot
-    :param Slist: The joint screw axes in the space frame when the
-                  manipulator is at the home position, in the format of a
-                  matrix with axes as the columns
+    :param S_space: The joint screw axes in the space frame when the
+                    manipulator is at the home position, in the format of a
+                    matrix with axes as the columns
     :param M: The home configuration of the end-effector
     :param T: The desired end-effector configuration Tsd
     :param q_list0: An initial guess of joint angles that are close to
-                       satisfying Tsd
+                    satisfying Tsd
     :param eomg: A small positive tolerance on the end-effector orientation
                  error. The returned joint angles must give an end-effector
                  orientation error less than eomg
@@ -759,15 +759,15 @@ def IkinSpace(Slist, M, T, q_list0, eomg, ev):
     q_list = np.array(q_list0).copy()
     i = 0
     maxiterations = 20
-    Tsb = fk_in_space(M, Slist, q_list)
+    Tsb = fk_in_space(M, S_space, q_list)
     Vs = np.dot(Adjoint(Tsb),
                 se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(Tsb), T))))
     err = np.linalg.norm([Vs[0], Vs[1], Vs[2]]) > eomg \
           or np.linalg.norm([Vs[3], Vs[4], Vs[5]]) > ev
     while err and i < maxiterations:
-        q_list = q_list + np.dot(np.linalg.pinv(jacobian_space(Slist, q_list)), Vs)
+        q_list = q_list + np.dot(np.linalg.pinv(jacobian_space(S_space, q_list)), Vs)
         i = i + 1
-        Tsb = fk_in_space(M, Slist, q_list)
+        Tsb = fk_in_space(M, S_space, q_list)
         Vs = np.dot(Adjoint(Tsb),
                     se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(Tsb), T))))
         err = np.linalg.norm([Vs[0], Vs[1], Vs[2]]) > eomg \
