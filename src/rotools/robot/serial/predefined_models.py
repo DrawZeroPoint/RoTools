@@ -57,6 +57,7 @@ def ur10e_mdh_model():
         [np.pi / 2, 0, np.pi, 0.11655],
     ])
 
+    # https://github.com/ros-industrial/universal_robot/blob/melodic-devel/ur_e_description/urdf/ur10e.urdf.xacro
     q_limits = np.array([
         [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi], [-np.pi, np.pi],
     ])
