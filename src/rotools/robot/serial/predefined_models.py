@@ -85,61 +85,40 @@ def ur10e_poe_model():
     return [M, screw_axes], q_limits
 
 
-def ur5e_poe_model():
-    """Get ur5e product of exponential model."""
+def panda_mdh_model():
+    """MDH parameters in 'alpha, a, theta, d' order, with units are meter or radian.
 
-    M = np.array([
-        [-1, 0, 0, 0.8172],
-        [0, 0, 1, 0.2329],
-        [0, 1, 0, 0.0628],
-        [0, 0, 0, 1],
-    ])
+    Notes:
+        'alpha' is z-axis' rotation around x-axis
+        'a' is the translation distance along +x-axis
+        'theta' is x-axis' rotation around z-axis
+        'd' is the translation distance along +z-axis
 
-    screw_axes = np.array([
-        [0, 0, 1, 0, 0, 0],
-        [0, 1, 0, -0.1625, 0, 0],
-        [0, 1, 0, -0.1625, 0, 0.425],
-        [0, 1, 0, -0.1625, 0, 0.8172],
-        [0, 0, -1, -0.1333, 0.8172, 0],
-        [0, 1, 0, -0.0628, 0, 0.8172],
-    ]).T
+    References:
+        https://raw.githubusercontent.com/petercorke/robotics-toolbox-matlab/master/models/mdl_panda.m
 
-    return M, screw_axes
-
-
-def walker_left_arm_poe():
-    """Get poe model of the UBTech Walker's left arm.
-    See test/test_create_model for details.
-
-    verified date: 2020/6/11
+    Returns:
+        ndarray of size (7, 4), the MDH parameters.
     """
-    # home matrix (homogeneous matrix transform base frame to eef frame)
-    M = np.array([
-        [9.98925860e-01, 4.63370949e-02, -1.70247991e-07, 4.51820844e-01],
-        [3.40368002e-07, -1.10117044e-05, -1.00000000e+00, -8.40714493e-08],
-        [-4.63370949e-02, 9.98925860e-01, -1.10156479e-05, -1.02911897e-02],
-        [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 1.00000000e+00]
+    mdh = np.array(
+        [
+            [0, 0, 0, 0.333],  # theta in [-2.8973 2.8973] 0 -> 1
+            [-np.pi / 2, 0, 0, 0],  # theta in [-1.7628 1.7628] 1 -> 2
+            [np.pi / 2, 0, 0, 0.316],  # theta in [-2.8973 2.8973] 2 -> 3
+            [np.pi / 2, 0.088, 0, 0],  # theta in [-3.0718 -0.0698], note the ref value of theta is 0, 3 -> 4
+            [-np.pi / 2, -0.088, 0, 0.384],  # theta in [-2.8973 2.8973] 4 -> 5
+            [np.pi / 2, 0, 0, 0],  # theta in [-0.0175 3.7525] 5 -> 6
+            [np.pi / 2, 0.088, 0, 0.107],  # theta in [-2.8973 2.8973], 0.107 is distance between link 6 and 8
+        ],
+        dtype=np.float
+    )
+
+    q_limits = np.array([
+        [-2.8973, 2.8973], [-1.7628, 1.7628], [-2.8973, 2.8973], [-3.0718, -0.0698], [-2.8973, 2.8973],
+        [-0.0175, 3.7525], [-2.8973, 2.8973]
     ])
-    # screw axes all relative to the base_frame (fixed relative to the robot base)
-    # to calculate rotation axis, we first align the origin of the frame in query
-    # to that of the base frame
-    screw_axes = np.array([
-        [0, 0, -1, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0],
-        [1, 0, 0, 0, 0, 0],
-        [0, -1, 0, -2.47791593e-02, 0, -2.28499909e-01],
-        [1, 0, 0, 0, 0, 0],
-        [0, 0, -1, 0, 4.51820844e-01, 0],
-        [0, 1, 0, 0, 0, 4.51820844e-01]
-    ]).T
-    # transform from robot base link to arm base link (i.e., base_to_s)
-    base_to_static = np.array([
-        [-9.56714879e-07, -1., -3.73952529e-06, 0],
-        [2.60457789e-01, -3.85964030e-06, 9.65485236e-01, 2.41420000e-01],
-        [-9.65485236e-01, -5.02943990e-08, 2.60457789e-01, 1.83860000e-02],
-        [0., 0., 0., 1.]
-    ])
-    return M, screw_axes, base_to_static
+
+    return mdh, q_limits
 
 
 def panda_poe_model():
@@ -174,37 +153,36 @@ def panda_poe_model():
     return [M, screw_axes], q_limits
 
 
-def panda_mdh_model():
-    """MDH parameters in 'alpha, a, theta, d' order, with units are meter or radian.
+def walker_left_arm_poe():
+    """[Archived] Get poe model of the UBTech Walker's left arm.
+    See test/test_create_model for details.
 
-    Notes:
-        'alpha' is z-axis' rotation around x-axis
-        'a' is the translation distance along +x-axis
-        'theta' is x-axis' rotation around z-axis
-        'd' is the translation distance along +z-axis
-
-    References:
-        https://raw.githubusercontent.com/petercorke/robotics-toolbox-matlab/master/models/mdl_panda.m
-
-    Returns:
-        ndarray of size (7, 4), the MDH parameters.
+    verified date: 2020/6/11
     """
-    mdh = np.array(
-        [
-            [0, 0, 0, 0.333],  # theta in [-2.8973 2.8973] 0 -> 1
-            [-np.pi / 2, 0, 0, 0],  # theta in [-1.7628 1.7628] 1 -> 2
-            [np.pi / 2, 0, 0, 0.316],  # theta in [-2.8973 2.8973] 2 -> 3
-            [np.pi / 2, 0.0825, 0, 0],  # theta in [-3.0718 -0.0698], note the ref value of theta is 0, 3 -> 4
-            [-np.pi / 2, -0.0825, 0, 0.384],  # theta in [-2.8973 2.8973] 4 -> 5
-            [np.pi / 2, 0, 0, 0],  # theta in [-0.0175 3.7525] 5 -> 6
-            [np.pi / 2, 0.088, 0, 0.107],  # theta in [-2.8973 2.8973], 0.107 is distance between link 6 and 8
-        ],
-        dtype=np.float
-    )
-
-    q_limits = np.array([
-        [-2.8973, 2.8973], [-1.7628, 1.7628], [-2.8973, 2.8973], [-3.0718, -0.0698], [-2.8973, 2.8973],
-        [-0.0175, 3.7525], [-2.8973, 2.8973]
+    # home matrix (homogeneous matrix transform base frame to eef frame)
+    M = np.array([
+        [9.98925860e-01, 4.63370949e-02, -1.70247991e-07, 4.51820844e-01],
+        [3.40368002e-07, -1.10117044e-05, -1.00000000e+00, -8.40714493e-08],
+        [-4.63370949e-02, 9.98925860e-01, -1.10156479e-05, -1.02911897e-02],
+        [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 1.00000000e+00]
     ])
-
-    return mdh, q_limits
+    # screw axes all relative to the base_frame (fixed relative to the robot base)
+    # to calculate rotation axis, we first align the origin of the frame in query
+    # to that of the base frame
+    screw_axes = np.array([
+        [0, 0, -1, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 0],
+        [0, -1, 0, -2.47791593e-02, 0, -2.28499909e-01],
+        [1, 0, 0, 0, 0, 0],
+        [0, 0, -1, 0, 4.51820844e-01, 0],
+        [0, 1, 0, 0, 0, 4.51820844e-01]
+    ]).T
+    # transform from robot base link to arm base link (i.e., base_to_s)
+    base_to_static = np.array([
+        [-9.56714879e-07, -1., -3.73952529e-06, 0],
+        [2.60457789e-01, -3.85964030e-06, 9.65485236e-01, 2.41420000e-01],
+        [-9.65485236e-01, -5.02943990e-08, 2.60457789e-01, 1.83860000e-02],
+        [0., 0., 0., 1.]
+    ])
+    return M, screw_axes, base_to_static

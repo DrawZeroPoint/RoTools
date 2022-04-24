@@ -99,6 +99,18 @@ class RobotModel(Sized):
                 pose = np.dot(pose, t)
         return pose
 
+    def partial_fk(self, q, i):
+        if i >= self.dof:
+            raise IndexError
+        transforms = []
+        transforms.extend(self.mdh.transforms(q[:i + 1]))  # Add n=dof transforms to the list
+
+        # matrix multiply through transforms
+        pose = np.eye(4, dtype=np.float)
+        for t in transforms:
+            pose = np.dot(pose, t)
+        return pose
+
     def fk_to_base(self, q):
         """Given joint states, compute the fk relative to manually set base frame
         with arm_base_to_robot_base_trans. This function is useful when the robot arm's static frame is
@@ -133,6 +145,36 @@ class RobotModel(Sized):
             if np.allclose(actual_pose, target_pose, atol=1e-3):
                 return result.x
         return None
+
+    def mdh_to_poe(self):
+        if self.mdh is None:
+            return None
+
+        home_matrix = self.fk(self.q0)
+        screw_axes = []
+        for i in range(self.dof):
+            q = np.zeros(i + 1)
+            trans_0 = self.partial_fk(q, i)
+            q[-1] = np.pi / 2.
+            trans_1 = self.partial_fk(q, i)
+            trans_rot = np.dot(np.linalg.inv(trans_0), trans_1)
+
+            # This is the rotation axis of joint i in its frame, where 0, 1, 2 for x, y, z
+            local_axis_i = 0
+            for col in range(3):
+                if trans_rot[col, col] == 1.:
+                    local_axis_i = col
+
+            # Get the global axis corresponding to the local axis, which is by definition the omega component of S.
+            global_axis_i = trans_0[:3, local_axis_i]
+            origin_i = trans_0[:3, -1]
+            vel_i = -np.cross(global_axis_i, origin_i)
+            screw_axis = np.concatenate([global_axis_i, vel_i])
+            screw_axes.append(screw_axis)
+
+        screw_axes = np.asarray(screw_axes).T
+        poe = POEKinematicChain.from_parameters([home_matrix, screw_axes])
+        return poe
 
     @property
     def dof(self):
@@ -301,16 +343,23 @@ class RobotModel(Sized):
         return self.random_state.uniform(low=self.q_limits[0], high=self.q_limits[1])
 
     @classmethod
-    def get_model_from_mdh(cls, mdh):
+    def get_model_from_mdh(cls, mdh, joint_limits=None):
         """Construct Robot from Kinematic Chain parameters."""
         mdh_model = MDHKinematicChain.from_parameters(mdh)
-        return cls(mdh=mdh_model)
+        model = cls(mdh=mdh_model)
+        if joint_limits is not None:
+            model.q_limits = joint_limits
+        model.poe = model.mdh_to_poe()
+        return model
 
     @classmethod
-    def get_model_from_poe(cls, poe):
+    def get_model_from_poe(cls, poe, joint_limits=None):
         """Construct robot model from product of exponential parameters."""
         poe_model = POEKinematicChain.from_parameters(poe)
-        return cls(poe=poe_model)
+        model = cls(poe=poe_model)
+        if joint_limits is not None:
+            model.q_limits = joint_limits
+        return model
 
 
 def _ik_cost_function(current_q, robot, target_pose):

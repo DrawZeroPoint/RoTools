@@ -5,12 +5,9 @@ from __future__ import print_function
 
 import unittest
 
-import numpy as np
-
 from rotools.robot.serial.predefined_models import *
 import rotools.robot.serial.model as serial_model
 
-import rotools.utility.transform as transform
 import rotools.utility.common as common
 
 
@@ -18,22 +15,19 @@ class Test(unittest.TestCase):
 
     def test_panda_model_fk(self):
         mdh, q_limits = panda_mdh_model()
-        panda_mdh = serial_model.RobotModel.get_model_from_mdh(mdh)
-        panda_mdh.q_limits = q_limits
+        panda_mdh = serial_model.RobotModel.get_model_from_mdh(mdh, q_limits)
 
         poe, q_limits = panda_poe_model()
-        panda_poe = serial_model.RobotModel.get_model_from_poe(poe)
-        panda_poe.q_limits = q_limits
+        panda_poe = serial_model.RobotModel.get_model_from_poe(poe, q_limits)
 
         q = panda_mdh.random_valid_q()
         pose_mdh = panda_mdh.fk(q)
         pose_poe = panda_poe.fk(q)
-        # self.assertTrue(common.all_close(pose_mdh, pose_poe, tolerance=1e-2))
+        self.assertTrue(common.all_close(pose_mdh, pose_poe, tolerance=1e-2))
 
     def test_ur10e_model_fk(self):
         mdh, q_limits = ur10e_mdh_model()
-        ur10e_mdh = serial_model.RobotModel.get_model_from_mdh(mdh)
-        ur10e_mdh.q_limits = q_limits
+        ur10e_mdh = serial_model.RobotModel.get_model_from_mdh(mdh, q_limits)
 
         poe, q_limits = ur10e_poe_model()
         ur10e_poe = serial_model.RobotModel.get_model_from_poe(poe)
@@ -45,23 +39,43 @@ class Test(unittest.TestCase):
         self.assertTrue(common.all_close(pose_mdh, pose_poe))
 
     def test_ur10e_model_ik(self):
-        # mdh, q_limits = ur10e_mdh_model()
-        # ur10e_mdh = serial_model.RobotModel.get_model_from_mdh(mdh)
-        # ur10e_mdh.q_limits = q_limits
-        #
-        # q = ur10e_mdh.random_valid_q()
-        # pose = ur10e_mdh.fk(q)
-        # q_ik = ur10e_mdh.ik_in_space(pose, ur10e_mdh.q0)
-        # self.assertTrue(common.all_close(q, q_ik))
+        mdh, q_limits = ur10e_mdh_model()
+        ur10e_mdh = serial_model.RobotModel.get_model_from_mdh(mdh, q_limits)
+
+        q = ur10e_mdh.random_valid_q()
+        pose = ur10e_mdh.fk(q)
+        q_ik = ur10e_mdh.ik_in_space(pose, q)
+        self.assertTrue(common.all_close(q, q_ik))
 
         poe, q_limits = ur10e_poe_model()
-        ur10e_poe = serial_model.RobotModel.get_model_from_poe(poe)
-        ur10e_poe.q_limits = q_limits
+        ur10e_poe = serial_model.RobotModel.get_model_from_poe(poe, q_limits)
 
         q = ur10e_poe.random_valid_q()
         pose = ur10e_poe.fk(q)
         q_ik = ur10e_poe.ik_in_space(pose, q)
         self.assertTrue(common.all_close(q, q_ik))
+
+    def test_ur10e_model_mdh_to_poe(self):
+        mdh, q_limits = ur10e_mdh_model()
+        ur10e_mdh = serial_model.RobotModel.get_model_from_mdh(mdh)
+        ur10e_mdh.q_limits = q_limits
+
+        poe, q_limits = ur10e_poe_model()
+        ur10e_poe = serial_model.RobotModel.get_model_from_poe(poe)
+        ur10e_poe.q_limits = q_limits
+
+        self.assertTrue(common.all_close(ur10e_mdh.poe.home_matrix, ur10e_poe.poe.home_matrix))
+        self.assertTrue(common.all_close(ur10e_mdh.poe.screw_axes, ur10e_poe.poe.screw_axes))
+
+    def test_panda_model_mdh_to_poe(self):
+        mdh, q_limits = panda_mdh_model()
+        panda_mdh = serial_model.RobotModel.get_model_from_mdh(mdh)
+
+        poe, q_limits = panda_poe_model()
+        panda_poe = serial_model.RobotModel.get_model_from_poe(poe)
+
+        self.assertTrue(common.all_close(panda_mdh.poe.home_matrix, panda_poe.poe.home_matrix))
+        self.assertTrue(common.all_close(panda_mdh.poe.screw_axes, panda_poe.poe.screw_axes))
 
     # def test_create_walker_arm_model(self):
     #     """Create a product of exponential model from urdf file.
