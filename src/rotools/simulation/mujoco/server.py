@@ -36,6 +36,9 @@ class MuJoCoServer(object):
         self._execute_object_reset_srv = rospy.Service("execute_object_reset", ExecuteBinaryAction,
                                                        self.execute_object_reset_handle)
 
+        self._execute_verbose_reset_srv = rospy.Service("execute_verbose_reset", ExecuteBinaryAction,
+                                                        self.execute_verbose_reset_handle)
+
         # Received msgs
         if 'joint_command_topic_id' in kwargs.keys():
             joint_command_topic_id = kwargs['joint_command_topic_id']
@@ -65,6 +68,8 @@ class MuJoCoServer(object):
             self.object_pose_publisher = None
 
         self._timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.publish_handle)
+        if kwargs['verbose']:
+            self._verbose_reset_timer = rospy.Timer(rospy.Duration.from_sec(5), self.execute_verbose_reset_handle)
 
         # Get robot base params if available
         self.wheel_radius = kwargs['wheel_radius'] if 'wheel_radius' in kwargs.keys() else None
@@ -120,4 +125,10 @@ class MuJoCoServer(object):
         # req = ExecuteBinaryActionRequest()
         ok = self.interface.reset_object(req.device_id)
         resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
+        return resp
+
+    def execute_verbose_reset_handle(self, req):
+        resp = ExecuteBinaryActionResponse()
+        self.interface.reset_verbose = True
+        resp.result_status = resp.SUCCEEDED
         return resp

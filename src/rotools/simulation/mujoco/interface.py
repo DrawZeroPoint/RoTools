@@ -12,6 +12,7 @@ from threading import Thread
 from rotools.simulation.mujoco.mujoco_viewer import MujocoViewer
 from rotools.utility.mjcf import find_elements, find_parent, array_to_string, string_to_array
 from rotools.utility.common import to_ros_pose, to_ros_twist, to_list
+from rotools.utility.color_palette import bwr_color_palette
 
 try:
     import rospy
@@ -65,11 +66,13 @@ class MuJoCoInterface(Thread):
         self._data = None
         self._viewer = None
 
-        # These variables all have the same length and correspond with others.
+        # The following list/dicts all have the same length and correspond with others.
         self._actuated_joint_names = []
         self._actuated_joint_ranges = {}
+        self._actuated_joint_geoms = {}
         self._mimic_joint_names = []
         self.actuator_names = []
+
         # We consider the ctrl range of the actuator could be different with that of the joint.
         self._actuator_ctrl_ranges = {}
         self._actuator_force_ranges = {}
@@ -113,6 +116,7 @@ class MuJoCoInterface(Thread):
             self._get_mimic_joint_info(mimic_joints)
             self._get_actuated_joint_ranges(kinematics_root)
             self._get_actuator_ranges(actuator_root)
+            self._get_actuated_joint_geoms(kinematics_root)
 
             self._actuator_num = len(self.actuator_names)
             rospy.loginfo('Controlled joints #{}:\n{}'.format(
@@ -141,7 +145,8 @@ class MuJoCoInterface(Thread):
 
         self._neutral_initialized = False
 
-        self._verbose = verbose
+        self.verbose = verbose
+        self.reset_verbose = False
 
     def set_tracked_object(self, name):
         try:
@@ -236,9 +241,21 @@ class MuJoCoInterface(Thread):
                 joint_range = string_to_array(joint.attrib['range'])
                 self._actuated_joint_ranges[name] = joint_range
             except KeyError:
-                self._actuated_joint_ranges[name] = None
                 # Silently handle actuated joints with no range defined, which could be continuous joints
-                pass
+                self._actuated_joint_ranges[name] = None
+
+    def _get_actuated_joint_geoms(self, kinematics_root):
+        if kinematics_root is None:
+            return
+        for name in self._actuated_joint_names:
+            joint = find_elements(kinematics_root, 'joint', {'name': name})
+            try:
+                parent_body = find_parent(kinematics_root, joint)
+                geom = find_elements(parent_body, 'geom')
+                geom_name = geom.attrib['name']
+                self._actuated_joint_geoms[name] = geom_name
+            except KeyError:
+                self._actuated_joint_geoms[name] = None
 
     def _get_actuator_ranges(self, actuator_root):
         if actuator_root is None:
@@ -311,17 +328,35 @@ class MuJoCoInterface(Thread):
             joint_state = [joint_qpos, joint_qvel, joint_qtau]
             robot_states.append(joint_state)
 
-            if not self._verbose:
+            if not self.verbose:
                 continue
             force_range = self._actuator_force_ranges[self.actuator_names[i]]
+            try:
+                geom_name = self._actuated_joint_geoms[joint_name]
+            except KeyError:
+                geom_name = None
+
             if force_range is not None:
                 low, high = force_range
+                level = 0.5
+                need_update = False
                 if joint_qtau < low:
                     rospy.logwarn(
-                        "Joint {} effort {:.4f} is lower than lower limit {:.4f}".format(joint_name, joint_qtau, low))
+                        "{} effort {:.4f} is lower than limit {:.4f}".format(joint_name, joint_qtau, low))
+                    level = max(min((low - joint_qtau) / (high - low) * 2, -0.5), -1)
+                    need_update = True
                 if joint_qtau > high:
                     rospy.logwarn(
-                        "Joint {} effort {:.4f} is larger than upper limit {:.4f}".format(joint_name, joint_qtau, high))
+                        "{} effort {:.4f} is larger than limit {:.4f}".format(joint_name, joint_qtau, high))
+                    level = min(max((joint_qtau - high) / (high - low) * 2, 0.5), 1)
+                    need_update = True
+                if self.reset_verbose:
+                    need_update = True
+                if geom_name is not None and need_update:
+                    geom = self._model.geom(geom_name)
+                    geom.rgba = bwr_color_palette(level)
+
+        self.reset_verbose = False
         self._robot_states = np.array(robot_states)
 
     def _get_effort_sensor_data(self, sensor_name, axis='z'):
