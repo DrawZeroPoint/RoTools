@@ -98,8 +98,8 @@ bool RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq
         return false;
       }
       ROS_ERROR_STREAM("Ruckig is on error " << result << ", make sure the max limits are not close to 0");
-      roport::logWarningList<std::array<double, capacity_>>(output_param_->new_position, "Output new position");
-      roport::logWarningList<std::array<double, capacity_>>(output_param_->new_velocity, "Output new velocity");
+      ROS_WARN_STREAM(input_param_->to_string());
+      ROS_WARN_STREAM(output_param_->to_string());
       throw std::runtime_error("Ruckig failed");
     }
     output_param_->pass_to_input(*input_param_);
