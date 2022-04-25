@@ -1,0 +1,18 @@
+# Execute moving a robot with a target elliptical trajectory
+
+# Requests
+# radius_major: the major radius for the elliptical trajectory
+# radius_minor: the minor radius for the elliptical trajectory
+# vel_max: max velocity of the trajectory
+# acceleration_time: acceleration time for the trajectory
+# run_time: the duration of the trajectory
+
+float64 radius_major
+float64 radius_minor
+float64 vel_max
+float64 acceleration_time
+float64 run_time
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status
