@@ -77,6 +77,13 @@ class Test(unittest.TestCase):
         self.assertTrue(common.all_close(panda_mdh.poe.home_matrix, panda_poe.poe.home_matrix))
         self.assertTrue(common.all_close(panda_mdh.poe.screw_axes, panda_poe.poe.screw_axes))
 
+    def test_ur10e_model_jacobian_space(self):
+        poe, q_limits = ur10e_poe_model()
+        ur10e_poe = serial_model.RobotModel.get_model_from_poe(poe, q_limits)
+
+        self.assertTrue(common.all_close(ur10e_poe.poe.screw_axes, ur10e_poe.jacobian_space(ur10e_poe.q0)))
+        ur10e_poe.jacobian_space(ur10e_poe.random_valid_q())
+
     # def test_create_walker_arm_model(self):
     #     """Create a product of exponential model from urdf file.
     #     The following data is from walker.urdf, the left arm

@@ -247,9 +247,12 @@ class RobotModel(Sized):
                 'Joint limits should have the shape (2, dof), 2 for min max, but the given shape is {}'.format(
                     value.shape))
 
-    def jacobian_world(self, q=None):
+    def jacobian_space(self, q=None):
         """Calculate the Jacobian wrt the world frame."""
         q = self.q if q is None else q
+        if self.poe is not None:
+            return robotics.jacobian_space(self.poe.screw_axes, q)
+
         j_fl = self.jacobian_flange(q)
         pose = self.fk(q)
         rotation = pose[:3, :3]

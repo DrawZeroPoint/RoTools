@@ -48,7 +48,7 @@ def rot_inv(R):
 
 
 def vector_to_so3(omega):
-    """Converts a 3-vector to an so(3) representation.
+    """Converts a 3-vector to a so(3) representation.
 
     :param omega: A 3-vector
     :return: The skew symmetric representation of omg
@@ -234,7 +234,7 @@ def vector_to_se3(V):
 
 
 def se3_to_vec(se3mat):
-    """Converts an se3 matrix into a spatial velocity vector (twist).
+    """Converts a se3 matrix into a spatial velocity vector (twist).
 
     :param se3mat: A 4x4 matrix in se3
     :return: The spatial velocity 6-vector corresponding to se3mat
@@ -308,11 +308,10 @@ def AxisAng6(expc6):
     return np.array(expc6 / theta), theta
 
 
-def MatrixExp6(se3mat):
-    """Computes the matrix exponential of an se3 representation of
-    exponential coordinates
-    :param se3mat: A matrix in se3
-    :return: The matrix exponential of se3mat
+def MatrixExp6(se3_mat):
+    """Computes the matrix exponential of a se3 representation of exponential coordinates
+    :param se3_mat: A matrix in se3
+    :return: The matrix exponential of se3_mat
     Example Input:
         se3mat = np.array([[0,          0,           0,          0],
                            [0,          0, -1.57079632, 2.35619449],
@@ -324,19 +323,19 @@ def MatrixExp6(se3mat):
                   [0.0, 1.0,  0.0, 3.0],
                   [  0,   0,    0,   1]])
     """
-    se3mat = np.array(se3mat)
-    omgtheta = so3_to_vector(se3mat[0: 3, 0: 3])
+    se3_mat = np.array(se3_mat)
+    omgtheta = so3_to_vector(se3_mat[0: 3, 0: 3])
     if near_zero(np.linalg.norm(omgtheta)):
-        return np.r_[np.c_[np.eye(3), se3mat[0: 3, 3]], [[0, 0, 0, 1]]]
+        return np.r_[np.c_[np.eye(3), se3_mat[0: 3, 3]], [[0, 0, 0, 1]]]
     else:
         theta = AxisAng3(omgtheta)[1]
-        omgmat = se3mat[0: 3, 0: 3] / theta
-        return np.r_[np.c_[MatrixExp3(se3mat[0: 3, 0: 3]),
+        omgmat = se3_mat[0: 3, 0: 3] / theta
+        return np.r_[np.c_[MatrixExp3(se3_mat[0: 3, 0: 3]),
                            np.dot(np.eye(3) * theta
                                   + (1 - np.cos(theta)) * omgmat
                                   + (theta - np.sin(theta))
                                   * np.dot(omgmat, omgmat),
-                                  se3mat[0: 3, 3]) / theta],
+                                  se3_mat[0: 3, 3]) / theta],
                      [[0, 0, 0, 1]]]
 
 
@@ -526,9 +525,8 @@ def fk_in_body(M, Blist, q_list):
                   manipulator is at the home position, in the format of a
                   matrix with axes as the columns
     :param q_list: A list of joint coordinates
-    :return: A homogeneous transformation matrix representing the end-
-             effector frame when the joints are at the specified coordinates
-             (i.t.o Body Frame)
+    :return: A homogeneous transformation matrix representing the end-effector frame
+             when the joints are at the specified coordinates (i.t.o Body Frame)
     Example Input:
         M = np.array([[-1, 0,  0, 0],
                       [ 0, 1,  0, 6],
@@ -553,15 +551,13 @@ def fk_in_body(M, Blist, q_list):
 def fk_in_space(M, s_list, theta_list):
     """Computes forward kinematics in the space frame for an open chain robot.
 
-    :param M: The home configuration (position and orientation) of the end-
-              effector
+    :param M: The home configuration (position and orientation) of the end-effector
     :param s_list: The joint screw axes in the space frame when the
                    manipulator is at the home position, in the format of a
                    matrix with axes as the columns
     :param theta_list: A list of joint coordinates
-    :return: A homogeneous transformation matrix representing the end-
-             effector frame when the joints are at the specified coordinates
-             (i.t.o Space Frame)
+    :return: A homogeneous transformation matrix representing the end-effector frame
+             when the joints are at the specified coordinates (i.t.o Space Frame)
     Example Input:
         M = np.array([[-1, 0,  0, 0],
                       [ 0, 1,  0, 6],
@@ -614,16 +610,16 @@ def jacobian_body(Blist, q_list):
     return Jb
 
 
-def jacobian_space(Slist, q_list):
+def jacobian_space(S_list, q_list):
     """Computes the space Jacobian for an open chain robot
-    :param Slist: The joint screw axes in the space frame when the
+    :param S_list: The joint screw axes in the space frame when the
                   manipulator is at the home position, in the format of a
                   matrix with axes as the columns
     :param q_list: A list of joint coordinates
     :return: The space Jacobian corresponding to the inputs (6xn real
              numbers)
     Example Input:
-        Slist = np.array([[0, 0, 1,   0, 0.2, 0.2],
+        S_list = np.array([[0, 0, 1,   0, 0.2, 0.2],
                           [1, 0, 0,   2,   0,   3],
                           [0, 1, 0,   0,   2,   1],
                           [1, 0, 0, 0.2, 0.3, 0.4]]).T
@@ -636,12 +632,11 @@ def jacobian_space(Slist, q_list):
                   [0.2, 0.43654132, -2.43712573,  2.77535713]
                   [0.2, 2.96026613,  3.23573065,  2.22512443]])
     """
-    Js = np.array(Slist).copy().astype(np.float)
+    Js = np.array(S_list).copy().astype(np.float)
     T = np.eye(4)
     for i in range(1, len(q_list)):
-        T = np.dot(T, MatrixExp6(vector_to_se3(np.array(Slist)[:, i - 1]
-                                               * q_list[i - 1])))
-        Js[:, i] = np.dot(Adjoint(T), np.array(Slist)[:, i])
+        T = np.dot(T, MatrixExp6(vector_to_se3(np.array(S_list)[:, i - 1] * q_list[i - 1])))
+        Js[:, i] = np.dot(Adjoint(T), np.array(S_list)[:, i])
     return Js
 
 
@@ -800,8 +795,7 @@ def ad(V):
                  np.c_[vector_to_so3([V[3], V[4], V[5]]), omgmat]]
 
 
-def InverseDynamics(q_list, dq_list, ddq_list, g, Ftip, Mlist,
-                    Glist, Slist):
+def InverseDynamics(q_list, dq_list, ddq_list, g, Ftip, Mlist, Glist, Slist):
     """Computes inverse dynamics in the space frame for an open chain robot
     :param q_list: n-vector of joint variables
     :param dq_list: n-vector of joint rates
@@ -1648,8 +1642,8 @@ def ComputedTorque(q_list, dq_list, eint, g, Mlist, Glist, Slist,
     return np.dot(MassMatrix(q_list, Mlist, Glist, Slist),
                   kp * e + ki * (np.array(eint) + e)
                   + kd * np.subtract(dq_d_list, dq_list)) + InverseDynamics(q_list, dq_list, ddq_d_list, g,
-                                                                           [0, 0, 0, 0, 0, 0], Mlist, Glist,
-                                                                           Slist)
+                                                                            [0, 0, 0, 0, 0, 0], Mlist, Glist,
+                                                                            Slist)
 
 
 def simulate_control(q_list, dq_list, g, tip_force_mat, Mlist, Glist,
@@ -1828,7 +1822,7 @@ def simulate_control(q_list, dq_list, g, tip_force_mat, Mlist, Glist,
 
 
 def mecanum_base_get_wheel_velocities(base_vel, wheel_radius, width, length):
-    """Convert a velocity command for a Mecanumm wheeled base to velocities on the wheels
+    """Convert a velocity command for a Mecanum wheeled base to velocities on the wheels
 
     Args:
         base_vel: Twist
