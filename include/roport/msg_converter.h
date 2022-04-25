@@ -8,7 +8,6 @@
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 
-#include "roport/common.h"
 #include "roport/online_trajectory_optimizer.h"
 #include "ruckig/ruckig.hpp"
 
@@ -83,9 +82,12 @@ class MsgConverter {
   auto init() -> bool;
 
   /**
-   * Callback function for one of the source_js_topics.
+   * Callback function for each of the source_js_topics. If the source msg cannot be filtered or smoothed (if enabled),
+   * no target msg will be published.
    * @param msg Source joint state msg.
    * @param group_id The id of the joint group.
+   * @param source_topic Name of the source topic.
+   * @param reference_topic Name of the reference topic used for smooth start.
    * @param publisher Publisher to target topic.
    * @param type Target msg type.
    * @param arg Target msg arg.
@@ -94,6 +96,8 @@ class MsgConverter {
    */
   void jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
                     const size_t& group_id,
+                    const std::string& source_topic,
+                    const std::string& reference_topic,
                     const ros::Publisher& publisher,
                     const std::string& type,
                     const int& arg,
@@ -108,16 +112,30 @@ class MsgConverter {
    * they have the same size as source_names.
    * @param src_msg Source joint state message.
    * @param filtered_names Names of the joints to be selected.
+   * @param source_topic Name of the source topic.
    * @retval filtered_msg Filtered joint state message.
    * @return True if filtering is succeed, false otherwise.
    */
   auto filterJointState(const sensor_msgs::JointState::ConstPtr& src_msg,
                         const std::vector<std::string>& filtered_names,
+                        const std::string& source_topic,
                         sensor_msgs::JointState& filtered_msg) -> bool;
 
-  static auto smoothJointState(const sensor_msgs::JointState& msg,
-                               rotools::RuckigOptimizer* oto,
-                               sensor_msgs::JointState& smoothed_msg) -> bool;
+  /**
+   * Smooth the source joint state msg in the sense of making the smoothed msg gently lead the robot goto the
+   * desired configuration described by msg using the online trajectory optimizer.
+   * @param msg Source joint state msg.
+   * @param source_topic Topic name of the source joint state msg.
+   * @param reference_topic Topic name of the reference msg indicating the robot's instantaneous configuration.
+   * @param oto Online trajectory optimizer.
+   * @retval smoothed_msg Smoothed joint state msg.
+   * @return True if smoothed msg is retrieved, false otherwise.
+   */
+  auto smoothJointState(const sensor_msgs::JointState& msg,
+                        const std::string& source_topic,
+                        const std::string& reference_topic,
+                        rotools::RuckigOptimizer* oto,
+                        sensor_msgs::JointState& smoothed_msg) -> bool;
 
   /**
    * Get the map under the given param_name. Each element in the map is a pair <joint_name, value>.
@@ -145,6 +163,7 @@ class MsgConverter {
    */
   void smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
                      const int& group_id,
+                     const std::string& source_topic,
                      const std::vector<std::string>& source_names);
 
   /**
@@ -174,11 +193,12 @@ class MsgConverter {
 
   /**
    * Generic function to find an element in vector and also its position. It returns a pair of bool & int.
-   * @tparam T
-   * @param vecOfElements
-   * @param element
+   * The function will return if the first match is found.
+   * @tparam T Type of the element in the vector.
+   * @param vec_of_elements Vector to find the element from.
+   * @param element The element to find.
    * @return bool: Represents if element is present in vector or not.
-   *         int: Represents the index of element in vector if its found else -1
+   *         int: Represents the index of element in vector if its found else -1.
    */
   template <typename T>
   auto findInVector(const std::vector<T>& vec_of_elements, const T& element) -> std::pair<bool, int> {

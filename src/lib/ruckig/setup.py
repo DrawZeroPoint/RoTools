@@ -7,6 +7,7 @@ from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 from distutils.version import LooseVersion
 
+
 with open('README.md', 'r') as readme_file:
     long_description = readme_file.read()
 
@@ -69,7 +70,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name='ruckig',
-    version='0.6.0',
+    version='0.6.5',
     description='Instantaneous Motion Generation for Robots and Machines.',
     long_description=long_description,
     long_description_content_type='text/markdown',

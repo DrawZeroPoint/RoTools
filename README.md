@@ -97,12 +97,16 @@ Run the following command to add `rotools` to your PYTHONPATH:
 ### If you use Bash
 
 ```shell
+echo "" >> ~/.bashrc
+echo "# RoTools" >> ~/.bashrc
 echo "export PYTHONPATH=$HOME/RoTools/src:\$PYTHONPATH" >> ~/.bashrc
 ```
 
 ### If you use Zsh
 
 ```shell
+echo "" >> ~/.zshrc
+echo "# RoTools" >> ~/.zshrc
 echo "export PYTHONPATH=$HOME/RoTools/src:\$PYTHONPATH" >> ~/.zshrc
 ```
 

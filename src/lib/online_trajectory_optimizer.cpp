@@ -3,6 +3,7 @@
 //
 
 #include "roport/online_trajectory_optimizer.h"
+#include "roport/common.h"
 
 namespace rotools {
 
@@ -82,18 +83,26 @@ void RuckigOptimizer::getTargetPosition(std::vector<double>& q_d) {
   std::copy(input_param_->target_position.begin(), input_param_->target_position.begin() + *dof_, q_d.begin());
 }
 
-void RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd) {
+bool RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd) {
   assert(*is_initial_state_set_ && *is_target_state_set_);
 
   auto interval = std::chrono::steady_clock::now() - *start_;
   auto i_ms = std::chrono::duration_cast<std::chrono::milliseconds>(interval);
   const unsigned long kSteps = std::max<unsigned long>(i_ms.count(), 1);
   for (unsigned long i = 0; i < kSteps; i++) {
-    trajectory_generator_->update(*input_param_, *output_param_);
-
-    input_param_->current_position = output_param_->new_position;
-    input_param_->current_velocity = output_param_->new_velocity;
-    input_param_->current_acceleration = output_param_->new_acceleration;
+    auto result = trajectory_generator_->update(*input_param_, *output_param_);
+    if (result != ruckig::Working && result != ruckig::Finished) {
+      if (result == ruckig::ErrorInvalidInput) {
+        // If the input state was changed, reinitialize it
+        *is_initial_state_set_ = false;
+        return false;
+      }
+      ROS_ERROR_STREAM("Ruckig is on error " << result << ", make sure the max limits are not close to 0");
+      ROS_WARN_STREAM(input_param_->to_string());
+      ROS_WARN_STREAM(output_param_->to_string());
+      throw std::runtime_error("Ruckig failed");
+    }
+    output_param_->pass_to_input(*input_param_);
   }
   std::array<double, capacity_> new_position = output_param_->new_position;
   std::array<double, capacity_> new_velocity = output_param_->new_velocity;
@@ -102,6 +111,7 @@ void RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq
   dq_cmd.resize(*dof_);
   std::copy(new_position.begin(), new_position.begin() + *dof_, q_cmd.begin());
   std::copy(new_velocity.begin(), new_velocity.begin() + *dof_, dq_cmd.begin());
+  return true;
 }
 
 void RuckigOptimizer::reset() {
