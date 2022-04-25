@@ -48,10 +48,10 @@ def rot_inv(R):
 
 
 def vector_to_so3(omega):
-    """Converts a 3-vector to a so(3) representation.
+    """Converts a 3-vector angular velocity to a so(3) representation.
 
     :param omega: A 3-vector
-    :return: The skew symmetric representation of omg
+    :return: The skew symmetric representation of omega.
     Example Input:
         omg = np.array([1, 2, 3])
     Output:
@@ -64,11 +64,11 @@ def vector_to_so3(omega):
                      [-omega[1], omega[0], 0]])
 
 
-def so3_to_vector(so3mat):
+def so3_to_vector(so3_mat):
     """Converts a so(3) representation to a 3-vector.
 
-    :param so3mat: A 3x3 skew-symmetric matrix
-    :return: The 3-vector corresponding to so3mat
+    :param so3_mat: A 3x3 skew-symmetric matrix
+    :return: The 3-vector corresponding to so3_mat
     Example Input:
         so3mat = np.array([[ 0, -3,  2],
                            [ 3,  0, -1],
@@ -76,29 +76,27 @@ def so3_to_vector(so3mat):
     Output:
         np.array([1, 2, 3])
     """
-    return np.array([so3mat[2][1], so3mat[0][2], so3mat[1][0]])
+    return np.array([so3_mat[2][1], so3_mat[0][2], so3_mat[1][0]])
 
 
-def AxisAng3(exp_coord3):
-    """Converts a 3-vector of exponential coordinates for rotation into
-    axis-angle form.
+def axis_angle3(exp_coord3):
+    """Converts a 3-vector of exponential coordinates for rotation into axis-angle form.
 
-    :param exp_coord3: A 3-vector of exponential coordinates for rotation
-    :return omega_hat: A unit rotation axis
-    :return theta: The corresponding rotation angle
-    Example Input:
-        exp_coord3 = np.array([1, 2, 3])
-    Output:
-        (np.array([0.26726124, 0.53452248, 0.80178373]), 3.7416573867739413)
+    Args:
+        exp_coord3: A 3-vector of exponential coordinates for rotation.
+
+    Returns:
+        ndarray, (3, ). A unit rotation axis (omega_hat).
+        float. The corresponding rotation angle (theta).
     """
     return normalize_vector(exp_coord3), np.linalg.norm(exp_coord3)
 
 
-def MatrixExp3(so3_mat):
+def matrix_exp3(so3_mat):
     """Computes the matrix exponential of a matrix in so(3).
 
     :param so3_mat: A 3x3 skew-symmetric matrix
-    :return: The matrix exponential of so3mat
+    :return: The matrix exponential of so3_mat
     Example Input:
         so3mat = np.array([[ 0, -3,  2],
                            [ 3,  0, -1],
@@ -112,7 +110,7 @@ def MatrixExp3(so3_mat):
     if near_zero(np.linalg.norm(omega_theta)):
         return np.eye(3)
     else:
-        theta = AxisAng3(omega_theta)[1]
+        theta = axis_angle3(omega_theta)[1]
         omega_mat = so3_mat / theta
         return np.eye(3) + np.sin(theta) * omega_mat + (1 - np.cos(theta)) * np.dot(omega_mat, omega_mat)
 
@@ -150,7 +148,7 @@ def matrix_log3(R):
         return theta / 2.0 / np.sin(theta) * (R - np.array(R).T)
 
 
-def rp_to_homo_trans(r_mat, p):
+def Rp_to_SE3(r_mat, p):
     """Converts a rotation matrix and a position vector into homogeneous
     transformation matrix.
 
@@ -171,7 +169,7 @@ def rp_to_homo_trans(r_mat, p):
     return np.r_[np.c_[r_mat, p], [[0, 0, 0, 1]]]
 
 
-def homo_trans_to_rp(T):
+def SE3_to_Rp(T):
     """Converts a homogeneous transformation matrix into a rotation matrix
     and position vector.
 
@@ -193,7 +191,7 @@ def homo_trans_to_rp(T):
     return T[0: 3, 0: 3], T[0: 3, 3]
 
 
-def homo_trans_inv(T):
+def SE3_inv(T):
     """Inverts a homogeneous transformation matrix
 
     :param T: A homogeneous transformation matrix
@@ -211,15 +209,15 @@ def homo_trans_inv(T):
                   [0, -1, 0,  0],
                   [0,  0, 0,  1]])
     """
-    R, p = homo_trans_to_rp(T)
+    R, p = SE3_to_Rp(T)
     Rt = np.array(R).T
     return np.r_[np.c_[Rt, -np.dot(Rt, p)], [[0, 0, 0, 1]]]
 
 
 def vector_to_se3(V):
-    """Converts a spatial velocity vector into a 4x4 matrix in se3.
+    """Converts a spatial velocity (twist) vector into a 4x4 matrix in se3.
 
-    :param V: A 6-vector representing a spatial velocity
+    :param V: A 6-vector representing a spatial velocity (wb1, wb2, wb3, vb1, vb2, vb3)
     :return: The 4x4 se3 representation of V
     Example Input:
         V = np.array([1, 2, 3, 4, 5, 6])
@@ -251,23 +249,20 @@ def se3_to_vec(se3mat):
 
 
 def Adjoint(T):
-    """Computes the adjoint representation of a homogeneous transformation matrix
-    :param T: A homogeneous transformation matrix
-    :return: The 6x6 adjoint representation [AdT] of T
-    Example Input:
-        T = np.array([[1, 0,  0, 0],
-                      [0, 0, -1, 0],
-                      [0, 1,  0, 3],
-                      [0, 0,  0, 1]])
-    Output:
-        np.array([[1, 0,  0, 0, 0,  0],
-                  [0, 0, -1, 0, 0,  0],
-                  [0, 1,  0, 0, 0,  0],
-                  [0, 0,  3, 1, 0,  0],
-                  [3, 0,  0, 0, 0, -1],
-                  [0, 0,  0, 0, 1,  0]])
+    """Computes the adjoint representation of a homogeneous transformation matrix T.
+    Ad_T_ab is used for transforming a twist V_a in frame a to V_b in frame b as:
+                                  V_b = Ad_T_ba * V_a
+
+    Args:
+        T: ndarray, (4, 4). A homogeneous transformation matrix, also known as SE(3).
+
+    Returns:
+        ndarray, (6, 6). The 6x6 adjoint representation [AdT] of T.
+
+    References:
+        Chapter 3.3. Rigid-Body Motions and Twists. Pg. 98, Definition 3.20.
     """
-    R, p = homo_trans_to_rp(T)
+    R, p = SE3_to_Rp(T)
     return np.r_[np.c_[R, np.zeros((3, 3))],
                  np.c_[np.dot(vector_to_so3(p), R), R]]
 
@@ -290,26 +285,33 @@ def ScrewToAxis(q, s, h):
     return np.r_[s, np.cross(q, s) + np.dot(h, s)]
 
 
-def AxisAng6(expc6):
-    """Converts a 6-vector of exponential coordinates into screw axis-angle
-    form
-    :param expc6: A 6-vector of exponential coordinates for rigid-body motion
-                  S*theta
-    :return S: The corresponding normalized screw axis
-    :return theta: The distance traveled along/about S
-    Example Input:
-        expc6 = np.array([1, 0, 0, 1, 2, 3])
-    Output:
-        (np.array([1.0, 0.0, 0.0, 1.0, 2.0, 3.0]), 1.0)
+def axis_angle6(exp_coord6):
+    """Converts a 6-vector of exponential coordinates (S*theta) into screw axis-angle form.
+
+    Args:
+        exp_coord6: A 6-vector of exponential coordinates for rigid-body motion S*theta
+
+    Returns:
+        ndarray, (6, ). The corresponding normalized screw axis (S).
+        float. The distance (theta) traveled along/about S.
+
+    References:
+        Chapter 3. Rigid-Body Motions. Pg. 103.
+
+    Notes:
+        The six-dimensional exponential coordinates of a homogeneous transformation T as Sθ ∈ R^6,
+        where S is the screw axis and θ is the distance that must be traveled along the screw axis
+        to take a frame from the origin I to T.
     """
-    theta = np.linalg.norm([expc6[0], expc6[1], expc6[2]])
+    theta = np.linalg.norm([exp_coord6[0], exp_coord6[1], exp_coord6[2]])
     if near_zero(theta):
-        theta = np.linalg.norm([expc6[3], expc6[4], expc6[5]])
-    return np.array(expc6 / theta), theta
+        theta = np.linalg.norm([exp_coord6[3], exp_coord6[4], exp_coord6[5]])
+    return np.array(exp_coord6 / theta), theta
 
 
-def MatrixExp6(se3_mat):
-    """Computes the matrix exponential of a se3 representation of exponential coordinates
+def matrix_exp6(se3_mat):
+    """Computes the matrix exponential of a se3 representation of exponential coordinates.
+
     :param se3_mat: A matrix in se3
     :return: The matrix exponential of se3_mat
     Example Input:
@@ -328,9 +330,9 @@ def MatrixExp6(se3_mat):
     if near_zero(np.linalg.norm(omgtheta)):
         return np.r_[np.c_[np.eye(3), se3_mat[0: 3, 3]], [[0, 0, 0, 1]]]
     else:
-        theta = AxisAng3(omgtheta)[1]
+        theta = axis_angle3(omgtheta)[1]
         omgmat = se3_mat[0: 3, 0: 3] / theta
-        return np.r_[np.c_[MatrixExp3(se3_mat[0: 3, 0: 3]),
+        return np.r_[np.c_[matrix_exp3(se3_mat[0: 3, 0: 3]),
                            np.dot(np.eye(3) * theta
                                   + (1 - np.cos(theta)) * omgmat
                                   + (theta - np.sin(theta))
@@ -339,9 +341,10 @@ def MatrixExp6(se3_mat):
                      [[0, 0, 0, 1]]]
 
 
-def MatrixLog6(T):
-    """Computes the matrix logarithm of a homogeneous transformation matrix
-    :param R: A matrix in SE3
+def matrix_log6(T):
+    """Computes the matrix logarithm of a homogeneous transformation matrix.
+
+    :param T: A matrix in SE3
     :return: The matrix logarithm of R
     Example Input:
         T = np.array([[1, 0,  0, 0],
@@ -354,7 +357,7 @@ def MatrixLog6(T):
                   [0, 1.57079633,           0,  2.35619449]
                   [0,          0,           0,           0]])
     """
-    R, p = homo_trans_to_rp(T)
+    R, p = SE3_to_Rp(T)
     omgmat = matrix_log3(R)
     if np.array_equal(omgmat, np.zeros((3, 3))):
         return np.r_[np.c_[np.zeros((3, 3)),
@@ -371,7 +374,7 @@ def MatrixLog6(T):
                      [[0, 0, 0, 0]]]
 
 
-def ProjectToSO3(mat):
+def project_to_SO3(mat):
     """Returns a projection of mat into SO(3)
     :param mat: A matrix near SO(3) to project to SO(3)
     :return: The closest matrix to R that is in SO(3)
@@ -396,7 +399,7 @@ def ProjectToSO3(mat):
     return R
 
 
-def ProjectToSE3(mat):
+def project_to_SE3(mat):
     """Returns a projection of mat into SE(3)
     :param mat: A 4x4 matrix to project to SE(3)
     :return: The closest matrix to T that is in SE(3)
@@ -416,7 +419,7 @@ def ProjectToSE3(mat):
                   [ 0.        ,  0.        ,  0.        ,  1.  ]])
     """
     mat = np.array(mat)
-    return rp_to_homo_trans(ProjectToSO3(mat[:3, :3]), mat[:3, 3])
+    return Rp_to_SE3(project_to_SO3(mat[:3, :3]), mat[:3, 3])
 
 
 def distance_to_SO3(mat):
@@ -443,14 +446,15 @@ def distance_to_SO3(mat):
 
 
 def distance_to_SE3(mat):
-    """Returns the Frobenius norm to describe the distance of mat from the SE(3) manifold
+    """Returns the Frobenius norm to describe the distance of mat from the SE(3) manifold.
+
     :param mat: A 4x4 matrix
-    :return: A quantity describing the distance of mat from the SE(3) manifold
-    Computes the distance from mat to the SE(3) manifold using the following
-    method:
-    Compute the determinant of matR, the top 3x3 submatrix of mat.
+    :return: A quantity describing the distance of mat from the SE(3) manifold.
+
+    Computes the distance from mat to the SE(3) manifold using the following method:
+    Compute the determinant of matR, the top 3x3 sub matrix of mat.
     If det(matR) <= 0, return a large number.
-    If det(matR) > 0, replace the top 3x3 submatrix of mat with matR^T.matR,
+    If det(matR) > 0, replace the top 3x3 sub matrix of mat with matR^T.matR,
     and set the first three entries of the fourth column of mat to zero. Then
     return norm(mat - I).
     Example Input:
@@ -463,9 +467,8 @@ def distance_to_SE3(mat):
     """
     matR = np.array(mat)[0: 3, 0: 3]
     if np.linalg.det(matR) > 0:
-        return np.linalg.norm(np.r_[np.c_[np.dot(np.transpose(matR), matR),
-                                          np.zeros((3, 1))],
-                                    [np.array(mat)[3, :]]] - np.eye(4))
+        return np.linalg.norm(
+            np.r_[np.c_[np.dot(np.transpose(matR), matR), np.zeros((3, 1))], [np.array(mat)[3, :]]] - np.eye(4))
     else:
         return 1e+9
 
@@ -496,9 +499,9 @@ def test_if_SE3(mat):
     :return: True if mat is very close to or in SE(3), false otherwise
     Computes the distance d from mat to the SE(3) manifold using the
     following method:
-    Compute the determinant of the top 3x3 submatrix of mat.
+    Compute the determinant of the top 3x3 sub matrix of mat.
     If det(mat) <= 0, d = a large number.
-    If det(mat) > 0, replace the top 3x3 submatrix of mat with mat^T.mat, and
+    If det(mat) > 0, replace the top 3x3 sub matrix of mat with mat^T.mat, and
     set the first three entries of the fourth column of mat to zero.
     Then d = norm(T - I).
     If d is close to zero, return true. Otherwise, return false.
@@ -544,7 +547,7 @@ def fk_in_body(M, Blist, q_list):
     """
     T = np.array(M)
     for i in range(len(q_list)):
-        T = np.dot(T, MatrixExp6(vector_to_se3(np.array(Blist)[:, i] * q_list[i])))
+        T = np.dot(T, matrix_exp6(vector_to_se3(np.array(Blist)[:, i] * q_list[i])))
     return T
 
 
@@ -575,7 +578,7 @@ def fk_in_space(M, s_list, theta_list):
     """
     T = np.array(M)
     for i in range(len(theta_list) - 1, -1, -1):
-        T = np.dot(MatrixExp6(vector_to_se3(np.array(s_list)[:, i] * theta_list[i])), T)
+        T = np.dot(matrix_exp6(vector_to_se3(np.array(s_list)[:, i] * theta_list[i])), T)
     return T
 
 
@@ -604,8 +607,8 @@ def jacobian_body(Blist, q_list):
     Jb = np.array(Blist).copy().astype(np.float)
     T = np.eye(4)
     for i in range(len(q_list) - 2, -1, -1):
-        T = np.dot(T, MatrixExp6(vector_to_se3(np.array(Blist)[:, i + 1]
-                                               * -q_list[i + 1])))
+        T = np.dot(T, matrix_exp6(vector_to_se3(np.array(Blist)[:, i + 1]
+                                                * -q_list[i + 1])))
         Jb[:, i] = np.dot(Adjoint(T), np.array(Blist)[:, i])
     return Jb
 
@@ -635,7 +638,7 @@ def jacobian_space(S_list, q_list):
     Js = np.array(S_list).copy().astype(np.float)
     T = np.eye(4)
     for i in range(1, len(q_list)):
-        T = np.dot(T, MatrixExp6(vector_to_se3(np.array(S_list)[:, i - 1] * q_list[i - 1])))
+        T = np.dot(T, matrix_exp6(vector_to_se3(np.array(S_list)[:, i - 1] * q_list[i - 1])))
         Js[:, i] = np.dot(Adjoint(T), np.array(S_list)[:, i])
     return Js
 
@@ -691,8 +694,8 @@ def ik_in_body(S_body, M, T, q_list0, eomg, ev):
     q_list = np.array(q_list0).copy()
     i = 0
     maxiterations = 20
-    Vb = se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(fk_in_body(M, S_body,
-                                                                q_list)), T)))
+    Vb = se3_to_vec(matrix_log6(np.dot(SE3_inv(fk_in_body(M, S_body,
+                                                          q_list)), T)))
     err = np.linalg.norm([Vb[0], Vb[1], Vb[2]]) > eomg \
           or np.linalg.norm([Vb[3], Vb[4], Vb[5]]) > ev
     while err and i < maxiterations:
@@ -701,8 +704,8 @@ def ik_in_body(S_body, M, T, q_list0, eomg, ev):
                                                        q_list)), Vb)
         i = i + 1
         Vb \
-            = se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(fk_in_body(M, S_body,
-                                                                     q_list)), T)))
+            = se3_to_vec(matrix_log6(np.dot(SE3_inv(fk_in_body(M, S_body,
+                                                               q_list)), T)))
         err = np.linalg.norm([Vb[0], Vb[1], Vb[2]]) > eomg \
               or np.linalg.norm([Vb[3], Vb[4], Vb[5]]) > ev
     return q_list, not err
@@ -756,7 +759,7 @@ def ik_in_space(S_space, M, T, q_list0, eomg, ev):
     maxiterations = 20
     Tsb = fk_in_space(M, S_space, q_list)
     Vs = np.dot(Adjoint(Tsb),
-                se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(Tsb), T))))
+                se3_to_vec(matrix_log6(np.dot(SE3_inv(Tsb), T))))
     err = np.linalg.norm([Vs[0], Vs[1], Vs[2]]) > eomg \
           or np.linalg.norm([Vs[3], Vs[4], Vs[5]]) > ev
     while err and i < maxiterations:
@@ -764,7 +767,7 @@ def ik_in_space(S_space, M, T, q_list0, eomg, ev):
         i = i + 1
         Tsb = fk_in_space(M, S_space, q_list)
         Vs = np.dot(Adjoint(Tsb),
-                    se3_to_vec(MatrixLog6(np.dot(homo_trans_inv(Tsb), T))))
+                    se3_to_vec(matrix_log6(np.dot(SE3_inv(Tsb), T))))
         err = np.linalg.norm([Vs[0], Vs[1], Vs[2]]) > eomg \
               or np.linalg.norm([Vs[3], Vs[4], Vs[5]]) > ev
     return q_list, not err
@@ -776,23 +779,21 @@ def ik_in_space(S_space, M, T, q_list0, eomg, ev):
 
 
 def ad(V):
-    """Calculate the 6x6 matrix [adV] of the given 6-vector
-    :param V: A 6-vector spatial velocity
-    :return: The corresponding 6x6 matrix [adV]
-    Used to calculate the Lie bracket [V1, V2] = [adV1]V2
-    Example Input:
-        V = np.array([1, 2, 3, 4, 5, 6])
-    Output:
-        np.array([[ 0, -3,  2,  0,  0,  0],
-                  [ 3,  0, -1,  0,  0,  0],
-                  [-2,  1,  0,  0,  0,  0],
-                  [ 0, -6,  5,  0, -3,  2],
-                  [ 6,  0, -4,  3,  0, -1],
-                  [-5,  4,  0, -2,  1,  0]])
+    """Calculate the 6x6 matrix [adV] of the given 6-vector.
+    [adV] is used to calculate the Lie bracket [V1, V2] = [adV1]V2.
+
+    Args:
+        V: A 6-vector spatial velocity.
+
+    Returns:
+        The corresponding 6x6 matrix [adV].
+
+    References:
+        Chapter 8. Dynamics of Open Chains. Pg. 287, Eq. 8.38.
     """
-    omgmat = vector_to_so3([V[0], V[1], V[2]])
-    return np.r_[np.c_[omgmat, np.zeros((3, 3))],
-                 np.c_[vector_to_so3([V[3], V[4], V[5]]), omgmat]]
+    omega_mat = vector_to_so3([V[0], V[1], V[2]])
+    return np.r_[np.c_[omega_mat, np.zeros((3, 3))],
+                 np.c_[vector_to_so3([V[3], V[4], V[5]]), omega_mat]]
 
 
 def InverseDynamics(q_list, dq_list, ddq_list, g, Ftip, Mlist, Glist, Slist):
@@ -853,15 +854,15 @@ def InverseDynamics(q_list, dq_list, ddq_list, g, Ftip, Mlist, Glist, Slist):
     Vi = np.zeros((6, n + 1))
     Vdi = np.zeros((6, n + 1))
     Vdi[:, 0] = np.r_[[0, 0, 0], -np.array(g)]
-    AdTi[n] = Adjoint(homo_trans_inv(Mlist[n]))
+    AdTi[n] = Adjoint(SE3_inv(Mlist[n]))
     Fi = np.array(Ftip).copy()
     tau_list = np.zeros(n)
     for i in range(n):
         Mi = np.dot(Mi, Mlist[i])
-        Ai[:, i] = np.dot(Adjoint(homo_trans_inv(Mi)), np.array(Slist)[:, i])
-        AdTi[i] = Adjoint(np.dot(MatrixExp6(vector_to_se3(Ai[:, i] *
-                                                          -q_list[i])),
-                                 homo_trans_inv(Mlist[i])))
+        Ai[:, i] = np.dot(Adjoint(SE3_inv(Mi)), np.array(Slist)[:, i])
+        AdTi[i] = Adjoint(np.dot(matrix_exp6(vector_to_se3(Ai[:, i] *
+                                                           -q_list[i])),
+                                 SE3_inv(Mlist[i])))
         Vi[:, i + 1] = np.dot(AdTi[i], Vi[:, i]) + Ai[:, i] * dq_list[i]
         Vdi[:, i + 1] = np.dot(AdTi[i], Vdi[:, i]) \
                         + Ai[:, i] * ddq_list[i] \
@@ -1506,7 +1507,7 @@ def ScrewTrajectory(x_start, x_end, Tf, N, method):
             s = CubicTimeScaling(Tf, timegap * i)
         else:
             s = QuinticTimeScaling(Tf, timegap * i)
-        traj[i] = np.dot(x_start, MatrixExp6(MatrixLog6(np.dot(homo_trans_inv(x_start), x_end)) * s))
+        traj[i] = np.dot(x_start, matrix_exp6(matrix_log6(np.dot(SE3_inv(x_start), x_end)) * s))
     return traj
 
 
@@ -1560,8 +1561,8 @@ def CartesianTrajectory(x_start, x_end, Tf, N, method):
     N = int(N)
     timegap = Tf / (N - 1.0)
     traj = [[None]] * N
-    rot_start, p_start = homo_trans_to_rp(x_start)
-    Rend, pend = homo_trans_to_rp(x_end)
+    rot_start, p_start = SE3_to_Rp(x_start)
+    Rend, pend = SE3_to_Rp(x_end)
     for i in range(N):
         if method == 3:
             s = CubicTimeScaling(Tf, timegap * i)
@@ -1569,7 +1570,7 @@ def CartesianTrajectory(x_start, x_end, Tf, N, method):
             s = QuinticTimeScaling(Tf, timegap * i)
         traj[i] \
             = np.r_[np.c_[np.dot(rot_start,
-                                 MatrixExp3(matrix_log3(np.dot(np.array(rot_start).T, Rend)) * s)),
+                                 matrix_exp3(matrix_log3(np.dot(np.array(rot_start).T, Rend)) * s)),
                           s * np.array(pend) + (1 - s) * np.array(p_start)],
                     [[0, 0, 0, 1]]]
     return traj
