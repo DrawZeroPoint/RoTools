@@ -90,8 +90,8 @@ class HPPManipulationInterface(object):
         # ['PathOptimizer', 'PathProjector', 'PathPlanner', 'ConfigurationShooter', 'PathValidation',
         #  'ConfigValidation', 'SteeringMethod', 'Distance', 'NumericalConstraint', 'CenterOfMass', 'Problem',
         #  'Parameter', 'DefaultParameter', 'Gripper', 'Handle', 'RobotContact', 'EnvContact', 'ConstraintGraph']
-        rospy.loginfo('Using path planner {}, available planners are: {}'.format(
-            self._problem_solver.getSelected('PathPlanner'), self._problem_solver.getAvailable('PathPlanner')))
+        # rospy.loginfo('Using path planner {}, available planners are: {}'.format(
+        #     self._problem_solver.getSelected('PathPlanner'), self._problem_solver.getAvailable('PathPlanner')))
 
         # self._problem_solver.createTransformationConstraint("placement", '', "{}/root_joint".format(self._om.name),
         #                                                     [0, 0, 1, 0, 0, 0, 1],
@@ -245,8 +245,9 @@ class HPPManipulationInterface(object):
                 for i in range(len(temp) - 1):
                     if self._constraint_graph.getNode(temp[i][0]) == 'free' and \
                             'grasp' in self._constraint_graph.getNode(temp[i + 1][0]):
-                        grasp_stamps.append(temp[i + 1][1])
-                        rospy.loginfo('Will grasp at {:.4f} s'.format(temp[i + 1][1]))
+                        grasp_stamp = temp[i + 1][1]
+                        grasp_stamps.append(grasp_stamp)
+                        rospy.loginfo('Will grasp at {:.4f} s'.format(grasp_stamp))
                     if self._constraint_graph.getNode(temp[i + 1][0]) == 'free' and \
                             'grasp' in self._constraint_graph.getNode(temp[i][0]):
                         release_stamps.append(temp[i + 1][1])
