@@ -94,7 +94,7 @@ add_service_files(
   ExecuteAttachCollisionBox.srv
   ExecuteBinaryAction.srv
   ExecuteDetachCollision.srv
-        ExecuteEllipticalTrajectory.srv
+  ExecuteEllipticalTrajectory.srv
   ExecuteFrankaGripperGrasp.srv
   ExecuteGroupJointStates.srv
   ExecuteGroupNamedStates.srv
