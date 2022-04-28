@@ -2,8 +2,10 @@
 
 import json
 from uuid import uuid4
-# Note that this needs:
+# If using python 2.7:
 # sudo pip install websocket-client
+# If using python 3+, you will also need:
+# sudo pip install websocket-client-py3
 # not the library called 'websocket'
 import websocket
 import yaml

@@ -33,10 +33,10 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: '3.6'
-        run: |
-          pip install pytest
-          pip install -r src/rotools/requirements.txt
-          pytest src/rotools/src/rotools/tests/test_*
+      run: |
+        pip install pytest
+        pip install -r src/rotools/requirements.txt
+        pytest src/rotools/src/rotools/tests/test_*
 
     - name: Parse ROS Distro
       run:  echo "FLAVOR=$(echo ${{ github.event.pull_request.base.ref }} | sed 's/-devel//')" >> $GITHUB_ENV
