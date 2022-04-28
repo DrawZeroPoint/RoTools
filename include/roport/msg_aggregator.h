@@ -12,58 +12,63 @@
 #include <sensor_msgs/JointState.h>
 
 namespace roport {
-typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::JointState,
-                                                        sensor_msgs::JointState,
-                                                        sensor_msgs::JointState,
-                                                        sensor_msgs::JointState,
-                                                        sensor_msgs::JointState,
-                                                        sensor_msgs::JointState>
-    CuriJointStateSyncPolicy;
-
 class MsgAggregator {
  public:
   MsgAggregator(const ros::NodeHandle& node_handle, const ros::NodeHandle& pnh);
   ~MsgAggregator() = default;
 
  private:
+  typedef message_filters::Subscriber<sensor_msgs::JointState> MsgSubscriber;
+  typedef message_filters::sync_policies::
+      ApproximateTime<sensor_msgs::JointState, sensor_msgs::JointState, sensor_msgs::JointState>
+          Policy;
+  typedef message_filters::Synchronizer<Policy> PolicySynchronizer;
+
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
-  bool have_velocity_head_;
-  bool have_velocity_panda_left_;
-  bool have_velocity_panda_left_finger_;
-  bool have_velocity_panda_right_;
-  bool have_velocity_panda_right_finger_;
-  bool have_velocity_curi_torso_;
-  bool have_effort_head_;
-  bool have_effort_panda_left_;
-  bool have_effort_panda_left_finger_;
-  bool have_effort_panda_right_;
-  bool have_effort_panda_right_finger_;
-  bool have_effort_curi_torso_;
 
-  std::array<std::string, 7> jointNames_;
-  std::string name_prefix_head_;
-  std::string name_prefix_panda_left_;
-  std::string name_prefix_panda_left_finger_;
-  std::string name_prefix_panda_right_;
-  std::string name_prefix_panda_right_finger_;
-  std::string name_prefix_torso_;
+  ros::Publisher publisher_;
 
-  message_filters::Subscriber<sensor_msgs::JointState>* panda_left_sub_;
-  message_filters::Subscriber<sensor_msgs::JointState>* panda_right_sub_;
-  message_filters::Subscriber<sensor_msgs::JointState>* curi_torso_sub_;
-  message_filters::Subscriber<sensor_msgs::JointState>* panda_left_finger_sub_;
-  message_filters::Subscriber<sensor_msgs::JointState>* panda_right_finger_sub_;
-  message_filters::Subscriber<sensor_msgs::JointState>* curi_head_sub_;
-  message_filters::Synchronizer<CuriJointStateSyncPolicy>* joint_states_sync_;
-  ros::Publisher curi_joint_states_pub_;
+  size_t high_frequency_num_;
+  std::vector<std::string> high_frequency_topics_;
+  std::vector<std::vector<std::string>> high_frequency_name_groups_;
+  std::vector<std::shared_ptr<MsgSubscriber>> high_frequency_subscribers_;
+  std::shared_ptr<PolicySynchronizer> high_frequency_synchronizer_;
 
-  void curiJointStatesCB(const sensor_msgs::JointState::ConstPtr& curi_head,
-                         const sensor_msgs::JointState::ConstPtr& panda_left,
-                         const sensor_msgs::JointState::ConstPtr& panda_left_finger,
-                         const sensor_msgs::JointState::ConstPtr& panda_right,
-                         const sensor_msgs::JointState::ConstPtr& panda_right_finger,
-                         const sensor_msgs::JointState::ConstPtr& curi_torso);
+  size_t low_frequency_num_;
+  std::vector<std::string> low_frequency_topics_;
+  std::vector<std::vector<std::string>> low_frequency_name_groups_;
+  std::vector<std::shared_ptr<MsgSubscriber>> low_frequency_subscribers_;
+  std::shared_ptr<PolicySynchronizer> low_frequency_synchronizer_;
+  sensor_msgs::JointState low_frequency_joint_state_;
+
+  const std::string prefix{"Msg Aggregator: "};
+
+  void init();
+
+  inline void getParam(const std::string& param_name, XmlRpc::XmlRpcValue& param_value) {
+    if (!pnh_.getParam(param_name, param_value)) {
+      if (!nh_.getParam(param_name, param_value)) {
+        ROS_ERROR_STREAM(prefix << "Param " << param_name << " is not defined");
+        throw std::runtime_error("Param not defined");
+      }
+    }
+    ROS_ASSERT(param_value.getType() == XmlRpc::XmlRpcValue::TypeArray);
+  }
+
+  void highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1, const sensor_msgs::JointState::ConstPtr& msg_2);
+
+  void highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
+                       const sensor_msgs::JointState::ConstPtr& msg_2,
+                       const sensor_msgs::JointState::ConstPtr& msg_3);
+
+  void lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1, const sensor_msgs::JointState::ConstPtr& msg_2);
+
+  void lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
+                      const sensor_msgs::JointState::ConstPtr& msg_2,
+                      const sensor_msgs::JointState::ConstPtr& msg_3);
+
+  void publishCombined(const sensor_msgs::JointState& high_frequency_msg);
 };
 }  // namespace roport
 

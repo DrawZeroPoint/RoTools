@@ -204,6 +204,9 @@ class TargetCalculator {
   template <bool throw_error, bool return_error_at_maximal_duration>
   Result calculate(const InputParameter<DOFs>& inp, Trajectory<DOFs>& traj, double delta_time, bool& was_interrupted) {
     was_interrupted = false;
+#if defined WITH_ONLINE_CLIENT
+    traj.resize(0);
+#endif
 
     for (size_t dof = 0; dof < degrees_of_freedom; ++dof) {
       auto& p = traj.profiles[0][dof];
@@ -324,13 +327,14 @@ class TargetCalculator {
       return Result::Working;
     }
 
-    if (std::all_of(inp_per_dof_synchronization.begin(), inp_per_dof_synchronization.end(),
-                    [](Synchronization s) { return s == Synchronization::None; })) {
+    if (!discrete_duration && std::all_of(inp_per_dof_synchronization.begin(), inp_per_dof_synchronization.end(),
+                                          [](Synchronization s) { return s == Synchronization::None; })) {
       return Result::Working;
     }
 
     // Phase Synchronization
-    if (std::any_of(inp_per_dof_synchronization.begin(), inp_per_dof_synchronization.end(),
+    if (!discrete_duration &&
+        std::any_of(inp_per_dof_synchronization.begin(), inp_per_dof_synchronization.end(),
                     [](Synchronization s) { return s == Synchronization::Phase; }) &&
         std::all_of(inp_per_dof_control_interface.begin(), inp_per_dof_control_interface.end(),
                     [](ControlInterface s) { return s == ControlInterface::Position; })) {
@@ -379,7 +383,9 @@ class TargetCalculator {
 
     // Time Synchronization
     for (size_t dof = 0; dof < degrees_of_freedom; ++dof) {
-      if (!inp.enabled[dof] || dof == limiting_dof || inp_per_dof_synchronization[dof] == Synchronization::None) {
+      const bool skip_synchronization =
+          (dof == limiting_dof || inp_per_dof_synchronization[dof] == Synchronization::None) && !discrete_duration;
+      if (!inp.enabled[dof] || skip_synchronization) {
         continue;
       }
 
@@ -423,7 +429,7 @@ class TargetCalculator {
         } break;
         case ControlInterface::Velocity: {
           VelocityStep2 step2{
-              t_profile,        p.v[0], p.a[0], p.vf, p.af, inp.max_acceleration[dof], inp_min_acceleration[dof],
+              t_profile, p.v[0], p.a[0], p.vf, p.af, inp.max_acceleration[dof], inp_min_acceleration[dof],
               inp.max_jerk[dof]};
           found_time_synchronization = step2.get_profile(p);
         } break;

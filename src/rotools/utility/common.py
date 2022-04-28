@@ -230,7 +230,7 @@ def to_ros_pose(pose, w_first=False):
         else:
             raise NotImplementedError
     elif isinstance(pose, list) or isinstance(pose, tuple):
-        return to_ros_pose(np.asarray(pose), w_first)
+        return to_ros_pose(np.asarray(pose, dtype=float), w_first)
     else:
         raise NotImplementedError
 

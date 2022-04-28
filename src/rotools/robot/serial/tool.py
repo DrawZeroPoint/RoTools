@@ -2,7 +2,8 @@ import numpy as np  # type: ignore
 
 from typing import Sized
 from attr import attrs, attrib, Factory
-from geometry import matrix_2_vector, position_from_matrix, vector_2_matrix
+
+from rotools.robot.serial.geometry import matrix_2_vector, position_from_matrix, vector_2_matrix
 
 
 @attrs

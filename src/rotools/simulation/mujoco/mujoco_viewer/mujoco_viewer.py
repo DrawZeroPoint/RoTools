@@ -29,7 +29,7 @@ class MujocoViewer:
         self._run_speed = 1.0
         self._loop_count = 0
         self._advance_by_one_step = False
-        self._hide_menu = False
+        self._hide_menu = True
 
         # glfw init
         glfw.init()
@@ -56,6 +56,10 @@ class MujocoViewer:
         # create options, camera, scene, context
         self.vopt = mujoco.MjvOption()
         self.cam = mujoco.MjvCamera()
+        self.cam.distance = 5.1
+        self.cam.azimuth = 90.0
+        self.cam.elevation = -45.0
+        self.cam.lookat = [-0.18, 0, 1.1]
         self.scn = mujoco.MjvScene(self.model, maxgeom=10000)
         self.pert = mujoco.MjvPerturb()
         self.ctx = mujoco.MjrContext(
@@ -125,6 +129,8 @@ class MujocoViewer:
         # Geom group visibility
         elif key in (glfw.KEY_0, glfw.KEY_1, glfw.KEY_2, glfw.KEY_3, glfw.KEY_4):
             self.vopt.geomgroup[key - glfw.KEY_0] ^= 1
+        elif key == glfw.KEY_P:
+            print("Cam params: ", self.cam.distance, self.cam.azimuth, self.cam.elevation, self.cam.lookat)
         # Quit
         if key == glfw.KEY_ESCAPE:
             print("Pressed ESC")
@@ -190,7 +196,7 @@ class MujocoViewer:
                 self._last_left_click_time = glfw.get_time()
 
             time_diff = (time_now - self._last_left_click_time)
-            if time_diff > 0.01 and time_diff < 0.3:
+            if 0.01 < time_diff < 0.3:
                 self._left_double_click_pressed = True
             self._last_left_click_time = time_now
 
@@ -199,7 +205,7 @@ class MujocoViewer:
                 self._last_right_click_time = glfw.get_time()
 
             time_diff = (time_now - self._last_right_click_time)
-            if time_diff > 0.01 and time_diff < 0.2:
+            if 0.01 < time_diff < 0.2:
                 self._right_double_click_pressed = True
             self._last_right_click_time = time_now
 

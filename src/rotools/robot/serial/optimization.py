@@ -50,7 +50,7 @@ class OptimizationHandler:
         self.kinematic_chain_mask = _validate_transform_mask(
             mask=self.kinematic_chain_mask,
             name="kinematic_chain_mask",
-            size=self.robot.kinematic_chain.num_parameters,
+            size=self.robot.mdh.num_parameters,
         )
 
     def apply_optimization_vector(self, vector):
@@ -68,9 +68,9 @@ class OptimizationHandler:
         world_segment = segments[2]
 
         # update vectors
-        kc_vector = self.robot.kinematic_chain.vector
+        kc_vector = self.robot.mdh.vector
         kc_vector[self.kinematic_chain_mask] = kc_segment
-        self.robot.kinematic_chain.vector = kc_vector
+        self.robot.mdh.vector = kc_vector
 
         tool_vector = self.robot.tool.vector
         tool_vector[self.tool_mask] = tool_segment
@@ -83,7 +83,7 @@ class OptimizationHandler:
     def generate_optimization_vector(self):
         """Generate vector."""
         kc_vector = np.compress(
-            self.kinematic_chain_mask, self.robot.kinematic_chain.vector
+            self.kinematic_chain_mask, self.robot.mdh.vector
         )
         tool_vector = np.compress(self.tool_mask, self.robot.tool.vector)
         world_vector = np.compress(

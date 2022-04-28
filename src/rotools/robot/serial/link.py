@@ -1,12 +1,11 @@
 """Link module."""
 from abc import abstractmethod
 from collections import Sized
-from typing import Sequence, Union
 
 import attr
 import numpy as np  # type: ignore
 
-from json_encoder import JSONEncoder
+from rotools.utility.json_encoder import JSONEncoder
 
 
 @attr.s
@@ -166,3 +165,16 @@ class PrismaticMDHLink(MDHLink):
         v = np.copy(self.vector)
         v[3] += q
         return v
+
+
+@attr.s
+class POEScrewAxis(Link):
+    """Link class that uses POE parameters."""
+
+    _size = 6
+    screw_axis = attr.ib(0, type=np.ndarray)
+
+    @property
+    def size(self):
+        """Get number of parameters."""
+        return self._size

@@ -65,13 +65,6 @@ else ()
   message(WARNING "Not Found HPP_FCL_LIB")
 endif ()
 
-find_library(HPP_MANIPULATION_LIB NAMES hpp-manipulation HINTS /opt/openrobots/lib)
-if (HPP_MANIPULATION_LIB)
-  message(STATUS "Found HPP_MANIPULATION_LIB ${HPP_MANIPULATION_LIB}")
-else ()
-  message(WARNING "Not Found HPP_MANIPULATION_LIB")
-endif ()
-
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -101,6 +94,7 @@ add_service_files(
   ExecuteAttachCollisionBox.srv
   ExecuteBinaryAction.srv
   ExecuteDetachCollision.srv
+  ExecuteEllipticalTrajectory.srv
   ExecuteFrankaGripperGrasp.srv
   ExecuteGroupJointStates.srv
   ExecuteGroupNamedStates.srv
@@ -164,7 +158,7 @@ generate_messages(
 # )
 
 catkin_package(
-  INCLUDE_DIRS include
+#  INCLUDE_DIRS include
   LIBRARIES
   CATKIN_DEPENDS ${ROS_DEPENDENCIES}
 )
@@ -186,7 +180,7 @@ add_library(${PROJECT_NAME}
   src/lib/robot_interface.cpp
   src/lib/moveit_cpp_server.cpp
   src/lib/msg_converter.cpp
-        src/lib/msg_aggregator.cpp
+  src/lib/msg_aggregator.cpp
   src/lib/online_trajectory_optimizer.cpp
   )
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
@@ -195,7 +189,7 @@ target_link_libraries(${PROJECT_NAME}
   rotools_ruckig
   )
 
-if (HPP_CORE_LIB AND HPP_FCL_LIB AND HPP_MANIPULATION_LIB)
+if (HPP_CORE_LIB AND HPP_FCL_LIB)
   # These two definitions solve the pinocchio import issue
   add_definitions(-DPINOCCHIO_WITH_HPP_FCL)
   ADD_DEFINITIONS(-DBOOST_MPL_LIMIT_LIST_SIZE=30)
@@ -213,7 +207,6 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB AND HPP_MANIPULATION_LIB)
     ${catkin_LIBRARIES}
     ${HPP_CORE_LIB}
     ${HPP_FCL_LIB}
-    ${HPP_MANIPULATION_LIB}
     ${OMNI_THREAD_LIB}
     ${OMNI_ORB4_LIB}
     ${PINOCCHIO_LIBRARIES}

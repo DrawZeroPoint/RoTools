@@ -14,6 +14,12 @@
     <!--    <rosparam param="pose_topic">-->
     <!--      ["/pose_1", "/pose_2"]-->
     <!--    </rosparam>-->
+
+    <!-- The transform T_12 will be applied to the raw rigid body pose P_w2 obtained from OptiTrack to get T_w1 -->
+    <!-- T_w1 = P_w2 * T_12.inv  T_12 denotes the transform from frame 1 to frame 2 -->
+    <rosparam param="transform">
+      [0., 0., 0., 0., 0., 0., 1.]
+    </rosparam>
   </node>
 
 </launch>

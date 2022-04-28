@@ -1,6 +1,6 @@
 # RoTools
 
-<img alt="logo" height="100" src="./misc/ms-icon-310x310.png" width="100"/>
+<img alt="logo" height="120" src="./misc/ms-icon-310x310.png" width="120"/>
 
 [![CI](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml)
 
@@ -97,12 +97,16 @@ Run the following command to add `rotools` to your PYTHONPATH:
 ### If you use Bash
 
 ```shell
+echo "" >> ~/.bashrc
+echo "# RoTools" >> ~/.bashrc
 echo "export PYTHONPATH=$HOME/RoTools/src:\$PYTHONPATH" >> ~/.bashrc
 ```
 
 ### If you use Zsh
 
 ```shell
+echo "" >> ~/.zshrc
+echo "# RoTools" >> ~/.zshrc
 echo "export PYTHONPATH=$HOME/RoTools/src:\$PYTHONPATH" >> ~/.zshrc
 ```
 

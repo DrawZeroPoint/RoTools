@@ -17,10 +17,10 @@ namespace roport {
 constexpr double kQuaternionOrientationTolerance = 0.01;
 constexpr double kTolerance = 0.01;
 
-auto getParam(const ros::NodeHandle& node_handle,
-              const ros::NodeHandle& private_node_handle,
-              const std::string& param_name,
-              XmlRpc::XmlRpcValue& param_value) -> bool {
+inline auto getParam(const ros::NodeHandle& node_handle,
+                     const ros::NodeHandle& private_node_handle,
+                     const std::string& param_name,
+                     XmlRpc::XmlRpcValue& param_value) -> bool {
   if (!private_node_handle.getParam(param_name, param_value)) {
     if (!node_handle.getParam(param_name, param_value)) {
       ROS_ERROR_STREAM("Param " << param_name << " is not defined");
@@ -30,7 +30,7 @@ auto getParam(const ros::NodeHandle& node_handle,
   return true;
 }
 
-void geometryPoseToEigenMatrix(const geometry_msgs::Pose& pose, Eigen::Matrix4d& mat) {
+inline void geometryPoseToEigenMatrix(const geometry_msgs::Pose& pose, Eigen::Matrix4d& mat) {
   mat = Eigen::Matrix4d::Identity();
 
   Eigen::Quaterniond orientation;
@@ -44,11 +44,11 @@ void geometryPoseToEigenMatrix(const geometry_msgs::Pose& pose, Eigen::Matrix4d&
   mat.topRightCorner(3, 1) = t_eigen;
 }
 
-void geometryPoseToEigenMatrix(const geometry_msgs::PoseStamped& pose, Eigen::Matrix4d& mat) {
+inline void geometryPoseToEigenMatrix(const geometry_msgs::PoseStamped& pose, Eigen::Matrix4d& mat) {
   geometryPoseToEigenMatrix(pose.pose, mat);
 }
 
-void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::Pose& pose) {
+inline void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::Pose& pose) {
   Eigen::Matrix3d rotation_matrix = mat.topLeftCorner(3, 3);
   Eigen::Vector3d t_eigen = mat.topRightCorner(3, 1);
   Eigen::Quaterniond quat(rotation_matrix);
@@ -62,13 +62,13 @@ void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::Pose& pose) {
   pose.orientation.w = quat.w();
 }
 
-void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::PoseStamped& pose) {
+inline void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::PoseStamped& pose) {
   eigenMatrixToGeometryPose(std::move(mat), pose.pose);
 }
 
-void relativePoseToAbsolutePose(const geometry_msgs::PoseStamped& transform_wrt_local_base,
-                                const geometry_msgs::PoseStamped& current_pose_wrt_base,
-                                geometry_msgs::PoseStamped& goal_pose_wrt_base) {
+inline void relativePoseToAbsolutePose(const geometry_msgs::PoseStamped& transform_wrt_local_base,
+                                       const geometry_msgs::PoseStamped& current_pose_wrt_base,
+                                       geometry_msgs::PoseStamped& goal_pose_wrt_base) {
   Eigen::Matrix4d mat_be;
   geometryPoseToEigenMatrix(current_pose_wrt_base, mat_be);
   // mat_bl
@@ -86,9 +86,9 @@ void relativePoseToAbsolutePose(const geometry_msgs::PoseStamped& transform_wrt_
   eigenMatrixToGeometryPose(mat_be_new, goal_pose_wrt_base);
 }
 
-void localPoseToGlobalPose(const geometry_msgs::Pose& pose_local_to_target,
-                           const geometry_msgs::Pose& pose_global_to_local,
-                           geometry_msgs::Pose& pose_global_to_target) {
+inline void localPoseToGlobalPose(const geometry_msgs::Pose& pose_local_to_target,
+                                  const geometry_msgs::Pose& pose_global_to_local,
+                                  geometry_msgs::Pose& pose_global_to_target) {
   Eigen::Matrix4d mat_local_to_target;
   geometryPoseToEigenMatrix(pose_local_to_target, mat_local_to_target);
   Eigen::Matrix4d mat_global_to_local;
@@ -97,9 +97,9 @@ void localPoseToGlobalPose(const geometry_msgs::Pose& pose_local_to_target,
   eigenMatrixToGeometryPose(mat_global_to_target, pose_global_to_target);
 }
 
-void localAlignedPoseToGlobalPose(const geometry_msgs::Pose& pose_local_aligned_to_target,
-                                  const geometry_msgs::Pose& pose_global_to_local_aligned,
-                                  geometry_msgs::Pose& pose_global_to_target) {
+inline void localAlignedPoseToGlobalPose(const geometry_msgs::Pose& pose_local_aligned_to_target,
+                                         const geometry_msgs::Pose& pose_global_to_local_aligned,
+                                         geometry_msgs::Pose& pose_global_to_target) {
   Eigen::Matrix4d mat_local_aligned_to_target;
   geometryPoseToEigenMatrix(pose_local_aligned_to_target, mat_local_aligned_to_target);
   Eigen::Matrix4d mat_global_to_local_aligned;
@@ -108,7 +108,7 @@ void localAlignedPoseToGlobalPose(const geometry_msgs::Pose& pose_local_aligned_
   eigenMatrixToGeometryPose(mat_global_to_target, pose_global_to_target);
 }
 
-auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
+inline auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
   if (pose.orientation.w == 0 && pose.orientation.x == 0 && pose.orientation.y == 0 && pose.orientation.z == 0) {
     ROS_ERROR("The pose is empty (all orientation coefficients are zero)");
     return false;
@@ -132,7 +132,7 @@ auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
  * @return True if close.
  */
 template <typename T>
-auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, T tol = kTolerance)
+inline auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, T tol = kTolerance)
     -> bool {
   if (tol <= 0) {
     tol = kTolerance;
@@ -149,7 +149,7 @@ auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T
 }
 
 template <typename T>
-auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, std::vector<T> tol)
+inline auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, std::vector<T> tol)
     -> bool {
   if (tol.size() != first.size() || tol.size() != second.size()) {
     throw std::runtime_error("Vector size mismatch");
@@ -163,6 +163,14 @@ auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T
     }
   }
   return true;
+}
+
+template <typename T>
+inline void logWarningList(const T& list, const std::string& title = "List in focus:") {
+  ROS_WARN_STREAM(title << " In total " << list.size() << " values");
+  for (size_t idx = 0; idx < list.size(); ++idx) {
+    ROS_WARN_STREAM("# " << idx << " " << list[idx]);
+  }
 }
 }  // namespace roport
 

@@ -47,8 +47,9 @@ class RuckigOptimizer {
    * can reach under the constraints and set the estimations as commands to the robot.
    * @param q_cmd Output joint position command.
    * @param dq_cmd Output joint velocity command.
+   * @return True if update succeed, false otherwise.
    */
-  void update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd);
+  bool update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd);
 
   void reset();
 

@@ -35,8 +35,11 @@ install_ros() {
     return
   fi
 
-  sudo apt install -y ros-$ROS_DISTRO-desktop
-  echo_success "Successfully installed ROS $ROS_DISTRO desktop packages"
+  sudo apt install -y ros-$ROS_DISTRO-desktop ros-$ROS_DISTRO-rosmon ros-$ROS_DISTRO-behaviortree-cpp-v3 \
+  ros-$ROS_DISTRO-ros-control ros-$ROS_DISTRO-ros-controllers ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs \
+  ros-$ROS_DISTRO-trac-ik-lib ros-$ROS_DISTRO-eigen-conversions ros-$ROS_DISTRO-rosbridge-suite
+
+  echo_success "Successfully installed ROS $ROS_DISTRO packages"
 
   # TODO Create ROS workspace
   source /opt/ros/$ROS_DISTRO/setup.bash
@@ -157,7 +160,7 @@ install_jetbrains_toolbox() {
 }
 
 sudo apt update
-sudo apt install -y wget apt-transport-https libmatio-dev
+sudo apt install -y wget apt-transport-https libmatio-dev screen
 
 install_ros
 install_cartesio

@@ -3,6 +3,7 @@
 //
 
 #include "roport/msg_converter.h"
+#include "roport/common.h"
 
 namespace roport {
 
@@ -155,11 +156,13 @@ auto MsgConverter::init() -> bool {
     }
 
     auto source_topic = source_js_topics[group_id];
+    auto reference_topic = start_ref_topics[group_id];
     ros::Subscriber subscriber = nh_.subscribe<sensor_msgs::JointState>(
         source_topic, 1,
-        [this, group_id, source_topic, publisher, target_type, target_arg, source_names, target_names](auto&& ph1) {
-          return jointStateCb(std::forward<decltype(ph1)>(ph1), group_id, source_topic, publisher, target_type,
-                              target_arg, source_names, target_names);
+        [this, group_id, source_topic, reference_topic, publisher, target_type, target_arg, source_names,
+         target_names](auto&& ph1) {
+          return jointStateCb(std::forward<decltype(ph1)>(ph1), group_id, source_topic, reference_topic, publisher,
+                              target_type, target_arg, source_names, target_names);
         });
     publishers_.push_back(publisher);
     subscribers_.push_back(subscriber);
@@ -170,6 +173,7 @@ auto MsgConverter::init() -> bool {
 void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
                                 const size_t& group_id,
                                 const std::string& source_topic,
+                                const std::string& reference_topic,
                                 const ros::Publisher& publisher,
                                 const std::string& type,
                                 const int& arg,
@@ -182,7 +186,7 @@ void MsgConverter::jointStateCb(const sensor_msgs::JointState::ConstPtr& msg,
 
   sensor_msgs::JointState smoothed_msg;
   if (enable_smooth_start_flags_[group_id] && !finished_smooth_start_flags_[group_id]) {
-    if (!smoothJointState(filtered_msg, optimizers_[group_id], smoothed_msg)) {
+    if (!smoothJointState(filtered_msg, source_topic, reference_topic, optimizers_[group_id], smoothed_msg)) {
       return;
     }
   } else {
@@ -241,8 +245,8 @@ auto MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
           filtered_msg.effort.push_back(src_msg->effort[idx]);
         }
       } else {
-        ROS_ERROR_STREAM_ONCE(prefix << "Source msg " << source_topic << " does not define '" << name
-                                     << "' (print only once)");
+        ROS_WARN_STREAM_ONCE(prefix << "Source msg " << source_topic << " defines no '" << name
+                                    << "', it will not be converted (print only once)");
         return false;
       }
     }
@@ -252,10 +256,14 @@ auto MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
 }
 
 auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
+                                    const std::string& source_topic,
+                                    const std::string& reference_topic,
                                     rotools::RuckigOptimizer* oto,
                                     sensor_msgs::JointState& smoothed_msg) -> bool {
   oto->setTargetState(msg);
   if (!oto->isInitialStateSet()) {
+    ROS_WARN_STREAM_ONCE(prefix << "Source topic " << source_topic << "'s reference topic " << reference_topic
+                                << " has not been published (print only once)");
     return false;
   }
 
@@ -264,7 +272,9 @@ auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
 
   std::vector<double> q_cmd;
   std::vector<double> dq_cmd;
-  oto->update(q_cmd, dq_cmd);
+  if (!oto->update(q_cmd, dq_cmd)) {
+    return false;
+  }
   smoothed_msg.position = q_cmd;
   smoothed_msg.velocity = dq_cmd;
   smoothed_msg.effort = msg.effort;  // effort is not tackled
@@ -294,7 +304,7 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
   optimizers_[group_id]->getTargetPosition(q_desired);
   size_t violated_i = 0;
   double residual = 0.;
-  if (allClose<double>(filtered_msg.position, q_desired, violated_i, residual)) {
+  if (roport::allClose<double>(filtered_msg.position, q_desired, violated_i, residual)) {
     finished_smooth_start_flags_[group_id] = true;
     ROS_INFO("Successfully moved group %d to the start position.", group_id);
   } else {

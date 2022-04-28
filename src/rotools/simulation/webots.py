@@ -65,13 +65,13 @@ class WebotsInterfaceUR(object):
         # w: world frame, s: robot base frame, b: tcp frame
         p_wb = np.array(self.eef_node.getPosition())
         R_wb = np.array(self.eef_node.getOrientation()).reshape((3, -1))
-        T_wb = kinematics.rp_to_homo_trans(R_wb, p_wb)
+        T_wb = kinematics.Rp_to_SE3(R_wb, p_wb)
 
         p_ws = np.array(self.base_node.getPosition())
         R_ws = np.array(self.base_node.getOrientation()).reshape((3, -1))
-        T_ws = kinematics.rp_to_homo_trans(R_ws, p_ws)
+        T_ws = kinematics.Rp_to_SE3(R_ws, p_ws)
 
-        return np.dot(kinematics.homo_trans_inv(T_ws), T_wb)
+        return np.dot(kinematics.SE3_inv(T_ws), T_wb)
 
     def go_to_joint_state(self, joint_goal, tolerance=1e-4):
         """Set the joint states as desired.

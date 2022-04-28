@@ -7,195 +7,332 @@
 namespace roport {
 
 MsgAggregator::MsgAggregator(const ros::NodeHandle& node_handle, const ros::NodeHandle& pnh)
-    : nh_(node_handle), pnh_(pnh) {
-  panda_left_sub_ =
-      new message_filters::Subscriber<sensor_msgs::JointState>(nh_, "/panda_left/joint_states", 1);  // NOLINT
-  panda_right_sub_ = new message_filters::Subscriber<sensor_msgs::JointState>(nh_, "/panda_right/joint_states", 1);
-  panda_left_finger_sub_ =
-      new message_filters::Subscriber<sensor_msgs::JointState>(nh_, "/panda_left/gripper/joint_states", 1);
-  panda_right_finger_sub_ =
-      new message_filters::Subscriber<sensor_msgs::JointState>(nh_, "/panda_right/gripper/joint_states", 1);
-  curi_head_sub_ = new message_filters::Subscriber<sensor_msgs::JointState>(nh_, "/curi_head/joint_states", 1);
-  curi_torso_sub_ = new message_filters::Subscriber<sensor_msgs::JointState>(nh_, "/curi_torso/joint_states", 1);
-  joint_states_sync_ = new message_filters::Synchronizer<CuriJointStateSyncPolicy>(
-      CuriJointStateSyncPolicy(10), *curi_head_sub_, *panda_left_sub_, *panda_left_finger_sub_, *panda_right_sub_,
-      *panda_right_finger_sub_, *curi_torso_sub_);
-  joint_states_sync_->registerCallback(boost::bind(&MsgAggregator::curiJointStatesCB, this, _1, _2, _3, _4, _5, _6));
-  curi_joint_states_pub_ = nh_.advertise<sensor_msgs::JointState>("/joint_states", 1);
-  have_velocity_head_ = false;
-  have_velocity_panda_left_ = false;
-  have_velocity_panda_left_finger_ = false;
-  have_velocity_panda_right_ = false;
-  have_velocity_panda_right_finger_ = false;
-  have_velocity_curi_torso_ = false;
-  have_effort_head_ = false;
-  have_effort_panda_left_ = false;
-  have_effort_panda_left_finger_ = false;
-  have_effort_panda_right_ = false;
-  have_effort_panda_right_finger_ = false;
-  have_effort_curi_torso_ = false;
+    : nh_(node_handle), pnh_(pnh), high_frequency_num_(0), low_frequency_num_(0) {
+  init();
 
-  jointNames_ = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"};
-  name_prefix_head_ = "head_actuated_";
-  name_prefix_panda_left_ = "panda_left_";
-  name_prefix_panda_left_finger_ = "panda_left_finger_";
-  name_prefix_panda_right_ = "panda_right_";
-  name_prefix_panda_right_finger_ = "panda_right_finger_";
-  name_prefix_torso_ = "torso_actuated_";
+  std::string target_js_topic = "/joint_state";
+  if (!pnh_.param<std::string>("target_js_topic", target_js_topic, "/joint_state")) {
+    if (!nh_.param<std::string>("target_js_topic", target_js_topic, "/joint_state")) {
+      ROS_WARN_STREAM(prefix << "Param target_js_topic is not set, using default: " << target_js_topic);
+    }
+  }
+  ROS_INFO_STREAM(prefix << "Publish to the target topic: " << target_js_topic);
+  publisher_ = nh_.advertise<sensor_msgs::JointState>(target_js_topic, 1);
 }
 
-void MsgAggregator::curiJointStatesCB(const sensor_msgs::JointState::ConstPtr& curi_head,
-                                      const sensor_msgs::JointState::ConstPtr& panda_left,
-                                      const sensor_msgs::JointState::ConstPtr& panda_left_finger,
-                                      const sensor_msgs::JointState::ConstPtr& panda_right,
-                                      const sensor_msgs::JointState::ConstPtr& panda_right_finger,
-                                      const sensor_msgs::JointState::ConstPtr& curi_torso) {
-  sensor_msgs::JointState curi_current_joint_states;
+void MsgAggregator::init() {
+  XmlRpc::XmlRpcValue high_frequency_topics;
+  XmlRpc::XmlRpcValue high_frequency_names;
+  getParam("high_frequency_topics", high_frequency_topics);
+  getParam("high_frequency_names", high_frequency_names);
+  if (high_frequency_topics.size() != high_frequency_names.size()) {
+    throw std::runtime_error("High frequency topics size does not match names size");
+  }
+  high_frequency_num_ = high_frequency_topics.size();
+  if (high_frequency_num_ < 2 || high_frequency_num_ > 3) {
+    throw std::runtime_error("Only 2 or 3 high frequency topics are supported for now");
+  }
 
-  curi_current_joint_states.position.resize(curi_head->position.size() + panda_left->position.size() +
-                                            panda_left_finger->position.size() + panda_right->position.size() +
-                                            panda_right_finger->position.size() + curi_torso->position.size());
-  curi_current_joint_states.velocity.resize(curi_head->position.size() + panda_left->position.size() +
-                                            panda_left_finger->position.size() + panda_right->position.size() +
-                                            panda_right_finger->position.size() + curi_torso->position.size());
-  curi_current_joint_states.name.resize(curi_head->position.size() + panda_left->position.size() +
-                                        panda_left_finger->position.size() + panda_right->position.size() +
-                                        panda_right_finger->position.size() + curi_torso->position.size());
-  curi_current_joint_states.effort.resize(curi_head->position.size() + panda_left->position.size() +
-                                          panda_left_finger->position.size() + panda_right->position.size() +
-                                          panda_right_finger->position.size() + curi_torso->position.size());
+  XmlRpc::XmlRpcValue low_frequency_topics;
+  XmlRpc::XmlRpcValue low_frequency_names;
+  getParam("low_frequency_topics", low_frequency_topics);
+  getParam("low_frequency_names", low_frequency_names);
+  if (low_frequency_topics.size() != low_frequency_names.size()) {
+    throw std::runtime_error("Low frequency topics size does not match names size");
+  }
+  low_frequency_num_ = low_frequency_topics.size();
+  if (low_frequency_num_ < 2 || low_frequency_num_ > 3) {
+    throw std::runtime_error("Only 2 or 3 low frequency topics are supported for now");
+  }
 
-  curi_current_joint_states.header.frame_id = "frame_name";
-  // Head
-  for (int i = 0; i < curi_head->position.size(); ++i) {
-    curi_current_joint_states.position[i] = curi_head->position[i];
-    if (have_velocity_head_) {
-      curi_current_joint_states.velocity[i] = curi_head->velocity[i];
-    } else {
-      curi_current_joint_states.velocity[i] = 0;
+  // Handle low frequency topics
+  for (int idx = 0; idx < low_frequency_num_; ++idx) {
+    XmlRpc::XmlRpcValue entity = low_frequency_topics[idx];
+
+    XmlRpc::XmlRpcValue name_group = low_frequency_names[idx];
+    std::vector<std::string> names;
+    for (int jdx = 0; jdx < name_group.size(); ++jdx) {  // NOLINT
+      names.emplace_back(name_group[jdx]);
     }
-    if (have_effort_head_) {
-      curi_current_joint_states.effort[i] = curi_head->effort[i];
-    } else {
-      curi_current_joint_states.effort[i] = 0;
-    }
-    curi_current_joint_states.name[i] = name_prefix_head_ + jointNames_[i];
+    ROS_INFO_STREAM(prefix << "Low frequency topic " << entity << " has " << name_group.size() << " names:\n"
+                           << name_group);
+    low_frequency_topics_.emplace_back(entity);
+    low_frequency_name_groups_.push_back(names);
+
+    auto subscriber = std::make_shared<MsgSubscriber>(nh_, std::string(entity), 1);
+    low_frequency_subscribers_.push_back(subscriber);
   }
-  // Panda left
-  for (int i = 0; i < panda_left->position.size(); ++i) {
-    curi_current_joint_states.position[curi_head->position.size() + i] = panda_left->position[i];
-    if (have_velocity_panda_left_) {
-      curi_current_joint_states.velocity[curi_head->position.size() + i] = panda_left->velocity[i];
-    } else {
-      curi_current_joint_states.velocity[curi_head->position.size() + i] = 0;
-    }
-    if (have_effort_panda_left_) {
-      curi_current_joint_states.effort[curi_head->position.size() + i] = panda_left->effort[i];
-    } else {
-      curi_current_joint_states.effort[curi_head->position.size() + i] = 0;
-    }
-    curi_current_joint_states.name[curi_head->position.size() + i] = name_prefix_panda_left_ + jointNames_[i];
+
+  size_t name_dim = 0;
+  for (auto& name_group : low_frequency_name_groups_) {
+    name_dim += name_group.size();
   }
-  // Panda Right
-  for (int i = 0; i < panda_right->position.size(); ++i) {
-    curi_current_joint_states.position[curi_head->position.size() + panda_left->position.size() + i] =
-        panda_right->position[i];
-    if (have_velocity_panda_right_) {
-      curi_current_joint_states.velocity[curi_head->position.size() + panda_left->position.size() + i] =
-          panda_right->velocity[i];
-    } else {
-      curi_current_joint_states.velocity[curi_head->position.size() + panda_left->position.size() + i] = 0;
-    }
-    if (have_effort_panda_right_) {
-      curi_current_joint_states.effort[curi_head->position.size() + panda_left->position.size() + i] =
-          panda_right->effort[i];
-    } else {
-      curi_current_joint_states.effort[curi_head->position.size() + panda_left->position.size() + i] = 0;
-    }
-    curi_current_joint_states.name[curi_head->position.size() + panda_left->position.size() + i] =
-        name_prefix_panda_right_ + jointNames_[i];
+  low_frequency_joint_state_.name.resize(name_dim);
+  low_frequency_joint_state_.position.resize(name_dim);
+  low_frequency_joint_state_.velocity.resize(name_dim);
+  low_frequency_joint_state_.effort.resize(name_dim);
+
+  if (low_frequency_num_ == 2) {
+    low_frequency_synchronizer_ = std::make_shared<PolicySynchronizer>(Policy(10), *low_frequency_subscribers_[0],
+                                                                       *low_frequency_subscribers_[1]);
+
+    low_frequency_synchronizer_->registerCallback(boost::bind(&MsgAggregator::lowFrequencyCB, this, _1, _2));  // NOLINT
+  } else {
+    low_frequency_synchronizer_ = std::make_shared<PolicySynchronizer>(
+        Policy(10), *low_frequency_subscribers_[0], *low_frequency_subscribers_[1], *low_frequency_subscribers_[2]);
+
+    low_frequency_synchronizer_->registerCallback(
+        boost::bind(&MsgAggregator::lowFrequencyCB, this, _1, _2, _3));  // NOLINT
   }
-  // Panda Left Finger
-  for (int i = 0; i < panda_left_finger->position.size(); ++i) {
-    curi_current_joint_states
-        .position[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() + i] =
-        panda_left_finger->position[i];
-    if (have_velocity_panda_left_finger_) {
-      curi_current_joint_states
-          .velocity[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() + i] =
-          panda_left_finger->velocity[i];
-    } else {
-      curi_current_joint_states
-          .velocity[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() + i] = 0;
+
+  // Handle high frequency topics
+  for (int idx = 0; idx < high_frequency_num_; ++idx) {
+    XmlRpc::XmlRpcValue entity = high_frequency_topics[idx];
+
+    XmlRpc::XmlRpcValue name_group = high_frequency_names[idx];
+    std::vector<std::string> names;
+    for (int jdx = 0; jdx < name_group.size(); ++jdx) {  // NOLINT
+      names.emplace_back(name_group[jdx]);
     }
-    if (have_effort_panda_left_finger_) {
-      curi_current_joint_states
-          .effort[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() + i] =
-          panda_left_finger->effort[i];
-    } else {
-      curi_current_joint_states
-          .effort[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() + i] = 0;
-    }
-    curi_current_joint_states
-        .name[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() + i] =
-        name_prefix_panda_left_finger_ + jointNames_[i];
+    ROS_INFO_STREAM(prefix << "High frequency topic " << entity << " has " << name_group.size() << " names:\n"
+                           << name_group);
+    high_frequency_topics_.emplace_back(entity);
+    high_frequency_name_groups_.push_back(names);
+
+    auto subscriber = std::make_shared<MsgSubscriber>(nh_, std::string(entity), 1);
+    high_frequency_subscribers_.push_back(subscriber);
   }
-  // Panda Right Finger
-  for (int i = 0; i < panda_right_finger->position.size(); ++i) {
-    curi_current_joint_states.position[curi_head->position.size() + panda_left->position.size() +
-                                       panda_right->position.size() + panda_left_finger->position.size() + i] =
-        panda_right_finger->position[i];
-    if (have_velocity_panda_right_finger_) {
-      curi_current_joint_states.velocity[curi_head->position.size() + panda_left->position.size() +
-                                         panda_right->position.size() + panda_left_finger->position.size() + i] =
-          panda_right_finger->velocity[i];
-    } else {
-      curi_current_joint_states.velocity[curi_head->position.size() + panda_left->position.size() +
-                                         panda_right->position.size() + panda_left_finger->position.size() + i] = 0;
-    }
-    if (have_effort_panda_right_finger_) {
-      curi_current_joint_states.effort[curi_head->position.size() + panda_left->position.size() +
-                                       panda_right->position.size() + panda_left_finger->position.size() + i] =
-          panda_right_finger->effort[i];
-    } else {
-      curi_current_joint_states.effort[curi_head->position.size() + panda_left->position.size() +
-                                       panda_right->position.size() + panda_left_finger->position.size() + i] = 0;
-    }
-    curi_current_joint_states.name[curi_head->position.size() + panda_left->position.size() +
-                                   panda_right->position.size() + panda_left_finger->position.size() + i] =
-        name_prefix_panda_right_finger_ + jointNames_[i];
+  if (high_frequency_num_ == 2) {
+    high_frequency_synchronizer_ = std::make_shared<PolicySynchronizer>(Policy(10), *high_frequency_subscribers_[0],
+                                                                        *high_frequency_subscribers_[1]);
+
+    high_frequency_synchronizer_->registerCallback(
+        boost::bind(&MsgAggregator::highFrequencyCB, this, _1, _2));  // NOLINT
+  } else {
+    high_frequency_synchronizer_ = std::make_shared<PolicySynchronizer>(
+        Policy(10), *high_frequency_subscribers_[0], *high_frequency_subscribers_[1], *high_frequency_subscribers_[2]);
+
+    high_frequency_synchronizer_->registerCallback(
+        boost::bind(&MsgAggregator::highFrequencyCB, this, _1, _2, _3));  // NOLINT
   }
-  // Panda Torso
-  for (int i = 0; i < curi_torso->position.size(); ++i) {
-    curi_current_joint_states
-        .position[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() +
-                  panda_left_finger->position.size() + panda_right_finger->position.size() + i] =
-        curi_torso->position[i];
-    if (have_velocity_curi_torso_) {
-      curi_current_joint_states
-          .velocity[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() +
-                    panda_left_finger->position.size() + panda_right_finger->position.size() + i] =
-          curi_torso->velocity[i];
-    } else {
-      curi_current_joint_states
-          .velocity[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() +
-                    panda_left_finger->position.size() + panda_right_finger->position.size() + i] = 0;
-    }
-    if (have_effort_curi_torso_) {
-      curi_current_joint_states
-          .effort[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() +
-                  panda_left_finger->position.size() + panda_right_finger->position.size() + i] = curi_torso->effort[i];
-    } else {
-      curi_current_joint_states
-          .effort[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() +
-                  panda_left_finger->position.size() + panda_right_finger->position.size() + i] = 0;
-    }
-    curi_current_joint_states
-        .name[curi_head->position.size() + panda_left->position.size() + panda_right->position.size() +
-              panda_left_finger->position.size() + panda_right_finger->position.size() + i] =
-        name_prefix_torso_ + jointNames_[i];
-  }
-  // Publish
-  curi_joint_states_pub_.publish(curi_current_joint_states);
 }
+
+void MsgAggregator::highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
+                                    const sensor_msgs::JointState::ConstPtr& msg_2) {
+  sensor_msgs::JointState joint_state;
+  size_t name_dim = 0;
+  std::vector<std::string> names;
+  for (const auto& name_group : high_frequency_name_groups_) {
+    name_dim += name_group.size();
+    for (const auto& name : name_group) {
+      names.push_back(name);
+    }
+  }
+  size_t position_dim = msg_1->position.size() + msg_2->position.size();
+
+  if (name_dim != position_dim) {
+    ROS_ERROR_STREAM_ONCE(prefix << "High frequency names' size " << name_dim << " does not match "
+                                 << " position size " << position_dim);
+    return;
+  }
+
+  joint_state.name.resize(name_dim);
+  joint_state.position.resize(name_dim);
+  joint_state.velocity.resize(name_dim);
+  joint_state.effort.resize(name_dim);
+
+  std::copy(names.begin(), names.end(), joint_state.name.begin());
+
+  std::copy(msg_1->position.begin(), msg_1->position.end(), joint_state.position.begin());
+  if (msg_1->velocity.size() == msg_1->position.size()) {
+    std::copy(msg_1->velocity.begin(), msg_1->velocity.end(), joint_state.velocity.begin());
+  }
+  if (msg_1->effort.size() == msg_1->position.size()) {
+    std::copy(msg_1->effort.begin(), msg_1->effort.end(), joint_state.effort.begin());
+  }
+
+  long previous_size = msg_1->position.size();  // NOLINT
+  std::copy(msg_2->position.begin(), msg_2->position.end(), joint_state.position.begin() + previous_size);
+  if (msg_2->velocity.size() == msg_2->position.size()) {
+    std::copy(msg_2->velocity.begin(), msg_2->velocity.end(), joint_state.velocity.begin() + previous_size);
+  }
+  if (msg_2->effort.size() == msg_2->position.size()) {
+    std::copy(msg_2->effort.begin(), msg_2->effort.end(), joint_state.effort.begin() + previous_size);
+  }
+
+  publishCombined(joint_state);
+}
+
+void MsgAggregator::highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
+                                    const sensor_msgs::JointState::ConstPtr& msg_2,
+                                    const sensor_msgs::JointState::ConstPtr& msg_3) {
+  sensor_msgs::JointState joint_state;
+  size_t name_dim = 0;
+  std::vector<std::string> names;
+  for (const auto& name_group : high_frequency_name_groups_) {
+    name_dim += name_group.size();
+    for (const auto& name : name_group) {
+      names.push_back(name);
+    }
+  }
+  size_t position_dim = msg_1->position.size() + msg_2->position.size() + msg_3->position.size();
+
+  if (name_dim != position_dim) {
+    ROS_ERROR_STREAM_ONCE(prefix << "High frequency names' size " << name_dim << " does not match "
+                                 << " position size " << position_dim);
+    return;
+  }
+
+  joint_state.name.resize(name_dim);
+  joint_state.position.resize(name_dim);
+  joint_state.velocity.resize(name_dim);
+  joint_state.effort.resize(name_dim);
+
+  std::copy(names.begin(), names.end(), joint_state.name.begin());
+
+  std::copy(msg_1->position.begin(), msg_1->position.end(), joint_state.position.begin());
+  if (msg_1->velocity.size() == msg_1->position.size()) {
+    std::copy(msg_1->velocity.begin(), msg_1->velocity.end(), joint_state.velocity.begin());
+  }
+  if (msg_1->effort.size() == msg_1->position.size()) {
+    std::copy(msg_1->effort.begin(), msg_1->effort.end(), joint_state.effort.begin());
+  }
+
+  long previous_size = msg_1->position.size();  // NOLINT
+  std::copy(msg_2->position.begin(), msg_2->position.end(), joint_state.position.begin() + previous_size);
+  if (msg_2->velocity.size() == msg_2->position.size()) {
+    std::copy(msg_2->velocity.begin(), msg_2->velocity.end(), joint_state.velocity.begin() + previous_size);
+  }
+  if (msg_2->effort.size() == msg_2->position.size()) {
+    std::copy(msg_2->effort.begin(), msg_2->effort.end(), joint_state.effort.begin() + previous_size);
+  }
+
+  previous_size = msg_1->position.size() + msg_2->position.size();  // NOLINT
+  std::copy(msg_3->position.begin(), msg_3->position.end(), joint_state.position.begin() + previous_size);
+  if (msg_3->velocity.size() == msg_3->position.size()) {
+    std::copy(msg_3->velocity.begin(), msg_3->velocity.end(), joint_state.velocity.begin() + previous_size);
+  }
+  if (msg_3->effort.size() == msg_3->position.size()) {
+    std::copy(msg_3->effort.begin(), msg_3->effort.end(), joint_state.effort.begin() + previous_size);
+  }
+
+  publishCombined(joint_state);
+}
+
+void MsgAggregator::lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
+                                   const sensor_msgs::JointState::ConstPtr& msg_2) {
+  size_t position_dim = msg_1->position.size() + msg_2->position.size();
+  if (low_frequency_joint_state_.name.size() != position_dim) {
+    ROS_ERROR_STREAM_ONCE(prefix << "Low frequency names' size " << low_frequency_joint_state_.name.size()
+                                 << " does not match position size " << position_dim);
+    return;
+  }
+
+  std::vector<std::string> names;
+  for (const auto& name_group : low_frequency_name_groups_) {
+    for (const auto& name : name_group) {
+      names.push_back(name);
+    }
+  }
+
+  std::copy(names.begin(), names.end(), low_frequency_joint_state_.name.begin());
+
+  std::copy(msg_1->position.begin(), msg_1->position.end(), low_frequency_joint_state_.position.begin());
+  if (msg_1->velocity.size() == msg_1->position.size()) {
+    std::copy(msg_1->velocity.begin(), msg_1->velocity.end(), low_frequency_joint_state_.velocity.begin());
+  }
+  if (msg_1->effort.size() == msg_1->position.size()) {
+    std::copy(msg_1->effort.begin(), msg_1->effort.end(), low_frequency_joint_state_.effort.begin());
+  }
+
+  long previous_size = msg_1->position.size();  // NOLINT
+  std::copy(msg_2->position.begin(), msg_2->position.end(),
+            low_frequency_joint_state_.position.begin() + previous_size);
+  if (msg_2->velocity.size() == msg_2->position.size()) {
+    std::copy(msg_2->velocity.begin(), msg_2->velocity.end(),
+              low_frequency_joint_state_.velocity.begin() + previous_size);
+  }
+  if (msg_2->effort.size() == msg_2->position.size()) {
+    std::copy(msg_2->effort.begin(), msg_2->effort.end(), low_frequency_joint_state_.effort.begin() + previous_size);
+  }
+}
+
+void MsgAggregator::lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
+                                   const sensor_msgs::JointState::ConstPtr& msg_2,
+                                   const sensor_msgs::JointState::ConstPtr& msg_3) {
+  size_t position_dim = msg_1->position.size() + msg_2->position.size() + msg_3->position.size();
+  if (low_frequency_joint_state_.name.size() != position_dim) {
+    ROS_ERROR_STREAM_ONCE(prefix << "Low frequency names' size " << low_frequency_joint_state_.name.size()
+                                 << " does not match position size " << position_dim);
+    return;
+  }
+
+  std::vector<std::string> names;
+  for (const auto& name_group : low_frequency_name_groups_) {
+    for (const auto& name : name_group) {
+      names.push_back(name);
+    }
+  }
+
+  std::copy(names.begin(), names.end(), low_frequency_joint_state_.name.begin());
+
+  std::copy(msg_1->position.begin(), msg_1->position.end(), low_frequency_joint_state_.position.begin());
+  if (msg_1->velocity.size() == msg_1->position.size()) {
+    std::copy(msg_1->velocity.begin(), msg_1->velocity.end(), low_frequency_joint_state_.velocity.begin());
+  }
+  if (msg_1->effort.size() == msg_1->position.size()) {
+    std::copy(msg_1->effort.begin(), msg_1->effort.end(), low_frequency_joint_state_.effort.begin());
+  }
+
+  long previous_size = msg_1->position.size();  // NOLINT
+  std::copy(msg_2->position.begin(), msg_2->position.end(),
+            low_frequency_joint_state_.position.begin() + previous_size);
+  if (msg_2->velocity.size() == msg_2->position.size()) {
+    std::copy(msg_2->velocity.begin(), msg_2->velocity.end(),
+              low_frequency_joint_state_.velocity.begin() + previous_size);
+  }
+  if (msg_2->effort.size() == msg_2->position.size()) {
+    std::copy(msg_2->effort.begin(), msg_2->effort.end(), low_frequency_joint_state_.effort.begin() + previous_size);
+  }
+
+  previous_size = msg_1->position.size() + msg_2->position.size();  // NOLINT
+  std::copy(msg_3->position.begin(), msg_3->position.end(),
+            low_frequency_joint_state_.position.begin() + previous_size);
+  if (msg_3->velocity.size() == msg_3->position.size()) {
+    std::copy(msg_3->velocity.begin(), msg_3->velocity.end(),
+              low_frequency_joint_state_.velocity.begin() + previous_size);
+  }
+  if (msg_3->effort.size() == msg_3->position.size()) {
+    std::copy(msg_3->effort.begin(), msg_3->effort.end(), low_frequency_joint_state_.effort.begin() + previous_size);
+  }
+}
+
+void MsgAggregator::publishCombined(const sensor_msgs::JointState& high_frequency_msg) {
+  sensor_msgs::JointState combined_msg;
+  auto low_dim = low_frequency_joint_state_.name.size();
+  auto high_dim = high_frequency_msg.name.size();
+
+  combined_msg.name.resize(low_dim + high_dim);
+  combined_msg.position.resize(low_dim + high_dim);
+  combined_msg.velocity.resize(low_dim + high_dim);
+  combined_msg.effort.resize(low_dim + high_dim);
+
+  std::copy(high_frequency_msg.name.begin(), high_frequency_msg.name.end(), combined_msg.name.begin());
+  std::copy(high_frequency_msg.position.begin(), high_frequency_msg.position.end(), combined_msg.position.begin());
+  std::copy(high_frequency_msg.velocity.begin(), high_frequency_msg.velocity.end(), combined_msg.velocity.begin());
+  std::copy(high_frequency_msg.effort.begin(), high_frequency_msg.effort.end(), combined_msg.effort.begin());
+
+  long previous_size = static_cast<long>(high_dim);
+  std::copy(low_frequency_joint_state_.name.begin(), low_frequency_joint_state_.name.end(),
+            combined_msg.name.begin() + previous_size);
+  std::copy(low_frequency_joint_state_.position.begin(), low_frequency_joint_state_.position.end(),
+            combined_msg.position.begin() + previous_size);
+  std::copy(low_frequency_joint_state_.velocity.begin(), low_frequency_joint_state_.velocity.end(),
+            combined_msg.velocity.begin() + previous_size);
+  std::copy(low_frequency_joint_state_.effort.begin(), low_frequency_joint_state_.effort.end(),
+            combined_msg.effort.begin() + previous_size);
+
+  publisher_.publish(combined_msg);
+}
+
 }  // namespace roport
