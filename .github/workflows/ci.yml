@@ -72,6 +72,7 @@ jobs:
         run: |
           source /ros/devel/setup.bash
           pip install pytest
+          pip install -r /ros/src/rotools/requirements.txt
           pytest /ros/src/rotools/src/rotools/tests/test_*
 
     - name: Check C++ Format
