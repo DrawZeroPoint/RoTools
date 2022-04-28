@@ -28,15 +28,15 @@ jobs:
       with:
         path: src/rotools
 
-    - name: Run Python Tests
-      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.6'
-      run: |
-        pip install pytest
-        pip install -r src/rotools/requirements.txt
-        pytest src/rotools/src/rotools/tests/test_*
+#    - name: Run Python Tests
+#      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
+#      uses: actions/setup-python@v3
+#      with:
+#        python-version: '3.6'
+#      run: |
+#        pip install pytest
+#        pip install -r src/rotools/requirements.txt
+#        pytest src/rotools/src/rotools/tests/test_*
 
     - name: Parse ROS Distro
       run:  echo "FLAVOR=$(echo ${{ github.event.pull_request.base.ref }} | sed 's/-devel//')" >> $GITHUB_ENV
@@ -94,16 +94,16 @@ jobs:
           source /ros/devel/setup.bash
           cmake --build /ros/build --target check-pyformat
 
-    - name: Check Linting
-      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-      uses: addnab/docker-run-action@v3
-      with:
-        image:    rotools:${{matrix.ros_distro}}
-        options:  -v ${{github.workspace}}:/ros/
-        shell:    bash
-        run: |
-          source /ros/devel/setup.bash
-          cmake --build /ros/build --target check-tidy
+#    - name: Check Linting
+#      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
+#      uses: addnab/docker-run-action@v3
+#      with:
+#        image:    rotools:${{matrix.ros_distro}}
+#        options:  -v ${{github.workspace}}:/ros/
+#        shell:    bash
+#        run: |
+#          source /ros/devel/setup.bash
+#          cmake --build /ros/build --target check-tidy
 
 #    - name: Upload Tests to Artifacts
 #      uses: actions/upload-artifact@v2
