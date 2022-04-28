@@ -64,16 +64,18 @@ jobs:
 
     - name: Run Python Tests
       if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-      uses: addnab/docker-run-action@v3
-      with:
-        image:    rotools:${{matrix.ros_distro}}
-        options:  -v ${{github.workspace}}:/ros/
-        shell:    bash
-        run: |
-          source /ros/devel/setup.bash
-          pip install pytest
-          pip install -r /ros/src/rotools/requirements.txt
-          pytest /ros/src/rotools/src/rotools/tests/test_*
+      - uses: addnab/docker-run-action@v3
+        with:
+          image:    rotools:${{matrix.ros_distro}}
+          options:  -v ${{github.workspace}}:/ros/
+          shell:    bash
+          uses: actions/setup-python@v3
+          with:
+            python-version: '3.6'
+            run: |
+              pip install pytest
+              pip install -r /ros/src/rotools/requirements.txt
+              pytest /ros/src/rotools/src/rotools/tests/test_*
 
     - name: Check C++ Format
       if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
