@@ -299,8 +299,8 @@ def axis_angle6(exp_coord6):
         Chapter 3. Rigid-Body Motions. Pg. 103.
 
     Notes:
-        The six-dimensional exponential coordinates of a homogeneous transformation T as Sθ ∈ R^6,
-        where S is the screw axis and θ is the distance that must be traveled along the screw axis
+        The six-dimensional exponential coordinates of a homogeneous transformation T as S*theta in R^6,
+        where S is the screw axis and theta is the distance that must be traveled along the screw axis
         to take a frame from the origin I to T.
     """
     theta = np.linalg.norm([exp_coord6[0], exp_coord6[1], exp_coord6[2]])
