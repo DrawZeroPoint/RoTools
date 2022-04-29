@@ -24,7 +24,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: |
           pip install pytest
-          pip install -r src/rotools/requirements.txt
+          cd ${{github.workspace}} && ls
+          pip install -r ${{github.workspace}}/rotools/requirements.txt
           pytest rotools/src/rotools/tests/test_*.py
 
   CI:
