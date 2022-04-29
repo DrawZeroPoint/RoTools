@@ -18,15 +18,13 @@ jobs:
     name: Python ${{ matrix.python-version }} Tests
     steps:
       - uses: actions/checkout@v3
-      - name: Prepare
-        run: |
-          ${{github.workspace}}/misc/setup_tools.sh 1
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
       # ${{github.workspace}} is the root folder of the cloned repo
       - run: |
+          ${{github.workspace}}/misc/setup_tools.sh 1
           pip install pytest
           pip install -r ${{github.workspace}}/requirements.txt
           pytest ${{github.workspace}}/src/rotools/tests/test_*.py
