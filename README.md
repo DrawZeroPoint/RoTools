@@ -56,7 +56,10 @@ sensing, transformation calculation, simulation, and so forth.
 
 ## System
 
-This software is continuously tested on Ubuntu 18.04 and 20.04.
+Recommended: Ubuntu 20.04 with ROS Noetic, Python 3.8.
+
+This software is continuously built using `catkin_make` and `catkin tools` on Ubuntu 18.04 and 20.04. However, the
+support of 18.04 is no longer maintained and will be dropped in the future.
 
 ## Supported Robots
 
@@ -252,7 +255,7 @@ pip install numpy --upgrade
 ## Groot
 
 Groot is a Graphical Editor, written in C++ and Qt, to create BehaviorTrees. The [tree](tree) files should be better
-edited using this software. 
+edited using this software.
 
 <details>
 <summary>Click to expand</summary>
