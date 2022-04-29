@@ -36,8 +36,8 @@ install_ros() {
   fi
 
   sudo apt install -y ros-$ROS_DISTRO-desktop ros-$ROS_DISTRO-rosmon ros-$ROS_DISTRO-behaviortree-cpp-v3 \
-  ros-$ROS_DISTRO-ros-control ros-$ROS_DISTRO-ros-controllers ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs \
-  ros-$ROS_DISTRO-trac-ik-lib ros-$ROS_DISTRO-eigen-conversions ros-$ROS_DISTRO-rosbridge-suite
+    ros-$ROS_DISTRO-ros-control ros-$ROS_DISTRO-ros-controllers ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs \
+    ros-$ROS_DISTRO-trac-ik-lib ros-$ROS_DISTRO-eigen-conversions ros-$ROS_DISTRO-rosbridge-suite
 
   echo_success "Successfully installed ROS $ROS_DISTRO packages"
 
@@ -125,9 +125,9 @@ install_pinocchio() {
   make -j4
   sudo make install
 
-  echo "" >> ~/.bashrc
-  echo "# pinocchio" >> ~/.bashrc
-  echo "export PATH=/usr/local/bin:\$PATH" >> ~/.bashrc
+  echo "" >>~/.bashrc
+  echo "# pinocchio" >>~/.bashrc
+  echo "export PATH=/usr/local/bin:\$PATH" >>~/.bashrc
   echo "export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:\$PKG_CONFIG_PATH" >>~/.bashrc
   echo "export LD_LIBRARY_PATH=/usr/local/lib:\$LD_LIBRARY_PATH" >>~/.bashrc
   echo "export PYTHONPATH=/usr/local/lib/python$PYCODE/site-packages:\$PYTHONPATH" >>~/.bashrc
@@ -162,11 +162,17 @@ install_jetbrains_toolbox() {
 sudo apt update
 sudo apt install -y wget apt-transport-https libmatio-dev screen
 
-install_ros
-install_cartesio
-install_hpp
-install_pinocchio
-install_sublime_text
-install_jetbrains_toolbox
+INSTALL_ONLY=${1-0}
+
+if [ $INSTALL_ONLY -eq 1 ]; then
+  install_ros
+else
+  install_ros
+  install_cartesio
+  install_hpp
+  install_pinocchio
+  install_sublime_text
+  install_jetbrains_toolbox
+fi
 
 exit 0

@@ -11,13 +11,16 @@ on:
 
 jobs:
   Python:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         python-version: [ '3.8' ]
     name: Python ${{ matrix.python-version }} Tests
     steps:
       - uses: actions/checkout@v3
+      - name: Prepare
+        run |
+          ${{github.workspace}}/misc/setup_tools.sh 1
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
@@ -25,7 +28,6 @@ jobs:
       # ${{github.workspace}} is the root folder of the cloned repo
       - run: |
           pip install pytest
-          cd ${{github.workspace}} && ls
           pip install -r ${{github.workspace}}/requirements.txt
           pytest ${{github.workspace}}/src/rotools/tests/test_*.py
 
