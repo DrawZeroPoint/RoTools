@@ -72,7 +72,7 @@ jobs:
             catkin_make -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
       - name: Run Python Tests
-        if:   ${{env.FLAVOR == 'noetic'}}
+        if:   ${{env.FLAVOR}} == 'noetic'
         uses: addnab/docker-run-action@v3
         with:
           image:    rotools:${{matrix.ros_distro}}
