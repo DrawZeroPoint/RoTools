@@ -2,108 +2,115 @@ name: CI
 
 on:
   push:
-   branches:
-    - master
+    branches:
+      - master
 
   pull_request:
     branches:
-    - master
+      - master
 
 jobs:
+  Python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ '3.6', '3.7', '3.8' ]
+    name: Python ${{ matrix.python-version }} Tests
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: |
+          pip install pytest
+          pip install -r src/rotools/requirements.txt
+          pytest rotools/src/rotools/tests/test_*.py
+
   CI:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         ros_distro: [ melodic, noetic ]
     steps:
-    - name: Prepare
-      # Keep the compilation outputs persistent outside the docker container to use for the other steps
-      run: |
-        mkdir -p ${{github.workspace}}/src       # where the repo will be cloned into
-        mkdir -p ${{github.workspace}}/build     # compilation cache for formatter & linter
-        mkdir -p ${{github.workspace}}/devel     # compilation cache for formatter & linter
-
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        path: src/rotools
-
-#    - name: Run Python Tests
-#      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-#      uses: actions/setup-python@v3
-#      with:
-#        python-version: '3.6'
-#      run: |
-#        pip install pytest
-#        pip install -r src/rotools/requirements.txt
-#        pytest src/rotools/src/rotools/tests/test_*
-
-    - name: Parse ROS Distro
-      run:  echo "FLAVOR=$(echo ${{ github.event.pull_request.base.ref }} | sed 's/-devel//')" >> $GITHUB_ENV
-
-    - name: Build Docker Image
-      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-      uses: docker/build-push-action@v2
-      with:
-        tags: rotools:${{matrix.ros_distro}}
-        file: .ci/Dockerfile.${{matrix.ros_distro}}
-        push: false
-
-    - name: Compile with Catkin Tools
-      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-      uses: addnab/docker-run-action@v3
-      with:
-        image:    rotools:${{matrix.ros_distro}}
-        options:  -v ${{github.workspace}}/src:/ros/src/  # only mount source here
+      - name: Prepare
+        # Keep the compilation outputs persistent outside the docker container to use for the other steps
         run: |
-          catkin config --workspace /ros/ --init --extend /opt/ros/${{matrix.ros_distro}} --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-          catkin build --workspace /ros/ --interleave-output --verbose
+          mkdir -p ${{github.workspace}}/src       # where the repo will be cloned into
+          mkdir -p ${{github.workspace}}/build     # compilation cache for formatter & linter
+          mkdir -p ${{github.workspace}}/devel     # compilation cache for formatter & linter
 
-    - name: Compile with Catkin Make
-      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-      uses: addnab/docker-run-action@v3
-      with:
-        image:    rotools:${{matrix.ros_distro}}
-        options:  -v ${{github.workspace}}:/ros
-        shell:    bash
-        run: |
-          source /opt/ros/${{matrix.ros_distro}}/setup.bash
-          catkin_init_workspace /ros/src
-          cd /ros
-          catkin_make -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          path: src/rotools
 
-    - name: Check C++ Format
-      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-      uses: addnab/docker-run-action@v3
-      with:
-        image:    rotools:${{matrix.ros_distro}}
-        options:  -v ${{github.workspace}}:/ros/
-        shell:    bash
-        run: |
-          source /ros/devel/setup.bash
-          cmake --build /ros/build --target check-format
+      - name: Parse ROS Distro
+        run: echo "FLAVOR=$(echo ${{ github.event.pull_request.base.ref }} | sed 's/-devel//')" >> $GITHUB_ENV
 
-    - name: Check Python Format
-      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-      uses: addnab/docker-run-action@v3
-      with:
-        image:    rotools:${{matrix.ros_distro}}
-        options:  -v ${{github.workspace}}:/ros/
-        shell:    bash
-        run: |
-          source /ros/devel/setup.bash
-          cmake --build /ros/build --target check-pyformat
+      - name: Build Docker Image
+        if: github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
+        uses: docker/build-push-action@v2
+        with:
+          tags: rotools:${{matrix.ros_distro}}
+          file: .ci/Dockerfile.${{matrix.ros_distro}}
+          push: false
 
-    - name: Check Linting
-      if:   github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
-      uses: addnab/docker-run-action@v3
-      with:
-        image:    rotools:${{matrix.ros_distro}}
-        options:  -v ${{github.workspace}}:/ros/
-        shell:    bash
-        run: |
-          source /ros/devel/setup.bash
-          cmake --build /ros/build --target check-tidy
+      - name: Compile with Catkin Tools
+        if: github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
+        uses: addnab/docker-run-action@v3
+        with:
+          image: rotools:${{matrix.ros_distro}}
+          options: -v ${{github.workspace}}/src:/ros/src/  # only mount source here
+          run: |
+            catkin config --workspace /ros/ --init --extend /opt/ros/${{matrix.ros_distro}} --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+            catkin build --workspace /ros/ --interleave-output --verbose
+
+      - name: Compile with Catkin Make
+        if: github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
+        uses: addnab/docker-run-action@v3
+        with:
+          image: rotools:${{matrix.ros_distro}}
+          options: -v ${{github.workspace}}:/ros
+          shell: bash
+          run: |
+            source /opt/ros/${{matrix.ros_distro}}/setup.bash
+            catkin_init_workspace /ros/src
+            cd /ros
+            catkin_make -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Check C++ Format
+        if: github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
+        uses: addnab/docker-run-action@v3
+        with:
+          image: rotools:${{matrix.ros_distro}}
+          options: -v ${{github.workspace}}:/ros/
+          shell: bash
+          run: |
+            source /ros/devel/setup.bash
+            cmake --build /ros/build --target check-format
+
+      - name: Check Python Format
+        if: github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
+        uses: addnab/docker-run-action@v3
+        with:
+          image: rotools:${{matrix.ros_distro}}
+          options: -v ${{github.workspace}}:/ros/
+          shell: bash
+          run: |
+            source /ros/devel/setup.bash
+            cmake --build /ros/build --target check-pyformat
+
+      - name: Check Linting
+        if: github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
+        uses: addnab/docker-run-action@v3
+        with:
+          image: rotools:${{matrix.ros_distro}}
+          options: -v ${{github.workspace}}:/ros/
+          shell: bash
+          run: |
+            source /ros/devel/setup.bash
+            cmake --build /ros/build --target check-tidy
 
 #    - name: Upload Tests to Artifacts
 #      uses: actions/upload-artifact@v2
