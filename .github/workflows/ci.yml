@@ -81,7 +81,7 @@ jobs:
           shell:    bash
           run: |
             source /ros/devel/setup.bash
-            if [ $ROS_DISTRO -eq noetic]; then \
+            if [ $ROS_DISTRO -eq noetic ]; then \
             pip install pytest; \
             pip install -r /ros/src/rotools/requirements.txt; \
             pytest /ros/src/rotools/src/rotools/tests/test_*.py; \
