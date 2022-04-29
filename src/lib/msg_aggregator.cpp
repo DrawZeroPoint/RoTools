@@ -8,7 +8,7 @@ namespace roport {
 
 MsgAggregator::MsgAggregator(const ros::NodeHandle& node_handle, const ros::NodeHandle& pnh)
     : nh_(node_handle), pnh_(pnh), high_frequency_num_(0), low_frequency_num_(0) {
-  init();
+  init();  // NOLINT
 
   std::string target_js_topic = "/joint_state";
   if (!pnh_.param<std::string>("target_js_topic", target_js_topic, "/joint_state")) {
@@ -25,11 +25,11 @@ void MsgAggregator::init() {
   XmlRpc::XmlRpcValue high_frequency_names;
   getParam("high_frequency_topics", high_frequency_topics);
   getParam("high_frequency_names", high_frequency_names);
-  if (high_frequency_topics.size() != high_frequency_names.size()) {
+  if (high_frequency_topics.size() != high_frequency_names.size()) {  // NOLINT
     throw std::runtime_error("High frequency topics size does not match names size");
   }
   high_frequency_num_ = high_frequency_topics.size();
-  if (high_frequency_num_ < 2 || high_frequency_num_ > 3) {
+  if (high_frequency_num_ < 2 || high_frequency_num_ > 3) {  // NOLINT
     throw std::runtime_error("Only 2 or 3 high frequency topics are supported for now");
   }
 
@@ -37,16 +37,16 @@ void MsgAggregator::init() {
   XmlRpc::XmlRpcValue low_frequency_names;
   getParam("low_frequency_topics", low_frequency_topics);
   getParam("low_frequency_names", low_frequency_names);
-  if (low_frequency_topics.size() != low_frequency_names.size()) {
+  if (low_frequency_topics.size() != low_frequency_names.size()) {  // NOLINT
     throw std::runtime_error("Low frequency topics size does not match names size");
   }
   low_frequency_num_ = low_frequency_topics.size();
-  if (low_frequency_num_ < 2 || low_frequency_num_ > 3) {
+  if (low_frequency_num_ < 2 || low_frequency_num_ > 3) {  // NOLINT
     throw std::runtime_error("Only 2 or 3 low frequency topics are supported for now");
   }
 
   // Handle low frequency topics
-  for (int idx = 0; idx < low_frequency_num_; ++idx) {
+  for (int idx = 0; idx < low_frequency_num_; ++idx) {  // NOLINT
     XmlRpc::XmlRpcValue entity = low_frequency_topics[idx];
 
     XmlRpc::XmlRpcValue name_group = low_frequency_names[idx];
