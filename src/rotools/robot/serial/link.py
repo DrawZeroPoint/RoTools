@@ -1,6 +1,6 @@
 """Link module."""
 from abc import abstractmethod
-from collections import Sized
+from collections.abc import Sized
 
 import attr
 import numpy as np  # type: ignore
