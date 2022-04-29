@@ -81,11 +81,10 @@ jobs:
           shell:    bash
           run: |
             source /ros/devel/setup.bash
-            echo "ROS distro: " $ROS_DISTRO
             if [ $ROS_DISTRO -eq noetic]; then \
             pip install pytest; \
             pip install -r /ros/src/rotools/requirements.txt; \
-            pytest /ros/src/rotools/src/rotools/tests/test_*.py \
+            pytest /ros/src/rotools/src/rotools/tests/test_*.py; \
             fi
 
       - name: Check C++ Format
