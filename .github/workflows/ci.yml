@@ -38,7 +38,8 @@ jobs:
           path: src/rotools
 
       - name: Parse ROS Distro
-        run: echo "FLAVOR=$(echo ${{ github.event.pull_request.base.ref }} | sed 's/-devel//')" >> $GITHUB_ENV
+        run: |
+          echo "FLAVOR=$(echo ${{ github.event.pull_request.base.ref }} | sed 's/-devel//')" >> $GITHUB_ENV
 
       - name: Build Docker Image
         if: github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
@@ -72,7 +73,7 @@ jobs:
             catkin_make -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
       - name: Run Python Tests
-        if:   ${{env.FLAVOR == matrix.ros_distro[1]}}
+        if: github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
         uses: addnab/docker-run-action@v3
         with:
           image:    rotools:${{matrix.ros_distro}}
@@ -80,9 +81,12 @@ jobs:
           shell:    bash
           run: |
             source /ros/devel/setup.bash
-            pip install pytest
-            pip install -r /ros/src/rotools/requirements.txt
-            pytest /ros/src/rotools/src/rotools/tests/test_*.py
+            echo "ROS distro: " $ROS_DISTRO
+            if [ $ROS_DISTRO -eq noetic]; then \
+            pip install pytest; \
+            pip install -r /ros/src/rotools/requirements.txt; \
+            pytest /ros/src/rotools/src/rotools/tests/test_*.py \
+            fi
 
       - name: Check C++ Format
         if: github.ref == 'refs/heads/develop' || ${{env.FLAVOR == matrix.ros_distro}}
