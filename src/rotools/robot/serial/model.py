@@ -94,7 +94,7 @@ class RobotModel(Sized):
             transforms.append(self.tool.matrix)
 
             # matrix multiply through transforms
-            pose = np.eye(4, dtype=np.float)
+            pose = np.eye(4, dtype=float)
             for t in transforms:
                 pose = np.dot(pose, t)
         return pose
@@ -106,7 +106,7 @@ class RobotModel(Sized):
         transforms.extend(self.mdh.transforms(q[:i + 1]))  # Add n=dof transforms to the list
 
         # matrix multiply through transforms
-        pose = np.eye(4, dtype=np.float)
+        pose = np.eye(4, dtype=float)
         for t in transforms:
             pose = np.dot(pose, t)
         return pose

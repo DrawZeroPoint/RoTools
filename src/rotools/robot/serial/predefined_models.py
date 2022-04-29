@@ -110,7 +110,7 @@ def panda_mdh_model():
             [np.pi / 2, 0, 0, 0],  # theta in [-0.0175 3.7525] 5 -> 6
             [np.pi / 2, 0.088, 0, 0.107],  # theta in [-2.8973 2.8973], 0.107 is distance between link 6 and 8
         ],
-        dtype=np.float
+        dtype=float
     )
 
     q_limits = np.array([

@@ -635,7 +635,7 @@ def jacobian_space(S_list, q_list):
                   [0.2, 0.43654132, -2.43712573,  2.77535713]
                   [0.2, 2.96026613,  3.23573065,  2.22512443]])
     """
-    Js = np.array(S_list).copy().astype(np.float)
+    Js = np.array(S_list).copy().astype(float)
     T = np.eye(4)
     for i in range(1, len(q_list)):
         T = np.dot(T, matrix_exp6(vector_to_se3(np.array(S_list)[:, i - 1] * q_list[i - 1])))

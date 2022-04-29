@@ -24,7 +24,7 @@ install_ros() {
 
   sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
   curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
-  sudo apt update
+  sudo apt-get update
 
   if [ $(lsb_release -sc) == focal ]; then
     ROS_DISTRO=noetic
@@ -35,7 +35,7 @@ install_ros() {
     return
   fi
 
-  sudo apt install -y ros-$ROS_DISTRO-desktop ros-$ROS_DISTRO-rosmon ros-$ROS_DISTRO-behaviortree-cpp-v3 \
+  sudo apt-get install -y ros-$ROS_DISTRO-desktop ros-$ROS_DISTRO-rosmon ros-$ROS_DISTRO-behaviortree-cpp-v3 \
     ros-$ROS_DISTRO-ros-control ros-$ROS_DISTRO-ros-controllers ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs \
     ros-$ROS_DISTRO-trac-ik-lib ros-$ROS_DISTRO-eigen-conversions ros-$ROS_DISTRO-rosbridge-suite
 
@@ -88,7 +88,7 @@ install_hpp() {
 
   sudo sh -c 'echo "deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -sc) robotpkg" > /etc/apt/sources.list.d/robotpkg.list'
   curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key | sudo apt-key add -
-  sudo apt update
+  sudo apt-get update
   sudo apt-get install -y robotpkg-py${PYVER}-hpp-manipulation-corba robotpkg-py${PYVER}-qt5-hpp-gepetto-viewer \
     robotpkg-py${PYVER}-hpp-tutorial robotpkg-py${PYVER}-qt5-hpp-gui robotpkg-py${PYVER}-qt5-hpp-plot \
     robotpkg-py${PYVER}-hpp-environments robotpkg-py${PYVER}-eigenpy
@@ -159,8 +159,8 @@ install_jetbrains_toolbox() {
   echo_success "Successfully installed JetBrains Toolbox"
 }
 
-sudo apt update
-sudo apt install -y wget apt-transport-https libmatio-dev screen
+sudo apt-get update
+sudo apt-get install -y wget apt-transport-https libmatio-dev screen
 
 INSTALL_ONLY=${1-0}
 

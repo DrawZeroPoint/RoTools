@@ -1,6 +1,6 @@
 # RoTools
 
-<img alt="logo" height="120" src="./misc/ms-icon-310x310.png" width="120"/>
+<img alt="logo" height="120" src="misc/image/ms-icon-310x310.png" width="120"/>
 
 [![CI](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml)
 
@@ -392,7 +392,7 @@ are in `PoseStamped`.
 `right_tcp` is the right palm pose. `left_sole` is the left sole pose; `right_sole` is the right sole pose. When
 standing in T-pose, the TCP poses and sole poses are illustrated as:
 
-<img src="./misc/frames.png" alt="frames" width="100%"/>
+<img src="misc/image/frames.png" alt="frames" width="100%"/>
 
 These poses all reference to the reference_frame, which could be 'Pelvis' or 'T8'. You can set the reference frame in
 the launch file. If the frame name is not within these two, a given one will be used. If empty string is given, the

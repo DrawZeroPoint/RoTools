@@ -31,21 +31,16 @@ scaling, shearing, projecting, orthogonalizing, and superimposing arrays of
 Euler angles, and quaternions. Also includes an Arcball control object and
 functions to decompose transformation matrices.
 :Authors:
-  `Christoph Gohlke <http://www.lfd.uci.edu/~gohlke/>`__,
+  Christoph Gohlke,
   Laboratory for Fluorescence Dynamics, University of California, Irvine
 :Version: 20090418
-Requirements
-------------
-* `Python 2.6 <http://www.python.org>`__
-* `Numpy 1.3 <http://numpy.scipy.org>`__
-* `transformations.c 20090418 <http://www.lfd.uci.edu/~gohlke/>`__
-  (optional implementation of some functions in C)
+
 Notes
 -----
 Matrices (M) can be inverted using numpy.linalg.inv(M), concatenated using
 numpy.dot(M0, M1), or used to transform homogeneous coordinates (v) using
-numpy.dot(M, v) for shape (4, \*) "point of arrays", respectively
-numpy.dot(v, M.T) for shape (\*, 4) "array of points".
+numpy.dot(M, v) for shape (4, *) "point of arrays", respectively
+numpy.dot(v, M.T) for shape (*, 4) "array of points".
 Calculations are carried out with numpy.float64 precision.
 This Python implementation is not optimized for speed.
 Vector, point, quaternion, and matrix math arguments are expected to be
@@ -86,9 +81,9 @@ References
 (9)  Closed-form solution of absolute orientation using unit quaternions.
      BKP Horn. J Opt Soc Am A. 1987. 4(4), 629-642.
 (10) Quaternions. Ken Shoemake.
-     http://www.sfu.ca/~jwa3/cmpt461/files/quatut.pdf
+     www.sfu.ca/~jwa3/cmpt461/files/quatut.pdf
 (11) From quaternion to matrix and back. JMP van Waveren. 2005.
-     http://www.intel.com/cd/ids/developer/asmo-na/eng/293748.htm
+     www.intel.com/cd/ids/developer/asmo-na/eng/293748.htm
 (12) Uniform random rotations. Ken Shoemake.
      In "Graphics Gems III", pp 124-132. Morgan Kaufmann, 1992.
 Examples
