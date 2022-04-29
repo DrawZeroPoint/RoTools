@@ -22,11 +22,12 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
+      # ${{github.workspace}} is the root folder of the cloned repo
       - run: |
           pip install pytest
           cd ${{github.workspace}} && ls
-          pip install -r ${{github.workspace}}/rotools/requirements.txt
-          pytest rotools/src/rotools/tests/test_*.py
+          pip install -r ${{github.workspace}}/requirements.txt
+          pytest ${{github.workspace}}/src/rotools/tests/test_*.py
 
   CI:
     runs-on: ubuntu-latest
