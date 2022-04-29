@@ -27,6 +27,8 @@ jobs:
           ${{github.workspace}}/misc/setup_tools.sh 1
           pip install pytest
           pip install -r ${{github.workspace}}/requirements.txt
+          source /opt/ros/noetic/setup.bash
+          echo $PYTHONPATH
           pytest ${{github.workspace}}/src/rotools/tests/test_*.py
 
   CI:
