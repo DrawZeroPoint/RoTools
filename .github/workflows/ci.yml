@@ -10,9 +10,9 @@ on:
       - master
 
 jobs:
-  Python:
+  Shell:
     runs-on: ubuntu-20.04
-    name: Shell Tools Tests
+    name: Setup Tools Tests
     steps:
       - uses: actions/checkout@v3
       # ${{github.workspace}} is the root folder of the cloned repo
