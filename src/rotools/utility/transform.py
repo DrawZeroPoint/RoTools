@@ -779,7 +779,7 @@ def orthogonalization_matrix(lengths, angles):
 
 def superimposition_matrix(v0, v1, scaling=False, usesvd=True):
     """Return matrix to transform given vector set into second vector set.
-    v0 and v1 are shape (3, \*) or (4, \*) arrays of at least 3 vectors.
+    v0 and v1 are shape (3, *) or (4, *) arrays of at least 3 vectors.
     If usesvd is True, the weighted sum of squared deviations (RMSD) is
     minimized according to the algorithm by W. Kabsch [8]. Otherwise the
     quaternion based algorithm by B. Horn [9] is used (slower when using

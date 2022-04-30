@@ -15,7 +15,7 @@ from rotools.utility import common, transform, robotics
 
 def config_factory(robot):
     if robot.mdh is not None or robot.poe is not None:
-        return np.zeros(robot.dof, dtype=np.float)
+        return np.zeros(robot.dof, dtype=float)
     else:
         raise ValueError('No MDH or POE param defined')
 
