@@ -450,8 +450,11 @@ class HPPManipulationInterface(object):
             base_curr_pos = self._q_current[:2]
             base_goal_ori = self._q_goal[2:4]
             base_curr_ori = self._q_current[2:4]
+            joint_curr_cfg = self._get_joint_configs(self._q_current)
+            joint_goal_cfg = self._get_joint_configs(self._q_goal)
             return common.all_close(base_goal_pos, base_curr_pos, self._base_p_tol) & \
-                   common.all_close(base_goal_ori, base_curr_ori, self._base_o_tol)
+                   common.all_close(base_goal_ori, base_curr_ori, self._base_o_tol) & \
+                   common.all_close(joint_curr_cfg, joint_goal_cfg, 0.1)
         elif self._mode == self._work_modes.grasp:
             rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
             obj_curr_pos = self._q_current[rank: rank + 3]
@@ -462,3 +465,13 @@ class HPPManipulationInterface(object):
                    common.all_close(obj_goal_ori, obj_curr_ori, self._object_o_tol)
         else:
             raise NotImplementedError
+
+    def _get_joint_configs(self, all_configs):
+        joint_configs = []
+        for joint_name in self._joint_names:
+            try:
+                rank = self._robot.rankInConfiguration['{}/{}'.format(self._rm.name, joint_name)]
+                joint_configs.append(all_configs[rank])
+            except KeyError:
+                continue
+        return joint_configs
