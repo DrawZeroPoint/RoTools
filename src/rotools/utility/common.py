@@ -169,7 +169,7 @@ def sd_pose(pose, check=False):
         else:
             raise NotImplementedError
     elif isinstance(pose, list):
-        return sd_pose(np.array(pose))
+        return sd_pose(np.array(pose, dtype=float))
     elif isinstance(pose, geo_msg.Pose):
         p = pose.position
         o = pose.orientation
