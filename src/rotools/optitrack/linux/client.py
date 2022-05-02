@@ -23,7 +23,7 @@ class OptiTrackClient(object):
 
     def __init__(self, kwargs):
         self._client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._client.settimeout(4.)
+        self._client.settimeout(20.)  # in seconds
         self._client.connect((kwargs['ip'], kwargs['port']))
         rospy.loginfo("Connected to socket: {}:{}".format(kwargs['ip'], kwargs['port']))
 
