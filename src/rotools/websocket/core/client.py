@@ -17,34 +17,46 @@ from nav_msgs.msg import Odometry
 from rotools.utility import message_converter
 
 
-class WebsocketROSClient(object):
+class WebsocketClient(object):
     def __init__(self, kwargs):
         """
         Class to manage publishing to ROS through a ros-bridge websocket.
         """
-        print("Connecting to websocket: {}:{}".format(kwargs['ip'], kwargs['port']))
-        self.ws = websocket.create_connection('ws://' + kwargs['ip'] + ':' + str(kwargs['port']))
         self._advertise_dict = {}
+        rospy.loginfo("Connecting to websocket: {}:{}".format(kwargs['ip'], kwargs['port']))
+        self.ws = websocket.create_connection('ws://' + kwargs['ip'] + ':' + str(kwargs['port']))
 
         # Down streams: the client subscribe to local topics and publish it to the server
-        if kwargs['from_client_topics'] is not None:
-            self.local_subscribers = []
-            self.downstream_list = kwargs['from_client_topics']
-            for i, entity in enumerate(self.downstream_list):
-                local_topic_id, remote_topic_id, msg_type = entity
-                subscriber = self.create_subscriber(local_topic_id, msg_type, remote_topic_id)
-                self.local_subscribers.append(subscriber)
+        from_client_key = 'from_client_topics'
+        if from_client_key in kwargs:
+            if kwargs[from_client_key] is not None:
+                self.local_subscribers = []
+                self.downstream_list = kwargs[from_client_key]
+                for i, entity in enumerate(self.downstream_list):
+                    local_topic_id, remote_topic_id, msg_type = entity
+                    subscriber = self.create_subscriber(local_topic_id, msg_type, remote_topic_id)
+                    self.local_subscribers.append(subscriber)
+            else:
+                rospy.loginfo('{} is empty'.format(from_client_key))
+        else:
+            rospy.logwarn('{} is not presented in the config dict {}'.format(from_client_key, kwargs))
 
         # Up stream: the client receive topics from the server and publish them locally
-        if kwargs['to_client_topics'] is not None:
-            self.local_timers = []
-            self.local_publishers = []
-            self.upstream_list = kwargs['to_client_topics']
-            for i, entity in enumerate(self.upstream_list):
-                local_topic_id, remote_topic_id, msg_type = entity
-                timer, publisher = self.create_timer(local_topic_id, msg_type)
-                self.local_timers.append(timer)
-                self.local_publishers.append(publisher)
+        to_client_key = 'to_client_topics'
+        if to_client_key in kwargs:
+            if kwargs[to_client_key] is not None:
+                self.local_timers = []
+                self.local_publishers = []
+                self.upstream_list = kwargs[to_client_key]
+                for i, entity in enumerate(self.upstream_list):
+                    local_topic_id, remote_topic_id, msg_type = entity
+                    timer, publisher = self.create_timer(local_topic_id, msg_type)
+                    self.local_timers.append(timer)
+                    self.local_publishers.append(publisher)
+            else:
+                rospy.loginfo('{} is empty'.format(to_client_key))
+        else:
+            rospy.logwarn('{} is not presented in the config dict {}'.format(to_client_key, kwargs))
 
     def create_subscriber(self, local_topic_id, msg_type, remote_topic_id):
         if 'PoseStamped' in msg_type:

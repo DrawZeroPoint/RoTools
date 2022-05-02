@@ -15,7 +15,7 @@ d['packages'] = ['rotools',
                  'rotools.simulation', 'rotools.simulation.mujoco',
                  'rotools.snapshot', 'rotools.snapshot.core',
                  'rotools.utility',
-                 'rotools.web', 'rotools.web.core',
+                 'rotools.websocket', 'rotools.websocket.core',
                  'rotools.xsens', 'rotools.xsens.core',
                  ]
 d['package_dir'] = {'': 'src'}

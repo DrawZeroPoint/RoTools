@@ -2,7 +2,7 @@
 
 import rospy
 
-from rotools.web.core.client import WebsocketROSClient
+from rotools.websocket.core.client import WebsocketClient
 
 from rotools.utility.common import get_param, pretty_print_configs, is_ip_valid, is_port_valid
 
@@ -22,7 +22,7 @@ if __name__ == '__main__':
             exit(-1)
 
         pretty_print_configs(configs)
-        client = WebsocketROSClient(configs)
+        client = WebsocketClient(configs)
         rospy.loginfo("RoPort Websocket Client ready.")
         rospy.spin()
     except rospy.ROSInterruptException as e:
