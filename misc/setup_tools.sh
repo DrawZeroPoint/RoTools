@@ -91,7 +91,7 @@ install_hpp() {
   sudo apt-get update
   sudo apt-get install -y robotpkg-py${PYVER}-hpp-manipulation-corba robotpkg-py${PYVER}-qt5-hpp-gepetto-viewer \
     robotpkg-py${PYVER}-hpp-tutorial robotpkg-py${PYVER}-qt5-hpp-gui robotpkg-py${PYVER}-qt5-hpp-plot \
-    robotpkg-py${PYVER}-hpp-environments robotpkg-py${PYVER}-eigenpy
+    robotpkg-py${PYVER}-hpp-environments robotpkg-py${PYVER}-eigenpy robotpkg-hpp-fcl
 
   echo "" >>~/.bashrc
   echo "# HPP" >>~/.bashrc
@@ -203,6 +203,7 @@ else
     exit
     ;;
   --pin)
+    install_hpp
     install_pinocchio
     exit
     ;;
