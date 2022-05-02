@@ -159,20 +159,66 @@ install_jetbrains_toolbox() {
   echo_success "Successfully installed JetBrains Toolbox"
 }
 
+help() {
+   # Display Help
+   echo "===== RoTools Setup Tools Usage Guide ====="
+   echo "Syntax: setup_tools.sh [option]"
+   echo "options:"
+   echo "no option    Install all packages, recommended for new machine."
+   echo "-h | --help  Print this Help."
+   echo "--ros        Install ROS only."
+   echo "--cio        Install CartesIO only."
+   echo "--hpp        Install HPP only."
+   echo "--pin        Install pinocchio only."
+   echo "--sub        Install Sublime Text only."
+   echo "--jet        Install JetBrains Toolbox only."
+}
+
 sudo apt-get update
 sudo apt-get install -y wget apt-transport-https libmatio-dev screen
 
-INSTALL_ONLY=${1-0}
-
-if [ $INSTALL_ONLY -eq 1 ]; then
-  install_ros
-else
+if [ $# -eq 0 ]; then
   install_ros
   install_cartesio
   install_hpp
   install_pinocchio
   install_sublime_text
   install_jetbrains_toolbox
+else
+  case "$1" in
+  -h | --help)
+    help
+    exit
+    ;;
+  --ros)
+    install_ros
+    exit
+    ;;
+  --cio)
+    install_cartesio
+    exit
+    ;;
+  --hpp)
+    install_hpp
+    exit
+    ;;
+  --pin)
+    install_pinocchio
+    exit
+    ;;
+  --sub)
+    install_sublime_text
+    exit
+    ;;
+  --jet)
+    install_jetbrains_toolbox
+    exit
+    ;;
+  *) # Invalid option
+    help
+    exit
+    ;;
+  esac
 fi
 
 exit 0

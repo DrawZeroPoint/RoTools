@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v3
       # ${{github.workspace}} is the root folder of the cloned repo
       - run: |
-          ${{github.workspace}}/misc/setup_tools.sh 1
+          ${{github.workspace}}/misc/setup_tools.sh
 
   CI:
     runs-on: ubuntu-latest
