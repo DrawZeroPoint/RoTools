@@ -41,6 +41,12 @@ class OptiTrackClient(object):
 
         if kwargs['transform'] is not None:
             self._transform = sd_pose(kwargs['transform'], check=True)
+        else:
+            self._transform = sd_pose([0, 0, 0, 0, 0, 0, 1], check=True)
+
+    def __del__(self):
+        if isinstance(self._client, socket.socket):
+            self._client.close()
 
     def register_topic(self, topics, msg_type):
         if isinstance(topics, str):
