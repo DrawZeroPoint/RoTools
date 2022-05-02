@@ -165,7 +165,7 @@ class WebsocketClient(object):
             topic_type = ros_message._type
             self._advertise(topic_name, topic_type)
         # Converting ROS message to a dictionary through YAML
-        ros_message_as_dict = yaml.load(ros_message.__str__())
+        ros_message_as_dict = yaml.load(ros_message.__str__(), yaml.FullLoader)
         self._publish(topic_name, ros_message_as_dict)
 
     def subscribe_once(self, topic_name, msg_type):
