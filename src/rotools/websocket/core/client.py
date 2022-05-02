@@ -24,7 +24,7 @@ class WebsocketClient(object):
         """
         self._advertise_dict = {}
         rospy.loginfo("Connecting to websocket: {}:{}".format(kwargs['ip'], kwargs['port']))
-        self.ws = websocket.create_connection('ws://' + kwargs['ip'] + ':' + str(kwargs['port']))
+        self.ws = websocket.create_connection('ws://' + kwargs['ip'] + ':' + str(kwargs['port']), timeout=4)
 
         # Down streams: the client subscribe to local topics and publish it to the server
         from_client_key = 'from_client_topics'
