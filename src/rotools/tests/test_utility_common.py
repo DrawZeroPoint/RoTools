@@ -8,6 +8,8 @@ import math
 import numpy as np
 
 import geometry_msgs.msg as geo_msg
+import rospy
+import sensor_msgs.msg as sen_msg
 
 import rotools.utility.common as common
 
@@ -85,6 +87,22 @@ class Test(unittest.TestCase):
         ros_pose_2 = common.to_ros_pose(pose_2)
         print(trans, '\n', pose_2, '\n', ros_pose_2)
         self.assertTrue(common.all_close(common.to_ros_pose(trans), ros_pose_2, 0.01))
+
+    # def test_create_publishers(self):
+    #     rospy.init_node('test_create_publishers', anonymous=True)
+    #     id_list = ['a', 'b', 'c', 'd', 'e', 'f']
+    #     topic_types = [sen_msg.JointState] * 6
+    #     publishers = common.create_publishers("", id_list, topic_types)
+    #     while True:
+    #         for i, publisher in enumerate(publishers.values()):
+    #             msg = sen_msg.JointState()
+    #             msg.header.stamp = rospy.Time.now()
+    #             msg.name.append(id_list[i])
+    #             msg.position.append(i)
+    #             msg.velocity.append(i)
+    #             msg.effort.append(i)
+    #             publisher.publish(msg)
+    #         rospy.sleep(rospy.Duration.from_sec(0.001))
 
 
 if __name__ == '__main__':
