@@ -12,12 +12,12 @@ if __name__ == '__main__':
         rospy.init_node('roport_optitrack_client', anonymous=True)
 
         configs = {
-            'ip': get_param('~ip'),
-            'port': get_param('~port'),
-            'odom_topic': get_param('~odom_topic'),
-            'pose_topic': get_param('~pose_topic'),
-            'rate': get_param('~rate', 100.),
-            'transform': get_param('~transform', [0., 0., 0., 0., 0., 0., 1.]),
+            'ip': get_param('ip'),
+            'port': get_param('port'),
+            'odom_topic': get_param('odom_topic'),
+            'pose_topic': get_param('pose_topic'),
+            'rate': get_param('rate', 100.),
+            'transform': get_param('base_to_markers_transform'),
         }
 
         if not is_ip_valid(configs['ip']) or not is_port_valid(configs['port']):
