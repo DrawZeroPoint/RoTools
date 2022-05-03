@@ -1,0 +1,27 @@
+# robot -> aggregator
+high_frequency_topics: [
+  "/a",
+  "/b",
+#  "/c",
+]
+
+high_frequency_names: [
+  [ "a", ],
+  [ "b", ],
+#  [ "c", ],
+]
+
+low_frequency_topics: [
+  "/d",
+  "/e",
+#  "/f",
+]
+
+low_frequency_names: [
+  [ "d", ],
+  [ "e", ],
+#  [ "f", ],
+]
+
+# aggregator -> outer
+target_js_topic: "/joint_state"

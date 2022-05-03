@@ -1,0 +1,9 @@
+<launch>
+
+  <arg name="debug" default="false" doc="If true, the node will be disabled. Default false."/>
+
+  <rosparam command="load" file="$(find roport)/config/roport_msg_aggregator.yaml"
+            ns="roport_msg_aggregator"/>
+  <node unless="$(arg debug)" pkg="roport" type="roport_msg_aggregator" name="roport_msg_aggregator" output="screen"/>
+
+</launch>
