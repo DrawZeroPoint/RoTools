@@ -26,103 +26,6 @@ def receive_new_frame(data_dict):
 # This is a callback function that gets connected to the NatNet client. It is called once per rigid body per frame
 def receive_rigid_body_frame(new_id, position, rotation):
     pass
-    # print( "Received frame for rigid body", new_id )
-    # print( "Received frame for rigid body", new_id," ",position," ",rotation )
-
-
-def add_lists(totals, totals_tmp):
-    totals[0] += totals_tmp[0]
-    totals[1] += totals_tmp[1]
-    totals[2] += totals_tmp[2]
-    return totals
-
-
-def print_configuration(natnet_client):
-    print("Connection Configuration:")
-    print("  Client:          %s" % natnet_client.local_ip_address)
-    print("  Server:          %s" % natnet_client.server_ip_address)
-    print("  Command Port:    %d" % natnet_client.command_port)
-    print("  Data Port:       %d" % natnet_client.data_port)
-
-    if natnet_client.use_multicast:
-        print("  Using Multicast")
-        print("  Multicast Group: %s" % natnet_client.multicast_address)
-    else:
-        print("  Using Unicast")
-
-    # NatNet Server Info
-    application_name = natnet_client.get_application_name()
-    nat_net_requested_version = natnet_client.get_nat_net_requested_version()
-    nat_net_version_server = natnet_client.get_nat_net_version_server()
-    server_version = natnet_client.get_server_version()
-
-    print("  NatNet Server Info")
-    print("    Application Name %s" % application_name)
-    print("    NatNetVersion  %d %d %d %d" % (
-        nat_net_version_server[0], nat_net_version_server[1], nat_net_version_server[2], nat_net_version_server[3]))
-    print(
-        "    ServerVersion  %d %d %d %d" % (server_version[0], server_version[1], server_version[2], server_version[3]))
-    print("  NatNet Bitstream Requested")
-    print("    NatNetVersion  %d %d %d %d" % (nat_net_requested_version[0], nat_net_requested_version[1],
-                                              nat_net_requested_version[2], nat_net_requested_version[3]))
-    # print("command_socket = %s"%(str(natnet_client.command_socket)))
-    # print("data_socket    = %s"%(str(natnet_client.data_socket)))
-
-
-def print_commands(can_change_bitstream):
-    outstring = "Commands:\n"
-    outstring += "Return Data from Motive\n"
-    outstring += "  s  send data descriptions\n"
-    outstring += "  r  resume/start frame playback\n"
-    outstring += "  p  pause frame playback\n"
-    outstring += "     pause may require several seconds\n"
-    outstring += "     depending on the frame data size\n"
-    outstring += "Change Working Range\n"
-    outstring += "  o  reset Working Range to: start/current/end frame = 0/0/end of take\n"
-    outstring += "  w  set Working Range to: start/current/end frame = 1/100/1500\n"
-    outstring += "Return Data Display Modes\n"
-    outstring += "  j  print_level = 0 supress data description and mocap frame data\n"
-    outstring += "  k  print_level = 1 show data description and mocap frame data\n"
-    outstring += "  l  print_level = 20 show data description and every 20th mocap frame data\n"
-    outstring += "Change NatNet data stream version (Unicast only)\n"
-    outstring += "  3  Request 3.1 data stream (Unicast only)\n"
-    outstring += "  4  Request 4.0 data stream (Unicast only)\n"
-    outstring += "t  data structures self test (no motive/server interaction)\n"
-    outstring += "c  show configuration\n"
-    outstring += "h  print commands\n"
-    outstring += "q  quit\n"
-    outstring += "\n"
-    outstring += "NOTE: Motive frame playback will respond differently in\n"
-    outstring += "       Endpoint, Loop, and Bounce playback modes.\n"
-    outstring += "\n"
-    outstring += "EXAMPLE: PacketClient [serverIP [ clientIP [ Multicast/Unicast]]]\n"
-    outstring += "         PacketClient \"192.168.10.14\" \"192.168.10.14\" Multicast\n"
-    outstring += "         PacketClient \"127.0.0.1\" \"127.0.0.1\" u\n"
-    outstring += "\n"
-    print(outstring)
-
-
-def request_data_descriptions(s_client):
-    # Request the model definitions
-    s_client.send_request(s_client.command_socket, s_client.NAT_REQUEST_MODELDEF, "",
-                          (s_client.server_ip_address, s_client.command_port))
-
-
-def test_classes():
-    totals = [0, 0, 0]
-    print("Test Data Description Classes")
-    totals_tmp = DataDescriptions.test_all()
-    totals = add_lists(totals, totals_tmp)
-    print("")
-    print("Test MoCap Frame Classes")
-    totals_tmp = MoCapData.test_all()
-    totals = add_lists(totals, totals_tmp)
-    print("")
-    print("All Tests totals")
-    print("--------------------")
-    print("[PASS] Count = %3.1d" % totals[0])
-    print("[FAIL] Count = %3.1d" % totals[1])
-    print("[SKIP] Count = %3.1d" % totals[2])
 
 
 def my_parse_args(arg_list, args_dict):
@@ -142,37 +45,35 @@ def my_parse_args(arg_list, args_dict):
 
 
 # keep receiving msg from optitrack stream
-def optitrack_stream(dic, client2optitrack):
+def receive_from_optitrack(rbd_dict, connection):
     recv_buffer_size = 1024 * 1024
     offset = 4
-    major = client2optitrack.get_major()
-    minor = client2optitrack.get_minor()
+    major = connection.get_major()
+    minor = connection.get_minor()
 
     while True:
-        in_socket = client2optitrack.data_socket
+        in_socket = connection.data_socket
         data, addr = in_socket.recvfrom(recv_buffer_size)
         packet_size = int.from_bytes(data[2:4], byteorder='little')
-        offset_tmp, mocap_data = client2optitrack.unpack_mocap_data(data[offset:], packet_size, major, minor)
+        offset_tmp, mocap_data = connection.unpack_mocap_data(data[offset:], packet_size, major, minor)
         data_rbd = mocap_data.rigid_body_data
         data_rbd = data_rbd.get_as_string()
         data_rbd = data_rbd.encode('utf-8')
-        dic['data_rbd'] = data_rbd
+        rbd_dict['data_rbd'] = data_rbd
 
 
-def send2ubuntu(server, rbd_dict, connection):
+def send_to_ubuntu(server, rbd_dict, connection):
     while True:
         try:
             data_rbd = rbd_dict['data_rbd']
             connection.sendall(data_rbd)
             rec = connection.recv(64)
         except KeyError:
-            print('Rigid body dict has no {} key, maybe optitrack stream is not alive'.format(data_rbd))
+            print('Rigid body dict has no data_rbd key, maybe optitrack stream is not alive')
             time.sleep(1.)
-            continue
         except ConnectionError:
-            print('Waiting for reconnection')
+            print('The connection has lost, waiting for reconnection ...')
             connection, (host, port) = server.accept()
-
 
 
 if __name__ == "__main__":
@@ -210,8 +111,8 @@ if __name__ == "__main__":
 
     with Manager() as manager:
         dict_share = manager.dict()
-        optitrack_stream_process = Process(target=optitrack_stream, args=(dict_share, streaming_client,))
-        send2client_process = Process(target=send2ubuntu, args=(server, dict_share, connect,))
+        optitrack_stream_process = Process(target=receive_from_optitrack, args=(dict_share, streaming_client,))
+        send2client_process = Process(target=send_to_ubuntu, args=(server, dict_share, connect,))
         optitrack_stream_process.start()
         send2client_process.start()
         optitrack_stream_process.join()
