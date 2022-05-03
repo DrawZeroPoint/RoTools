@@ -19,10 +19,14 @@ class MsgAggregator {
 
  private:
   typedef message_filters::Subscriber<sensor_msgs::JointState> MsgSubscriber;
+
   typedef message_filters::sync_policies::
       ApproximateTime<sensor_msgs::JointState, sensor_msgs::JointState, sensor_msgs::JointState>
-          Policy;
-  typedef message_filters::Synchronizer<Policy> PolicySynchronizer;
+          TriPolicy;
+  typedef message_filters::Synchronizer<TriPolicy> TriPolicySynchronizer;
+
+  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::JointState, sensor_msgs::JointState> DuoPolicy;
+  typedef message_filters::Synchronizer<DuoPolicy> DuoPolicySynchronizer;
 
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
@@ -33,13 +37,17 @@ class MsgAggregator {
   std::vector<std::string> high_frequency_topics_;
   std::vector<std::vector<std::string>> high_frequency_name_groups_;
   std::vector<std::shared_ptr<MsgSubscriber>> high_frequency_subscribers_;
-  std::shared_ptr<PolicySynchronizer> high_frequency_synchronizer_;
+
+  std::shared_ptr<DuoPolicySynchronizer> duo_high_frequency_synchronizer_;
+  std::shared_ptr<TriPolicySynchronizer> tri_high_frequency_synchronizer_;
 
   size_t low_frequency_num_;
   std::vector<std::string> low_frequency_topics_;
   std::vector<std::vector<std::string>> low_frequency_name_groups_;
   std::vector<std::shared_ptr<MsgSubscriber>> low_frequency_subscribers_;
-  std::shared_ptr<PolicySynchronizer> low_frequency_synchronizer_;
+
+  std::shared_ptr<DuoPolicySynchronizer> duo_low_frequency_synchronizer_;
+  std::shared_ptr<TriPolicySynchronizer> tri_low_frequency_synchronizer_;
   sensor_msgs::JointState low_frequency_joint_state_;
 
   const std::string prefix{"Msg Aggregator: "};

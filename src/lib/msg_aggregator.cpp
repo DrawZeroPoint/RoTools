@@ -73,15 +73,16 @@ void MsgAggregator::init() {
   low_frequency_joint_state_.effort.resize(name_dim);
 
   if (low_frequency_num_ == 2) {
-    low_frequency_synchronizer_ = std::make_shared<PolicySynchronizer>(Policy(10), *low_frequency_subscribers_[0],
-                                                                       *low_frequency_subscribers_[1]);
+    duo_low_frequency_synchronizer_ = std::make_shared<DuoPolicySynchronizer>(
+        DuoPolicy(10), *low_frequency_subscribers_[0], *low_frequency_subscribers_[1]);
 
-    low_frequency_synchronizer_->registerCallback(boost::bind(&MsgAggregator::lowFrequencyCB, this, _1, _2));  // NOLINT
+    duo_low_frequency_synchronizer_->registerCallback(
+        boost::bind(&MsgAggregator::lowFrequencyCB, this, _1, _2));  // NOLINT
   } else {
-    low_frequency_synchronizer_ = std::make_shared<PolicySynchronizer>(
-        Policy(10), *low_frequency_subscribers_[0], *low_frequency_subscribers_[1], *low_frequency_subscribers_[2]);
+    tri_low_frequency_synchronizer_ = std::make_shared<TriPolicySynchronizer>(
+        TriPolicy(10), *low_frequency_subscribers_[0], *low_frequency_subscribers_[1], *low_frequency_subscribers_[2]);
 
-    low_frequency_synchronizer_->registerCallback(
+    tri_low_frequency_synchronizer_->registerCallback(
         boost::bind(&MsgAggregator::lowFrequencyCB, this, _1, _2, _3));  // NOLINT
   }
 
@@ -103,16 +104,17 @@ void MsgAggregator::init() {
     high_frequency_subscribers_.push_back(subscriber);
   }
   if (high_frequency_num_ == 2) {
-    high_frequency_synchronizer_ = std::make_shared<PolicySynchronizer>(Policy(10), *high_frequency_subscribers_[0],
-                                                                        *high_frequency_subscribers_[1]);
+    duo_high_frequency_synchronizer_ = std::make_shared<DuoPolicySynchronizer>(
+        DuoPolicy(10), *high_frequency_subscribers_[0], *high_frequency_subscribers_[1]);
 
-    high_frequency_synchronizer_->registerCallback(
+    duo_high_frequency_synchronizer_->registerCallback(
         boost::bind(&MsgAggregator::highFrequencyCB, this, _1, _2));  // NOLINT
   } else {
-    high_frequency_synchronizer_ = std::make_shared<PolicySynchronizer>(
-        Policy(10), *high_frequency_subscribers_[0], *high_frequency_subscribers_[1], *high_frequency_subscribers_[2]);
+    tri_high_frequency_synchronizer_ =
+        std::make_shared<TriPolicySynchronizer>(TriPolicy(10), *high_frequency_subscribers_[0],
+                                                *high_frequency_subscribers_[1], *high_frequency_subscribers_[2]);
 
-    high_frequency_synchronizer_->registerCallback(
+    tri_high_frequency_synchronizer_->registerCallback(
         boost::bind(&MsgAggregator::highFrequencyCB, this, _1, _2, _3));  // NOLINT
   }
 }
@@ -333,6 +335,7 @@ void MsgAggregator::publishCombined(const sensor_msgs::JointState& high_frequenc
             combined_msg.effort.begin() + previous_size);
 
   publisher_.publish(combined_msg);
+  ROS_INFO_STREAM_ONCE("Publishing " << publisher_.getTopic() << " ... (print only once)");
 }
 
 }  // namespace roport
