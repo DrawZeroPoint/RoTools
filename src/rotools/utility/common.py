@@ -535,11 +535,16 @@ def local_aligned_pose_to_global_pose(local_aligned_to_target, global_to_local):
 
 
 def get_param(name, value=None):
-    """Get ros param from param server
+    """Get private/public param from param server.
+    If the param's name does not have a leading ~, it will first be searched in private params,
+    and then in public params. If with a leading ~, it will only be searched in private params.
 
-    :param name: String Param name
-    :param value: Return value if param is not set
-    :return:
+    Args:
+        name: str Param name.
+        value: Any Return value if param is not set.
+
+    Returns:
+        Any Param value.
     """
     private = "~%s" % name
     if rospy.has_param(private):
