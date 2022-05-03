@@ -144,11 +144,11 @@ def my_parse_args(arg_list, args_dict):
 # keep receiving msg from optitrack stream
 def optitrack_stream(dic, client2optitrack):
     recv_buffer_size = 1024 * 1024
-    while True:
-        offset = 4
-        major = client2optitrack.get_major()
-        minor = client2optitrack.get_minor()
+    offset = 4
+    major = client2optitrack.get_major()
+    minor = client2optitrack.get_minor()
 
+    while True:
         in_socket = client2optitrack.data_socket
         data, addr = in_socket.recvfrom(recv_buffer_size)
         packet_size = int.from_bytes(data[2:4], byteorder='little')
@@ -159,15 +159,16 @@ def optitrack_stream(dic, client2optitrack):
         dic['data_rbd'] = data_rbd
 
 
-# send to ubuntu
-def send2client(dic, server2ubuntu):
+def send2ubuntu(rbd_dict, connection):
     while True:
         try:
-            data_rbd = dic['data_rbd']
-            server2ubuntu.send(data_rbd)
-            rec = server2ubuntu.recv(64)
-        except:
-            print('waiting for optitrack_stream')
+            data_rbd = rbd_dict['data_rbd']
+        except KeyError:
+            print('Rigid body dict has no {} key, maybe optitrack stream is not alive'.format(data_rbd))
+            time.sleep(1.)
+            continue
+        connection.sendall(data_rbd)
+        rec = connection.recv(64)
 
 
 if __name__ == "__main__":
