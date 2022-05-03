@@ -159,16 +159,20 @@ def optitrack_stream(dic, client2optitrack):
         dic['data_rbd'] = data_rbd
 
 
-def send2ubuntu(rbd_dict, connection):
+def send2ubuntu(server, rbd_dict, connection):
     while True:
         try:
             data_rbd = rbd_dict['data_rbd']
+            connection.sendall(data_rbd)
+            rec = connection.recv(64)
         except KeyError:
             print('Rigid body dict has no {} key, maybe optitrack stream is not alive'.format(data_rbd))
             time.sleep(1.)
             continue
-        connection.sendall(data_rbd)
-        rec = connection.recv(64)
+        except ConnectionError:
+            print('Waiting for reconnection')
+            connection, (host, port) = server.accept()
+
 
 
 if __name__ == "__main__":
@@ -207,7 +211,7 @@ if __name__ == "__main__":
     with Manager() as manager:
         dict_share = manager.dict()
         optitrack_stream_process = Process(target=optitrack_stream, args=(dict_share, streaming_client,))
-        send2client_process = Process(target=send2client, args=(dict_share, connect,))
+        send2client_process = Process(target=send2ubuntu, args=(server, dict_share, connect,))
         optitrack_stream_process.start()
         send2client_process.start()
         optitrack_stream_process.join()
