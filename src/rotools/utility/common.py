@@ -781,8 +781,10 @@ def create_publishers(namespace, topic_ids, topic_types, queue_size=1):
     Returns:
         Publishers in a dict indexed by topic_ids.
     """
-    assert isinstance(topic_ids, list) or isinstance(topic_ids, str)
-    assert len(topic_ids) == len(topic_types)
+    if isinstance(topic_ids, list):
+        assert len(topic_ids) == len(topic_types)
+    else:
+        assert isinstance(topic_ids, str)
 
     if isinstance(topic_ids, list):
         publishers = dict()
