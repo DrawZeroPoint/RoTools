@@ -11,7 +11,7 @@ from threading import Thread
 
 from rotools.simulation.mujoco.mujoco_viewer import MujocoViewer
 from rotools.utility.mjcf import find_elements, find_parent, array_to_string, string_to_array
-from rotools.utility.common import to_ros_pose, to_ros_twist, to_list
+from rotools.utility.common import to_ros_pose, to_ros_twist, to_list, all_close
 from rotools.utility.color_palette import bwr_color_palette
 
 try:
@@ -505,15 +505,38 @@ class MuJoCoInterface(Thread):
         wheel_br = self._data.actuator('WHEEL_BR')
         wheel_fl.ctrl, wheel_fr.ctrl, wheel_bl.ctrl, wheel_br.ctrl = vel
 
-    def set_gripper_command(self, device_names, value):
-        for device_name in device_names:
+    def set_gripper_command(self, joint_names, cmd_values):
+        """Set commands for the gripper containing joints denoted by joint_names.
+
+        Args:
+            joint_names: list[str] Names of the joints belonging to the gripper.
+            cmd_values: float/list[float] If a float is given, all joints will be commanded with this value;
+                        If a list is given, each of them will be set to a corresponding joint.
+
+        Returns:
+            bool True if all joints meets the commands, False otherwise.
+        """
+        if isinstance(cmd_values, float):
+            cmd_values = [cmd_values] * len(joint_names)
+        elif isinstance(cmd_values, list) or isinstance(cmd_values, tuple):
+            assert len(joint_names) == len(cmd_values)
+        else:
+            raise NotImplementedError('cmd_values type {} is not supported'.format(type(cmd_values)))
+
+        for joint_name, cmd_value in zip(joint_names, cmd_values):
             try:
-                idx = self._actuated_joint_names.index(device_name)
+                idx = self._actuated_joint_names.index(joint_name)
                 actuator = self._data.actuator(self.actuator_names[idx])
-                actuator.ctrl = value
+                actuator.ctrl = cmd_value
             except BaseException as e:
                 rospy.logwarn(e)
                 return False
+
+        while True:
+            qpos_list = [self._data.joint(joint_name).qpos.tolist()[0] for joint_name in joint_names]
+            if all_close(qpos_list, cmd_values, 2.e-3):
+                break
+            rospy.loginfo_throttle(2, "Gripper is reaching to {} (current {})".format(cmd_values, qpos_list))
         return True
 
     def reset_object(self, object_id=0):
