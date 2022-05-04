@@ -111,10 +111,7 @@ def offset_ros_pose(pose, offset):
     elif isinstance(pose, geo_msg.PoseStamped):
         output = geo_msg.PoseStamped()
         output.header = pose.header
-        output.pose.position.x = pose.pose.position.x + offset[0]
-        output.pose.position.y = pose.pose.position.y + offset[0]
-        output.pose.position.z = pose.pose.position.z + offset[0]
-        output.pose.orientation = pose.pose.orientation
+        output.pose = offset_ros_pose(pose.pose, offset)
     else:
         raise NotImplementedError('Type {} is not supported'.format(type(pose)))
     return output

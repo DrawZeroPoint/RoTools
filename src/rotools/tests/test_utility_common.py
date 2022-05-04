@@ -48,6 +48,9 @@ class Test(unittest.TestCase):
         offset = [1, -1, 2]
         new_pose = common.offset_ros_pose(pose, offset)
         self.assertEqual([1, -1, 2, 0, 0, 0, 0], common.to_list(new_pose))
+        pose_stamped = geo_msg.PoseStamped()
+        new_pose_stamped = common.offset_ros_pose(pose_stamped, offset)
+        self.assertEqual([1, -1, 2, 0, 0, 0, 0], common.to_list(new_pose_stamped))
 
     def test_sd_pose(self):
         """
