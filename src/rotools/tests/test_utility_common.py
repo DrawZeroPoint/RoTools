@@ -107,6 +107,10 @@ class Test(unittest.TestCase):
     #             publisher.publish(msg)
     #         rospy.sleep(rospy.Duration.from_sec(0.001))
 
+    def test_to_ros_orientation(self):
+        with self.assertRaises(ValueError):
+            common.to_ros_orientation([0, 0, 0, 0], check=True)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -355,12 +355,13 @@ def to_orientation_matrix(orientation):
         raise NotImplementedError
 
 
-def to_ros_orientation(ori, check=False):
+def to_ros_orientation(ori, check=False, w_first=False):
     """This function converts standard orientation denoted as 4x4 matrix to ROS geometry msg quaternion.
 
     Args:
         ori: ndarray, standard SE(3) matrix representing the orientation.
         check: bool If true, will check if the input matrix is SE(3).
+        w_first: bool If true, will consider the w lies in the first place.
 
     Returns:
         Orientation denoted as geometry_msgs/Quaternion.
@@ -389,13 +390,21 @@ def to_ros_orientation(ori, check=False):
         elif ori.size == 4:
             if check and not np.allclose(np.linalg.norm(ori), 1.):
                 raise ValueError('The input norm is not close to 1: {}'.format(ori, np.linalg.norm(ori)))
-            msg.x = ori[0]
-            msg.y = ori[1]
-            msg.z = ori[2]
-            msg.w = ori[3]
+            if w_first:
+                msg.w = ori[0]
+                msg.x = ori[1]
+                msg.y = ori[2]
+                msg.z = ori[3]
+            else:
+                msg.x = ori[0]
+                msg.y = ori[1]
+                msg.z = ori[2]
+                msg.w = ori[3]
             return msg
         else:
             raise NotImplementedError
+    elif isinstance(ori, list):
+        return to_ros_orientation(np.asarray(ori, dtype=float), check)
     else:
         raise NotImplementedError
 
