@@ -92,7 +92,7 @@ bool RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq
   for (unsigned long i = 0; i < kSteps; i++) {
     auto result = trajectory_generator_->update(*input_param_, *output_param_);
     if (result != ruckig::Working && result != ruckig::Finished) {
-      if (result == ruckig::ErrorInvalidInput) {
+      if (result == ruckig::ErrorInvalidInput || result == ruckig::ErrorSynchronizationCalculation) {
         // If the input state was changed, reinitialize it
         *is_initial_state_set_ = false;
         return false;
