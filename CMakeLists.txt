@@ -168,6 +168,7 @@ add_subdirectory(src/lib/ruckig)
 include_directories(
   include
   src/lib/ruckig/include
+  /opt/xbot/include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -179,6 +180,7 @@ add_library(${PROJECT_NAME}
   src/lib/rosout_logger.cpp
   src/lib/robot_interface.cpp
   src/lib/moveit_cpp_server.cpp
+  src/lib/cartesio_server.cpp
   src/lib/msg_converter.cpp
   src/lib/msg_aggregator.cpp
   src/lib/online_trajectory_optimizer.cpp
@@ -235,6 +237,13 @@ target_link_libraries(roport_robot_interface
 add_executable(roport_moveit_cpp_server src/roport_moveit_cpp_server.cpp)
 add_dependencies(roport_moveit_cpp_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_moveit_cpp_server
+  ${catkin_LIBRARIES}
+  ${PROJECT_NAME}
+  )
+
+add_executable(roport_cartesio_server src/roport_cartesio_server.cpp)
+add_dependencies(roport_cartesio_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(roport_cartesio_server
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
   )
