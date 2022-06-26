@@ -1,4 +1,21 @@
+# Given a planning group's name or its end-effector link's name and the reference frame's name,
+# get the EEF's pose regarding to the reference frame.
+
+# Requests
+# group_name [opt]: The planning group with the EEF and the reference frame defined.
+# goals: Goal poses for each group. We can only define one goal for one group.
+#        For multiple goals for one group, use ExecuteAllPlans.
+# ee_frame [opt]: Name of the end-effector's frame. Should be given if group_name is not given.
+# ref_frame [opt]: Name of the reference frame. Should be given if group_name is not given.
+
+# Responses
+# pose: The output pose of the EE in the reference frame.
+# ee_link [opt]: Name of the end-effector's frame. Will be identical if it has been given in the input.
+# ref_link [opt]: Name of the reference frame. Will be identical if it has been given in the input.
+
 string group_name
+string ee_frame
+string ref_frame
 ---
 uint8 SUCCEEDED=0
 uint8 FAILED=1

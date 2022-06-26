@@ -11,7 +11,8 @@ from threading import Thread
 
 from rotools.simulation.mujoco.mujoco_viewer import MujocoViewer
 from rotools.utility.mjcf import find_elements, find_parent, array_to_string, string_to_array
-from rotools.utility.common import to_ros_pose, to_ros_twist, to_list, all_close
+from rotools.utility.common import to_ros_pose, to_ros_twist, to_list, all_close, get_transform_same_origin, \
+    to_ros_orientation
 from rotools.utility.color_palette import bwr_color_palette
 
 try:
@@ -81,7 +82,7 @@ class MuJoCoInterface(Thread):
         if os.path.exists(kinematics_path):
             kinematic_tree = ElementTree.parse(kinematics_path)
             kinematics_root = kinematic_tree.getroot()
-
+            # This robot name will also refer to the base frame of the robot
             self.robot_name = find_elements(kinematics_root, 'body').attrib['name']
             if self.robot_name is not None:
                 rospy.loginfo("Robot name: {}".format(self.robot_name))
@@ -454,6 +455,54 @@ class MuJoCoInterface(Thread):
                 self._object_initial_pose = [xpos, xquat]
             return to_ros_pose(to_list(xpos) + to_list(xquat), w_first=True)
         except KeyError:
+            return None
+
+    def get_site_pose(self, site_name, ref_name=''):
+        """Get the relative pose of a site with regard to the reference frame.
+
+        Args:
+            site_name: str Name of the site.
+            ref_name: str Name of the reference body. If it is empty or None,
+                      the base body of the robot will be used.
+
+        Returns:
+            Pose/None
+        """
+        if self._data is None:
+            return None
+        site_pose = self._get_site_pose(site_name)
+        if ref_name == '' or ref_name is None:
+            ref_pose = self._get_body_pose(self.robot_name)
+        else:
+            ref_pose = self._get_body_pose(ref_name)
+        if site_pose is not None and ref_pose is not None:
+            return to_ros_pose(get_transform_same_origin(ref_pose, site_pose))
+        else:
+            return None
+
+    def _get_site_pose(self, site_name):
+        if self._data is None:
+            return None
+        try:
+            target_site = self._data.site(site_name)
+            print(target_site.xpos, target_site.xmat)
+            xpos = target_site.xpos
+            xquat = to_ros_orientation(target_site.xmat)
+            return to_ros_pose(to_list(xpos) + to_list(xquat))
+        except KeyError:
+            rospy.logerr('Site {} is not exist'.format(site_name))
+            return None
+
+    def _get_body_pose(self, body_name):
+        if self._data is None:
+            return None
+        try:
+            target_body = self._data.body(body_name)
+            xpos = target_body.xpos
+            xquat = target_body.xquat
+            return to_ros_pose(to_list(xpos) + to_list(xquat), w_first=True)
+        except KeyError:
+            rospy.logerr('Body {} is not exist'.format(body_name))
             return None
 
     def set_joint_command(self, cmd):
