@@ -69,7 +69,7 @@ def to_list(values):
     """Convert a series of values in various structure to a plain python list.
 
     Args:
-        values: PoseStamped/Pose/list/tuple/ndarray
+        values: PoseStamped/Pose/Quaternion/list/tuple/ndarray
 
     Returns:
         A list of plain python number types.
@@ -79,6 +79,8 @@ def to_list(values):
     elif isinstance(values, geo_msg.Pose):
         output = [values.position.x, values.position.y, values.position.z, values.orientation.x, values.orientation.y,
                   values.orientation.z, values.orientation.w]
+    elif isinstance(values, geo_msg.Quaternion):
+        output = [values.x, values.y, values.z, values.w]
     elif isinstance(values, list) or isinstance(values, tuple):
         output = list(values)
     elif isinstance(values, np.ndarray):
@@ -401,10 +403,12 @@ def to_ros_orientation(ori, check=False, w_first=False):
                 msg.z = ori[2]
                 msg.w = ori[3]
             return msg
+        elif ori.shape == (9, ):
+            return to_ros_orientation(np.reshape(ori, (3, 3)), check, w_first)
         else:
             raise NotImplementedError
     elif isinstance(ori, list):
-        return to_ros_orientation(np.asarray(ori, dtype=float), check)
+        return to_ros_orientation(np.asarray(ori, dtype=float), check, w_first)
     else:
         raise NotImplementedError
 

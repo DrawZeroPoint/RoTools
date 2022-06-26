@@ -39,6 +39,8 @@ class MuJoCoServer(object):
         self._execute_verbose_reset_srv = rospy.Service("execute_verbose_reset", ExecuteBinaryAction,
                                                         self.execute_verbose_reset_handle)
 
+        self._get_pose_srv = rospy.Service("get_group_pose", GetGroupPose, self.get_pose_handle)
+
         # Received msgs
         if 'joint_command_topic_id' in kwargs.keys():
             joint_command_topic_id = kwargs['joint_command_topic_id']
@@ -130,5 +132,17 @@ class MuJoCoServer(object):
     def execute_verbose_reset_handle(self, req):
         resp = ExecuteBinaryActionResponse()
         self.interface.reset_verbose = True
+        resp.result_status = resp.SUCCEEDED
+        return resp
+
+    def get_pose_handle(self, req):
+        resp = GetGroupPoseResponse()
+        ee_pose = self.interface.get_site_pose(req.ee_frame, req.ref_frame)
+        if ee_pose is None:
+            resp.result_status = resp.FAILED
+            return resp
+        resp.pose = ee_pose
+        resp.ee_link = req.ee_frame
+        resp.ref_link = req.ref_frame
         resp.result_status = resp.SUCCEEDED
         return resp
