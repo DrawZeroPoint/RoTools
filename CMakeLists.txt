@@ -176,7 +176,6 @@ add_subdirectory(src/lib/ruckig)
 include_directories(
   include
   src/lib/ruckig/include
-  /opt/xbot/include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -188,7 +187,6 @@ add_library(${PROJECT_NAME}
   src/lib/rosout_logger.cpp
   src/lib/robot_interface.cpp
   src/lib/moveit_cpp_server.cpp
-  src/lib/cartesio_server.cpp
   src/lib/msg_converter.cpp
   src/lib/msg_aggregator.cpp
   src/lib/online_trajectory_optimizer.cpp
