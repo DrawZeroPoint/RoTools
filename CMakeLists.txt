@@ -65,6 +65,14 @@ else ()
   message(WARNING "Not Found HPP_FCL_LIB")
 endif ()
 
+# Optionally locate CartesI/O
+find_library(CARTESIO_LIB CartesianInterface HINTS /opt/xbot/)
+if (CARTESIO_LIB)
+  message(STATUS "Found CARTESIO_LIB ${CARTESIO_LIB}")
+else ()
+  message(WARNING "CARTESIO_LIB not found")
+endif ()
+
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -158,7 +166,7 @@ generate_messages(
 # )
 
 catkin_package(
-#  INCLUDE_DIRS include
+  #  INCLUDE_DIRS include
   LIBRARIES
   CATKIN_DEPENDS ${ROS_DEPENDENCIES}
 )
@@ -216,6 +224,17 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB)
   add_dependencies(${PROJECT_NAME}_HPP_ADDON ${PROJECT_NAME}_generate_messages_cpp)
 endif ()
 
+if (CARTESIO_LIB)
+  include_directories(/opt/xbot/include)
+  add_library(${PROJECT_NAME}_CARTESIO_ADDON
+    src/lib/cartesio_server.cpp
+    )
+  target_link_libraries(${PROJECT_NAME}_CARTESIO_ADDON
+    ${catkin_LIBRARIES}
+    )
+  add_dependencies(${PROJECT_NAME}_CARTESIO_ADDON ${PROJECT_NAME}_generate_messages_cpp)
+endif ()
+
 #####################
 ## Add executables ##
 #####################
@@ -241,13 +260,6 @@ target_link_libraries(roport_moveit_cpp_server
   ${PROJECT_NAME}
   )
 
-add_executable(roport_cartesio_server src/roport_cartesio_server.cpp)
-add_dependencies(roport_cartesio_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(roport_cartesio_server
-  ${catkin_LIBRARIES}
-  ${PROJECT_NAME}
-  )
-
 add_executable(roport_msg_converter src/roport_msg_converter.cpp)
 add_dependencies(roport_msg_converter ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_msg_converter
@@ -269,6 +281,16 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB)
     ${catkin_LIBRARIES}
     ${PROJECT_NAME}
     ${PROJECT_NAME}_HPP_ADDON
+    )
+endif ()
+
+if (CARTESIO_LIB)
+  add_executable(roport_cartesio_server src/roport_cartesio_server.cpp)
+  add_dependencies(roport_cartesio_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+  target_link_libraries(roport_cartesio_server
+    ${catkin_LIBRARIES}
+    ${PROJECT_NAME}
+    ${PROJECT_NAME}_CARTESIO_ADDON
     )
 endif ()
 
