@@ -66,26 +66,6 @@ inline void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::PoseSt
   eigenMatrixToGeometryPose(std::move(mat), pose.pose);
 }
 
-inline void relativePoseToAbsolutePose(const geometry_msgs::PoseStamped& transform_wrt_local_base,
-                                       const geometry_msgs::PoseStamped& current_pose_wrt_base,
-                                       geometry_msgs::PoseStamped& goal_pose_wrt_base) {
-  Eigen::Matrix4d mat_be;
-  geometryPoseToEigenMatrix(current_pose_wrt_base, mat_be);
-  // mat_bl
-  Eigen::Matrix4d mat_bl = Eigen::Matrix4d::Identity();
-  Eigen::Vector3d t_bl(current_pose_wrt_base.pose.position.x, current_pose_wrt_base.pose.position.y,
-                       current_pose_wrt_base.pose.position.z);
-  mat_bl.topRightCorner(3, 1) = t_bl;
-  // mat_le
-  Eigen::Matrix4d mat_le = mat_bl.inverse() * mat_be;
-  // mat_ll_new
-  Eigen::Matrix4d mat_ll_new;
-  geometryPoseToEigenMatrix(transform_wrt_local_base, mat_ll_new);
-  // mat_be_new
-  Eigen::Matrix4d mat_be_new = mat_bl * mat_ll_new * mat_le;
-  eigenMatrixToGeometryPose(mat_be_new, goal_pose_wrt_base);
-}
-
 inline void localPoseToGlobalPose(const geometry_msgs::Pose& pose_local_to_target,
                                   const geometry_msgs::Pose& pose_global_to_local,
                                   geometry_msgs::Pose& pose_global_to_target) {
@@ -97,13 +77,38 @@ inline void localPoseToGlobalPose(const geometry_msgs::Pose& pose_local_to_targe
   eigenMatrixToGeometryPose(mat_global_to_target, pose_global_to_target);
 }
 
+/**
+ * Given a transform from the local aligned frame to the target frame T_la_t, and a transform
+ * from the global frame to the local frame T_g_l, this function derives T_g_t, where
+ * the local aligned frame's orientation is identical with the global frame.
+ * @param pose_local_aligned_to_target Target pose in the local aligned frame.
+ * @param pose_global_to_local Local pose in the global frame.
+ * @retval pose_global_to_target Target pose in the global frame.
+ * @param copy_orientation If true, will copy the orientation of T_g_l to T_la_t, such that T_la_t's
+ *                         orientation is overwritten.
+ */
 inline void localAlignedPoseToGlobalPose(const geometry_msgs::Pose& pose_local_aligned_to_target,
-                                         const geometry_msgs::Pose& pose_global_to_local_aligned,
-                                         geometry_msgs::Pose& pose_global_to_target) {
+                                         const geometry_msgs::Pose& pose_global_to_local,
+                                         geometry_msgs::Pose& pose_global_to_target,
+                                         const bool& copy_orientation = false) {
+  geometry_msgs::Pose local_aligned_to_target;
+  if (copy_orientation) {
+    local_aligned_to_target.position = pose_local_aligned_to_target.position;
+    local_aligned_to_target.orientation = pose_global_to_local.orientation;
+  } else {
+    local_aligned_to_target = pose_local_aligned_to_target;
+  }
+  geometry_msgs::Pose global_to_local;
+  global_to_local.position = pose_global_to_local.position;
+  global_to_local.orientation.x = 0.;
+  global_to_local.orientation.y = 0.;
+  global_to_local.orientation.z = 0.;
+  global_to_local.orientation.w = 1.;
+
   Eigen::Matrix4d mat_local_aligned_to_target;
-  geometryPoseToEigenMatrix(pose_local_aligned_to_target, mat_local_aligned_to_target);
+  geometryPoseToEigenMatrix(local_aligned_to_target, mat_local_aligned_to_target);
   Eigen::Matrix4d mat_global_to_local_aligned;
-  geometryPoseToEigenMatrix(pose_global_to_local_aligned, mat_global_to_local_aligned);
+  geometryPoseToEigenMatrix(global_to_local, mat_global_to_local_aligned);
   Eigen::Matrix4d mat_global_to_target = mat_global_to_local_aligned * mat_local_aligned_to_target;
   eigenMatrixToGeometryPose(mat_global_to_target, pose_global_to_target);
 }

@@ -7,9 +7,9 @@
 
 # Requests
 # group_names: The groups providing the reference frames
-# goal_type: BASE_ABS: Absolute pose wrt the base frame (robot base)
-#            BASE_REL: Relative pose wrt the base frame transferred to current eef base position
-#            EEF: pose wrt the eef frame
+# goal_type: GLOBAL: Absolute pose wrt the base frame (robot base)
+#            LOCAL_ALIGNED: Relative pose wrt the base frame transferred to current eef base position
+#            LOCAL: pose wrt the eef frame
 # goals: Goal poses for each group. We can only define one goal for one group.
 #        For multiple goals for one group, use ExecuteAllPlans.
 # stamps: Time interval for reaching each goals. One for each group.
@@ -18,9 +18,9 @@
 
 std_msgs/Header header
 string[] group_names
-uint8 BASE_ABS=0
-uint8 BASE_REL=1
-uint8 EEF=2
+uint8 GLOBAL=0
+uint8 LOCAL_ALIGNED=1
+uint8 LOCAL=2
 uint8 goal_type
 geometry_msgs/PoseArray goals
 float64[] stamps

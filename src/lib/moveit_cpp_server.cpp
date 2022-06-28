@@ -69,9 +69,9 @@ auto ControlServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req, 
         goal_pose_wrt_base.header = current_pose_wrt_base.header;
 
         // Transfer given pose to base frame
-        if (req.goal_type == req.BASE_ABS) {
+        if (req.goal_type == req.GLOBAL) {
           goal_pose_wrt_base.pose = req.goals.poses[j];
-        } else if (req.goal_type == req.BASE_REL) {
+        } else if (req.goal_type == req.LOCAL_ALIGNED) {
           geometry_msgs::PoseStamped transform_wrt_local_base;
           transform_wrt_local_base.pose = req.goals.poses[j];
           relativePoseToAbsolutePose(transform_wrt_local_base, current_pose_wrt_base, goal_pose_wrt_base);

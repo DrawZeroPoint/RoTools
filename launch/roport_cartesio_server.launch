@@ -1,6 +1,0 @@
-<launch>
-    <node pkg="roport" type="roport_cartesio_server" name="roport_cartesio_server" output="screen">
-        <rosparam param="group_names">['left_arm', 'right_arm']</rosparam>
-        <rosparam param="reference_frame">'torso_end'</rosparam>
-    </node>
-</launch>

@@ -54,23 +54,12 @@ class CartesIOServer {
   void buildActionGoal(const int& index,
                        const geometry_msgs::Pose& goal_pose,
                        cartesian_interface::ReachPoseActionGoal& action_goal);
-  //
-  //  static auto buildTrajectory(const std::shared_ptr<MoveGroupInterface>& move_group,
-  //                              const std::vector<geometry_msgs::PoseStamped>& poses,
-  //                              const std::vector<ros::Duration>& time_stamps,
-  //                              trajectory_msgs::JointTrajectory& trajectory) -> bool;
 
   static void updateStamp(const double& stamp, cartesian_interface::ReachPoseActionGoal& action_goal);
 
-  auto executeGoals(const std::vector<cartesian_interface::ReachPoseActionGoal>& goals, double duration = 120) -> bool;
+  auto executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goals, double duration = 120)
+      -> bool;
 
-  //  void buildControllerGoal(int group_id,
-  //                           const trajectory_msgs::JointTrajectory& trajectory,
-  //                           control_msgs::FollowJointTrajectoryGoal& goal);
-  //
-  //  auto buildTolerance(int group_id, double position, double velocity, double acceleration)
-  //      -> std::vector<control_msgs::JointTolerance>;
-  //
   //  static void getMirroredTrajectory(MoveGroupInterface& move_group,
   //                                    trajectory_msgs::JointTrajectory trajectory,
   //                                    std::vector<double> mirror_vector,

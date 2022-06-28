@@ -57,7 +57,7 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
       throw std::runtime_error("RoPort: Action server " + action_name + " unavailable");
     }
     control_clients_.push_back(client);
-    ROS_INFO_STREAM("RoPort: Controller action client " << action_name << " initialized");
+    ROS_INFO_STREAM("Control action client " << action_name << " initialized");
   }
 
   // Initialize control servers
@@ -69,7 +69,7 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
 auto CartesIOServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
                                           roport::ExecuteAllPoses::Response& resp) -> bool {
   ROS_ASSERT(req.group_names.size() == req.goals.poses.size());
-  std::vector<cartesian_interface::ReachPoseActionGoal> action_goals;
+  std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
 
   for (int i = 0; i < group_names_.size(); ++i) {
     for (int j = 0; j < req.group_names.size(); ++j) {
@@ -87,17 +87,17 @@ auto CartesIOServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
         current_pose.orientation.y = current_transform.transform.rotation.y;
         current_pose.orientation.z = current_transform.transform.rotation.z;
         current_pose.orientation.w = current_transform.transform.rotation.w;
-
+        ROS_INFO_STREAM(current_pose);
         // Initialize the goal pose
         geometry_msgs::Pose goal_pose;
 
         // Transfer the given pose to the reference frame
-        if (req.goal_type == req.BASE_ABS) {
+        if (req.goal_type == req.GLOBAL) {
           // The given pose is already in the reference frame
           goal_pose = req.goals.poses[j];
-        } else if (req.goal_type == req.BASE_REL) {
+        } else if (req.goal_type == req.LOCAL_ALIGNED) {
           // The given pose is relative to the local aligned frame having the same orientation as the reference frame
-          localAlignedPoseToGlobalPose(req.goals.poses[j], current_pose, goal_pose);
+          localAlignedPoseToGlobalPose(req.goals.poses[j], current_pose, goal_pose, true);
         } else {
           // The given pose is relative to the local frame
           localPoseToGlobalPose(req.goals.poses[j], current_pose, goal_pose);
@@ -108,9 +108,9 @@ auto CartesIOServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
         buildActionGoal(i, goal_pose, action_goal);
         if (req.stamps.size() == req.group_names.size() && req.stamps[j] > 0) {
           updateStamp(req.stamps[j], action_goal);
-          action_goals.push_back(action_goal);
+          action_goals.insert({i, action_goal});
         } else {
-          action_goals.push_back(action_goal);
+          action_goals.insert({i, action_goal});
         }
       }
     }
@@ -125,7 +125,8 @@ auto CartesIOServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
 
 bool CartesIOServer::getTransform(const int& index, geometry_msgs::TransformStamped& transform) {
   try {
-    transform = tf_buffer_.lookupTransform(controlled_frames_[index], reference_frames_[index], ros::Time(0));
+    // The transform derived by lookupTransform is T_rc, i.e., from the reference to the controlled frame.
+    transform = tf_buffer_.lookupTransform(reference_frames_[index], controlled_frames_[index], ros::Time(0));
     return true;
   } catch (tf2::TransformException& ex) {
     ROS_WARN("%s", ex.what());
@@ -224,7 +225,7 @@ void CartesIOServer::buildActionGoal(const int& index,
   action_goal.header.frame_id = reference_frames_[index];
   action_goal.goal.frames.push_back(goal_pose);
   action_goal.goal.time.push_back(1.);
-  action_goal.goal.incremental = true;
+  action_goal.goal.incremental = false;
 }
 
 void CartesIOServer::updateStamp(const double& stamp, cartesian_interface::ReachPoseActionGoal& action_goal) {
@@ -233,37 +234,18 @@ void CartesIOServer::updateStamp(const double& stamp, cartesian_interface::Reach
   }
 }
 
-auto CartesIOServer::executeGoals(const std::vector<cartesian_interface::ReachPoseActionGoal>& goals, double duration)
+auto CartesIOServer::executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goals, double duration)
     -> bool {
-  for (size_t i = 0; i < control_clients_.size(); ++i) {
-    control_clients_[i]->sendGoal(goals[i].goal);
+  for (const auto& goal : goals) {
+    control_clients_[goal.first]->sendGoal(goal.second.goal);
   }
 
-  for (size_t i = 0; i < control_clients_.size(); ++i) {
-    if (!control_clients_[i]->waitForResult(ros::Duration(duration))) {
-      ROS_ERROR("Goal %zu of group %s execution timeout after %f seconds", i, group_names_[i].c_str(), duration);
+  for (const auto& goal : goals) {
+    if (!control_clients_[goal.first]->waitForResult(ros::Duration(duration))) {
+      ROS_ERROR("Goal of group %s execution timeout after %f seconds", group_names_[goal.first].c_str(), duration);
       return false;
     }
   }
   return true;
 }
-
-// void CartesIOServer::buildControllerGoal(int group_id,
-//                                          const trajectory_msgs::JointTrajectory& trajectory,
-//                                          control_msgs::FollowJointTrajectoryGoal& goal) {
-//   goal.goal_time_tolerance = ros::Duration(1);
-//   goal.goal_tolerance = buildTolerance(group_id, 0.01, 0, 0);
-//   goal.path_tolerance = buildTolerance(group_id, 0.02, 0, 0);
-//   goal.trajectory = trajectory;
-// }
-//
-// auto CartesIOServer::buildTolerance(int group_id, double position, double velocity, double acceleration)
-//     -> std::vector<control_msgs::JointTolerance> {
-//   control_msgs::JointTolerance joint_tolerance;
-//   joint_tolerance.position = position;
-//   joint_tolerance.velocity = velocity;
-//   joint_tolerance.acceleration = acceleration;
-//   int joint_num = interfaces_[group_id]->getActiveJoints().size();
-//   return std::vector<control_msgs::JointTolerance>(joint_num, joint_tolerance);
-// }
 }  // namespace roport
