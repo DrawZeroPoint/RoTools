@@ -125,7 +125,7 @@ class MuJoCoServer(object):
     def execute_object_reset_handle(self, req):
         resp = ExecuteBinaryActionResponse()
         # req = ExecuteBinaryActionRequest()
-        ok = self.interface.reset_object(req.device_id)
+        ok = self.interface.reset_object_pose()
         resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
         return resp
 

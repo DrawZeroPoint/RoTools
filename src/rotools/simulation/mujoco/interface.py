@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import copy
 import os
 import time
 import mujoco
@@ -142,7 +143,6 @@ class MuJoCoInterface(Thread):
         self._clock_publisher = rospy.Publisher('/clock', Clock, queue_size=1)
 
         self._tracked_object_name = 'object'
-        self._object_initial_pose = None
 
         self._neutral_initialized = False
 
@@ -163,6 +163,11 @@ class MuJoCoInterface(Thread):
     def run(self):
         # The model, data, and viewer must be initialized here.
         self._model = mujoco.MjModel.from_xml_path(self._model_path)
+        # Optionally disable the 'anchor' connection of the object at the beginning
+        try:
+            self._model.equality("anchor").active = False
+        except KeyError:
+            pass
         self._data = mujoco.MjData(self._model)
         self._viewer = MujocoViewer(self._model, self._data) if self._enable_viewer else None
 
@@ -259,6 +264,19 @@ class MuJoCoInterface(Thread):
                 self._actuated_joint_geoms[name] = None
 
     def _get_actuator_ranges(self, actuator_root):
+        """Get the actuators' control ranges & force ranges and store them to the class members
+        _actuator_ctrl_ranges and _actuator_force_ranges. The control is the input of the actuator,
+        and the force is the output of the actuator (no matter which one it is).
+
+        Args:
+            actuator_root: ET.Element The xml element tree to start recursively searching actuators.
+
+        Returns:
+            None
+
+        Raises:
+            NotImplementedError if the control type is not in (0, 1, 2).
+        """
         if actuator_root is None:
             return
         for i, name in enumerate(self.actuator_names):
@@ -438,7 +456,7 @@ class MuJoCoInterface(Thread):
         return odom
 
     def get_object_pose(self):
-        """Get the pose of the object's geom.
+        """Get the pose of the object's geom. This object is to be manipulated by the robot.
         The object body's name (object) is hardcoded for now.
 
         Returns:
@@ -451,8 +469,6 @@ class MuJoCoInterface(Thread):
             tracked_object = self._data.body(self._tracked_object_name)
             xpos = tracked_object.xpos
             xquat = tracked_object.xquat
-            if self._object_initial_pose is None:
-                self._object_initial_pose = [xpos, xquat]
             return to_ros_pose(to_list(xpos) + to_list(xquat), w_first=True)
         except KeyError:
             return None
@@ -588,16 +604,20 @@ class MuJoCoInterface(Thread):
             rospy.loginfo_throttle(2, "Gripper is reaching to {} (current {})".format(cmd_values, qpos_list))
         return True
 
-    def reset_object(self, object_id=0):
-        # FIXME currently not functional
+    def reset_object_pose(self):
+        """Reset an object's pose to be aligned with that of a fixed body by activating the weld equality
+        connection between the two bodies. The name 'anchor' is hardcoded for now
+
+        Returns:
+            True if succeeded, false otherwise.
+        """
         if self._data is None:
             # The data could be None when the simulation just started, but this should not last long.
             return False
         try:
-            tracked_object = self._data.body(self._tracked_object_name)
-            tracked_object.xpos = self._object_initial_pose[0]
-            tracked_object.xquat = self._object_initial_pose[1]
-            # mujoco.mj_forward(self._model, self._data)
+            self._model.equality("anchor").active = True
+            rospy.sleep(1.)
+            self._model.equality("anchor").active = False
             return True
         except KeyError:
             return False
