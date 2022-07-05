@@ -52,8 +52,8 @@ class HPPManipulationClient(object):
         # req = ExecutePathPlanningRequest()
         base_current_global_pose = self.interface.get_current_base_global_pose()
         base_goal_pose = self._to_global_pose(req.base_goal_pose, req.base_goal_type, base_current_global_pose)
-        ok = self.interface.make_approaching_plan(base_goal_pose, req.joint_goal_state, req.base_pos_tolerance,
-                                                  req.base_ori_tolerance)
+        ok = self.interface.approach(base_goal_pose, req.joint_goal_state, req.base_pos_tolerance,
+                                     req.base_ori_tolerance)
         resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
         return resp
 
@@ -63,9 +63,9 @@ class HPPManipulationClient(object):
         object_goal_pose = self._to_global_pose(req.object_goal_pose, req.object_goal_pose_type,
                                                 base_current_global_pose)
         base_goal_pose = self._to_global_pose(req.base_goal_pose, req.base_goal_pose_type, base_current_global_pose)
-        ok = self.interface.make_grasping_plan(base_goal_pose, req.joint_goal_state, object_goal_pose,
-                                               req.base_pos_tolerance, req.base_ori_tolerance, req.object_pos_tolerance,
-                                               req.object_ori_tolerance)
+        ok = self.interface.grasp(base_goal_pose, req.joint_goal_state, object_goal_pose,
+                                  req.base_pos_tolerance, req.base_ori_tolerance, req.object_pos_tolerance,
+                                  req.object_ori_tolerance)
         resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
         return resp
 

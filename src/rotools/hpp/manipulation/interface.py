@@ -63,7 +63,7 @@ class HPPManipulationInterface(object):
 
         self._work_modes = namedtuple("work_modes", "idle approach grasp")
         self._previous_mode = self._work_modes.idle
-        self._mode = self._work_modes.idle
+        self._current_mode = self._work_modes.idle
 
         self._robot = self._create_robot()
         self._problem_solver = ProblemSolver(self._robot)
@@ -72,6 +72,11 @@ class HPPManipulationInterface(object):
         # To show available path optimizers:
         # print(self._problem_solver.getAvailable('PathOptimizer'))
         self._problem_solver.addPathOptimizer('RandomShortcut')
+
+        # To show available config validation methods
+        # (['CollisionValidation', 'JointBoundValidation'])
+        # print(self._problem_solver.getAvailable('ConfigValidation'))
+        # self._problem_solver.clearConfigValidations()
 
         self._enable_viewer = enable_viewer
         self._viewer_factory = self._create_viewer_factory()  # need to create this no matter if enable_viewer
@@ -171,7 +176,7 @@ class HPPManipulationInterface(object):
         constraint_graph.initialize()
         return constraint_graph
 
-    def _update_constraints(self):
+    def _update_constraint_graph(self):
         """Update the constraints if 1) Working mode turned from other modes to the grasp mode. In this mode,
         we need to add extra constraints to the edges such that the base do not move during grasping. 2) Working
         mode turned from grasping to other modes, where we need to create a new graph since the original constrained
@@ -180,21 +185,21 @@ class HPPManipulationInterface(object):
         Returns:
             None
         """
-        if self._previous_mode == self._work_modes.grasp and self._mode != self._work_modes.grasp:
+        if self._previous_mode == self._work_modes.grasp and self._current_mode != self._work_modes.grasp:
             self._constraint_graph = self._create_constraint_graph()
-        if self._previous_mode != self._work_modes.grasp and self._mode == self._work_modes.grasp:
+        if self._previous_mode != self._work_modes.grasp and self._current_mode == self._work_modes.grasp:
             self._problem_solver.createLockedJoint("fix_base", "{}/root_joint".format(self._rm.name), [0, 0, 1, 0])
             for e in self._constraint_graph.edges.keys():
                 self._constraint_graph.addConstraints(edge=e, constraints=Constraints(numConstraints=["fix_base"]))
             self._constraint_graph.initialize()
-        self._previous_mode = self._mode
+        self._previous_mode = self._current_mode
 
     def update_current_config(self, msg):
         if isinstance(msg, JointState):
             self._set_robot_joint_state_config(self._q_current, msg, add_name=True)
             rospy.loginfo_once('First joint state received')
         elif isinstance(msg, Odometry):
-            self._set_robot_base_config(self._q_current, msg)
+            self._set_planar_robot_base_config(self._q_current, msg)
             rospy.loginfo_once('First odom received')
         elif isinstance(msg, Pose):
             self._set_object_config(self._q_current, msg)
@@ -203,92 +208,116 @@ class HPPManipulationInterface(object):
             rospy.logerr("Msg is not of type JointState/Odometry/Pose: {}".format(type(msg)))
 
     def get_current_base_global_pose(self):
-        return self._get_robot_base_pose(self._q_current)
+        return self._get_planar_robot_base_pose(self._q_current)
 
-    def _make_plan(self):
-        while not self._check_goal_reached():
-            q_goal = self._q_goal[::]
-            q_current = self._q_current[::]
-            if self._mode == self._work_modes.grasp:
-                q_goal[:4] = q_current[:4]
+    def _implement_plan(self, q_goal):
+        """
 
-            self._problem_solver.addGoalConfig(q_goal)
-            self._problem_solver.setInitialConfig(q_current)
+        Args:
+            q_goal:
 
-            rospy.loginfo("Current configuration:\n{}".format(["{0:0.8f}".format(i) for i in q_current]))
-            rospy.loginfo("Goal configuration:\n{}".format(["{0:0.8f}".format(i) for i in q_goal]))
+        Returns:
 
-            self._update_constraints()
-            try:
-                time_spent = self._problem_solver.solve()
-                rospy.loginfo('Plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
-            except BaseException as e:
-                rospy.logwarn('Failed to solve due to {}'.format(e))
-                self._problem_solver.resetGoalConfigs()
-                self._mode = self._work_modes.idle
-                return False
+        """
+        q_current = self._project_config_if_necessary(self._q_current)
+        self._problem_solver.addGoalConfig(q_goal)
+        self._problem_solver.setInitialConfig(q_current)
 
-            if self._enable_viewer:
-                viewer = self._viewer_factory.createViewer()
-                viewer(q_current)
-                path_player = PathPlayer(viewer)
-                path_player(self._last_path_id)
+        rospy.logdebug("Current configuration:\n{}".format(["{0:0.8f}".format(i) for i in q_current]))
+        rospy.logdebug("Goal configuration:\n{}".format(["{0:0.8f}".format(i) for i in q_goal]))
 
-            # Get waypoints information
-            grasp_stamps = []
-            release_stamps = []
-            if self._mode == self._work_modes.grasp:
-                # waypoints is a list of configurations, each configuration corresponds to a node (or state)
-                # in the graph, time stamp to reach that state is recorded in times.
-                waypoints, times = self._problem_solver.getWaypoints(self._last_path_id)
-                temp = [[wp, t] for wp, t in zip(waypoints, times)]
-                for i in range(len(temp) - 1):
-                    if self._constraint_graph.getNode(temp[i][0]) == 'free' and \
-                            'grasp' in self._constraint_graph.getNode(temp[i + 1][0]):
-                        grasp_stamp = temp[i + 1][1]
-                        grasp_stamps.append(grasp_stamp)
-                        rospy.loginfo('Will grasp at {:.4f} s'.format(grasp_stamp))
-                    if self._constraint_graph.getNode(temp[i + 1][0]) == 'free' and \
-                            'grasp' in self._constraint_graph.getNode(temp[i][0]):
-                        release_stamps.append(temp[i + 1][1])
-                        rospy.loginfo('Will release at {:.4f} s'.format(temp[i + 1][1]))
-
-            path_length = self._problem_solver.pathLength(self._last_path_id)
-            msgs = []
-            close_gripper = False
-            for t in np.arange(0, path_length, self._time_step):
-                j_q = self._problem_solver.configAtParam(self._last_path_id, t)
-                j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
-                for g_s in grasp_stamps:
-                    if t <= g_s < t + self._time_step:
-                        close_gripper = True
-                        break
-                for r_s in release_stamps:
-                    if t <= r_s < t + self._time_step:
-                        close_gripper = False
-                        break
-                msgs.append(self._derive_command_msgs(j_q, j_dq, close_gripper))
-            j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
-            j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
-            joint_cmd, base_cmd = self._derive_command_msgs(j_q, j_dq)
-
-            global_start = time.time()
-            r = rospy.Rate(1. / self._time_step * self._reduction_ratio)
-            for j_cmd, base_cmd in msgs:
-                self._publish_planning_results(j_cmd, base_cmd)
-                r.sleep()
-
-            self._publish_planning_results(joint_cmd, base_cmd)
-            rospy.Rate(1. / (path_length % self._time_step) * self._reduction_ratio).sleep()
-            rospy.loginfo('Path length: {:.4f}; actual elapsed time: {:.4f}'.format(
-                path_length, (time.time() - global_start) * self._reduction_ratio))
-            self._stop_base()
+        self._update_constraint_graph()
+        try:
+            time_spent = self._problem_solver.solve()
+            rospy.loginfo('Plan solved in {}h-{}m-{}s-{}ms'.format(*time_spent))
+        except BaseException as e:
+            rospy.logwarn('Failed to solve due to {}'.format(e))
             self._problem_solver.resetGoalConfigs()
+            return False
 
-        self._mode = self._work_modes.idle
+        if self._enable_viewer:
+            viewer = self._viewer_factory.createViewer()
+            viewer(q_current)
+            path_player = PathPlayer(viewer)
+            path_player(self._last_path_id)
+
+        # Get waypoints information
+        grasp_stamps = []
+        release_stamps = []
+        if self._current_mode == self._work_modes.grasp:
+            # waypoints is a list of configurations, each configuration corresponds to a node (or state)
+            # in the graph, time stamp to reach that state is recorded in times.
+            waypoints, times = self._problem_solver.getWaypoints(self._last_path_id)
+            temp = [[wp, t] for wp, t in zip(waypoints, times)]
+            for i in range(len(temp) - 1):
+                if self._constraint_graph.getNode(temp[i][0]) == 'free' and \
+                        'grasp' in self._constraint_graph.getNode(temp[i + 1][0]):
+                    grasp_stamp = temp[i + 1][1]
+                    grasp_stamps.append(grasp_stamp)
+                    rospy.loginfo('Will grasp at {:.4f} s'.format(grasp_stamp))
+                if self._constraint_graph.getNode(temp[i + 1][0]) == 'free' and \
+                        'grasp' in self._constraint_graph.getNode(temp[i][0]):
+                    release_stamps.append(temp[i + 1][1])
+                    rospy.loginfo('Will release at {:.4f} s'.format(temp[i + 1][1]))
+
+        path_length = self._problem_solver.pathLength(self._last_path_id)
+        msgs = []
+        close_gripper = False
+        for t in np.arange(0, path_length, self._time_step):
+            j_q = self._problem_solver.configAtParam(self._last_path_id, t)
+            j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, t)
+            for g_s in grasp_stamps:
+                if t <= g_s < t + self._time_step:
+                    close_gripper = True
+                    break
+            for r_s in release_stamps:
+                if t <= r_s < t + self._time_step:
+                    close_gripper = False
+                    break
+            msgs.append(self._derive_command_msgs(j_q, j_dq, close_gripper))
+        j_q = self._problem_solver.configAtParam(self._last_path_id, path_length)
+        j_dq = self._problem_solver.derivativeAtParam(self._last_path_id, 1, path_length)
+        joint_cmd, base_cmd = self._derive_command_msgs(j_q, j_dq)
+
+        global_start = time.time()
+        r = rospy.Rate(1. / self._time_step * self._reduction_ratio)
+        for j_cmd, base_cmd in msgs:
+            self._publish_planning_results(j_cmd, base_cmd)
+            r.sleep()
+
+        self._publish_planning_results(joint_cmd, base_cmd)
+        rospy.Rate(1. / (path_length % self._time_step) * self._reduction_ratio).sleep()
+        rospy.loginfo('Path length: {:.4f}; actual elapsed time: {:.4f}'.format(
+            path_length, (time.time() - global_start) * self._reduction_ratio))
+        self._stop_base()
+        self._problem_solver.resetGoalConfigs()
         return True
 
-    def make_approaching_plan(self, base_goal_pose, joint_goal_state, base_pos_tol, base_ori_tol):
+    def _project_config_if_necessary(self, config, node='free'):
+        """
+
+        Args:
+            config:
+            node:
+
+        Returns:
+
+        """
+        try:
+            name = self._constraint_graph.getNode(config)
+            assert name == node, print('{} is not {}'.format(name, node))
+            return config
+        except BaseException as e:
+            rospy.logdebug(e)
+            res, config_proj, _ = self._constraint_graph.applyNodeConstraints(node, config)
+            self._log_config("Original configuration", config, show_all=True)
+            self._log_config("Projected configuration", config_proj, show_all=True)
+            if res:
+                return config_proj
+            else:
+                raise ValueError('Failed to project config into {} node'.format(node))
+
+    def approach(self, base_goal_pose, joint_goal_state, base_pos_tol, base_ori_tol):
         """Make a plan for the robot to approach the given base goal pose and joint goal state.
 
         Args:
@@ -300,18 +329,22 @@ class HPPManipulationInterface(object):
         Returns:
             bool If success, return True, False otherwise.
         """
-        self._q_goal = self._q_current[::]
-        odom = Odometry()
-        odom.pose.pose = base_goal_pose
-        self._set_robot_base_config(self._q_goal, odom)
-        self._set_robot_joint_state_config(self._q_goal, joint_goal_state)
+        q_goal = self._project_config_if_necessary(self._q_current[::])
+        goal_odom = Odometry()
+        goal_odom.pose.pose = base_goal_pose
+        self._set_planar_robot_base_config(q_goal, goal_odom)
+        self._set_robot_joint_state_config(q_goal, joint_goal_state)
         self._base_p_tol = base_pos_tol if base_pos_tol > 0 else self._base_p_tol
         self._base_o_tol = base_ori_tol if base_ori_tol > 0 else self._base_o_tol
-        self._mode = self._work_modes.approach
-        return self._make_plan()
+        self._current_mode = self._work_modes.approach
+        while not self._check_approaching_goal_reached(q_goal):
+            if not self._implement_plan(q_goal):
+                return False
+        self._current_mode = self._work_modes.idle
+        return True
 
-    def make_grasping_plan(self, base_goal_pose, joint_goal_state, object_goal_pose, base_pos_tol, base_ori_tol,
-                           object_pos_tol, object_ori_tol):
+    def grasp(self, base_goal_pose, joint_goal_state, object_goal_pose, base_pos_tol, base_ori_tol,
+              object_pos_tol, object_ori_tol):
         """Make a grasping plan.
 
         Args:
@@ -326,7 +359,7 @@ class HPPManipulationInterface(object):
         Returns:
             True if success, False otherwise.
         """
-        self._q_goal = self._q_current[::]
+        q_goal = self._project_config_if_necessary(self._q_current[::])
         # TODO Since we fix the base during grasping, the base goal is currently disabled.
         # It shall be activated if we have accurate locomotion.
         # odom = Odometry()
@@ -338,15 +371,19 @@ class HPPManipulationInterface(object):
         self._set_object_config(self._q_goal, object_goal_pose)
         self._object_p_tol = object_pos_tol if object_pos_tol > 0 else self._object_p_tol
         self._object_o_tol = object_ori_tol if object_ori_tol > 0 else self._object_o_tol
-        self._mode = self._work_modes.grasp
-        return self._make_plan()
+        self._current_mode = self._work_modes.grasp
+        while not self._check_grasping_goal_reached(q_goal):
+            if not self._implement_plan(q_goal):
+                return False
+        self._current_mode = self._work_modes.idle
+        return True
 
     @property
     def _last_path_id(self):
         return self._problem_solver.numberPaths() - 1
 
     @staticmethod
-    def _get_robot_base_pose(config):
+    def _get_planar_robot_base_pose(config):
         pose = Pose()
         pose.position.x = config[0]
         pose.position.y = config[1]
@@ -357,6 +394,19 @@ class HPPManipulationInterface(object):
         return pose
 
     def _set_robot_joint_state_config(self, config, joint_state, add_name=False):
+        """Update the configuration corresponding to the robot's actuated joints using the given joint state msg.
+        The configuration will only be updated if the msg contains a name matching the predefined joint name.
+        We allow undocumented names inside the msg, which will be ignored.
+
+        Args:
+            config:  list[double] Complete configuration to be updated in-place.
+            joint_state: JointState Joint state msg of the robot.
+            add_name: bool Whether adding names from the msg to class member _joint_names.
+                      This allows only the measured joint states to set the names, but not allow the goal to set them.
+
+        Returns:
+            None
+        """
         assert isinstance(joint_state, JointState)
         for i, joint_name in enumerate(joint_state.name):
             try:
@@ -368,15 +418,15 @@ class HPPManipulationInterface(object):
                 continue
 
     @staticmethod
-    def _set_robot_base_config(config, base_odom):
-        """Update the configurations of the robot base's pose.
+    def _set_planar_robot_base_config(config, base_odom):
+        """Update the configuration corresponding to the robot base's pose using the given odom msg.
 
         Args:
-            config: list[double] HPP configurations.
-            base_odom: Odometry msg of the robot's planar base.
+            config: list[double] Complete configuration to be updated in-place.
+            base_odom: Odometry Pose msg of the robot's planar base.
 
         Returns:
-            Updated configurations.
+            None
         """
         assert isinstance(base_odom, Odometry)
         base_pose = base_odom.pose.pose
@@ -403,16 +453,12 @@ class HPPManipulationInterface(object):
         config[rank: rank + 7] = common.to_list(common.to_ros_pose(new_pose_matrix))
 
     def _publish_planning_results(self, joint_cmd, base_cmd):
-        if self._mode == self._work_modes.grasp:
-            if not self._check_goal_reached():
-                self._joint_cmd_publisher.publish(joint_cmd)
-                self._base_cmd_publisher.publish(base_cmd)
-            else:
-                self._joint_cmd_publisher.publish(joint_cmd)
-                self._stop_base()
-        else:
+        if self._current_mode == self._work_modes.grasp:
+            self._stop_base()
             self._joint_cmd_publisher.publish(joint_cmd)
+        else:
             self._base_cmd_publisher.publish(base_cmd)
+            self._joint_cmd_publisher.publish(joint_cmd)
 
     def _derive_command_msgs(self, j_q, j_dq, close_gripper=False):
         joint_cmd = JointState()
@@ -439,32 +485,40 @@ class HPPManipulationInterface(object):
         base_cmd = Twist()
         self._base_cmd_publisher.publish(base_cmd)
 
-    def _check_goal_reached(self):
-        """Check if the object and optionally the base has reached the goal pose.
+    def _check_approaching_goal_reached(self, q_goal):
+        """Check if the base and the actuated joints have reached the goal.
+
+        Args:
+            q_goal list[double] Complete goal configuration to be reached.
 
         Returns:
             True if both position and orientation errors are within tolerance.
         """
-        if self._mode == self._work_modes.approach:
-            base_goal_pos = self._q_goal[:2]
-            base_curr_pos = self._q_current[:2]
-            base_goal_ori = self._q_goal[2:4]
-            base_curr_ori = self._q_current[2:4]
-            joint_curr_cfg = self._get_joint_configs(self._q_current)
-            joint_goal_cfg = self._get_joint_configs(self._q_goal)
-            return common.all_close(base_goal_pos, base_curr_pos, self._base_p_tol) & \
-                   common.all_close(base_goal_ori, base_curr_ori, self._base_o_tol) & \
-                   common.all_close(joint_curr_cfg, joint_goal_cfg, 0.1)
-        elif self._mode == self._work_modes.grasp:
-            rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
-            obj_curr_pos = self._q_current[rank: rank + 3]
-            obj_goal_pos = self._q_goal[rank: rank + 3]
-            obj_curr_ori = self._q_current[rank + 3: rank + 7]
-            obj_goal_ori = self._q_goal[rank + 3: rank + 7]
-            return common.all_close(obj_goal_pos, obj_curr_pos, self._object_p_tol) & \
-                   common.all_close(obj_goal_ori, obj_curr_ori, self._object_o_tol)
-        else:
-            raise NotImplementedError
+        assert self._current_mode == self._work_modes.approach
+        base_curr_pos = self._q_current[:2]
+        base_curr_ori = self._q_current[2:4]
+        base_goal_pos = q_goal[:2]
+        base_goal_ori = q_goal[2:4]
+        joint_curr_cfg = self._get_joint_configs(self._q_current)
+        joint_goal_cfg = self._get_joint_configs(q_goal)
+        return common.all_close(base_goal_pos, base_curr_pos, self._base_p_tol) & \
+               common.all_close(base_goal_ori, base_curr_ori, self._base_o_tol) & \
+               common.all_close(joint_curr_cfg, joint_goal_cfg, 0.1)
+
+    def _check_grasping_goal_reached(self, q_goal):
+        """Check if the object being manipulated has reached the goal pose.
+
+        Returns:
+            True if both position and orientation errors are within tolerance.
+        """
+        assert self._current_mode == self._work_modes.grasp
+        rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
+        obj_curr_pos = self._q_current[rank: rank + 3]
+        obj_curr_ori = self._q_current[rank + 3: rank + 7]
+        obj_goal_pos = q_goal[rank: rank + 3]
+        obj_goal_ori = q_goal[rank + 3: rank + 7]
+        return common.all_close(obj_goal_pos, obj_curr_pos, self._object_p_tol) & \
+               common.all_close(obj_goal_ori, obj_curr_ori, self._object_o_tol)
 
     def _get_joint_configs(self, all_configs):
         joint_configs = []
@@ -475,3 +529,15 @@ class HPPManipulationInterface(object):
             except KeyError:
                 continue
         return joint_configs
+
+    def _log_config(self, title, config, show_all=False):
+        rospy.loginfo("{}\n".format(title))
+        if show_all:
+            rospy.loginfo("{}".format(["{:0.19f}".format(i) for i in config]))
+            return
+
+        joint_states = self._get_joint_configs(config)
+        max_key_len = len(max(self._joint_names, key=len))
+        for name, state in zip(self._joint_names, joint_states):
+            name_padded = '{message: <{width}}'.format(message=name, width=max_key_len)
+            rospy.loginfo("{}: {:0.19f}".format(name_padded, state))

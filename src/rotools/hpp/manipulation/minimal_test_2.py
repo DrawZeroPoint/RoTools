@@ -207,7 +207,7 @@ class HPPManipulationInterface(object):
         self._robot.setJointBounds("{}/root_joint".format(self._om.name), object_bound)
 
         # An absolute value, if the threshold is surpassed, will raise the error `A configuration has no node`
-        self._problem_solver.setErrorThreshold(3e-3)
+        self._problem_solver.setErrorThreshold(1e-3)
         self._problem_solver.setMaxIterProjection(80)
 
         self._problem_solver.setTimeOutPathPlanning(30)
@@ -286,6 +286,7 @@ class HPPManipulationInterface(object):
             print('Failed to solve due to {}'.format(e))
             res, q, err = self._constraint_graph.applyNodeConstraints('free', self._q_init)
             print(res, err, '\n', q)
+            print(self._constraint_graph.getNode(self._q_init))
             self._problem_solver.resetGoalConfigs()
             self._mode = self._work_modes.idle
             return False
@@ -329,10 +330,10 @@ class HPPManipulationInterface(object):
         self._q_init = [0.6828121022644879634, 0.0703259613989929006, 0.8687425541219662151, 0.4952639444353310050,
                         0.0001423814094132478, 0.0000010956036508039, 0.0003569450372355056, 1.0006461567295650283,
                         0.8029290429009514618, -0.4976525619349045360, -1.9705628949627718161, 0.0007762117476604057,
-                        2.5024607950674822021, 1.5698918488567741303, 0.0366880180611687187, 0.0400000000000000008,
+                        2.5024607950674822021, 1.5698918488567741303, 0.04, 0.04,
                         -1.0032131005843512028, 0.8043047023383176342, 0.4956911330734958265, -1.9707136657764974252,
-                        0.0008677962229538790, 2.5024503019683517202, -0.0000280178770064655, 0.0400000000000000008,
-                        0.0355720185971239375, -2.3999999994155452043, -0.5999999998769479648, 0.9644954319622398575,
+                        0.0008677962229538790, 2.5024503019683517202, -0.0000280178770064655, 0.04,
+                        0.04, -2.3999999994155452043, -0.5999999998769479648, 0.9644954319622398575,
                         0.0000000000000003189, -0.7071067811865474617, -0.0000000000000003182, 0.7071067811865474617]
         self._q_goal = [0.97013911, 0.21839769, 0.70710678, 0.70710678, 0.00011383, 0.00000100, 0.00027770, 1.00063293,
                         0.80204085, -0.49794376, -1.97783062, 0.00056355, 2.50151300, 1.56990079, 0.03734613,
