@@ -61,15 +61,17 @@ class HPPManipulationInterface(object):
         self._em = Model(env_name, env_pkg_name, surface=env_surface)
         self._gm = Gripper(self._rm, gripper_name, fingers, finger_joints, finger_joint_values)
 
-        self._work_modes = namedtuple("work_modes", "idle approach grasp")
-        self._previous_mode = self._work_modes.idle
-        self._current_mode = self._work_modes.idle
+        self.Modes = namedtuple("Modes", "idle approach grasp")
+        self._current_mode = self.Modes.idle
 
         self._robot = self._create_robot()
         self._problem_solver = ProblemSolver(self._robot)
 
         self._problem_solver.loadPlugin('manipulation-spline-gradient-based.so')
         # To show available path optimizers:
+        # ['EnforceTransitionSemantic', 'Graph-PartialShortcut', 'Graph-RandomShortcut', 'PartialShortcut',
+        # 'RandomShortcut', 'SimpleShortcut', 'SimpleTimeParameterization', 'SplineGradientBased_bezier1',
+        # 'SplineGradientBased_bezier3']
         # print(self._problem_solver.getAvailable('PathOptimizer'))
         self._problem_solver.addPathOptimizer('RandomShortcut')
 
@@ -104,7 +106,6 @@ class HPPManipulationInterface(object):
 
         self._joint_names = []
         self._q_current = self._robot.getCurrentConfig()
-        self._q_goal = self._q_current[::]
 
         self._lock_hand = self._create_locks()
 
@@ -158,11 +159,20 @@ class HPPManipulationInterface(object):
             )
         return lock_hand
 
-    def _create_constraint_graph(self):
+    def _create_constraint_graph(self, initialize=True):
+        """When new graph is created, we increase the count of graph_id to prevent naming ambiguous.
+        Creating multiple graphs only consume a little memory and beneficial for increase planning success rate.
+
+        Args:
+            initialize: bool If true, the created graph will be initialized.
+
+        Returns:
+            Created constraint graph.
+        """
         self._graph_id += 1
         graph_name = 'graph_{}'.format(self._graph_id)
         constraint_graph = ConstraintGraph(self._robot, graph_name)
-        rospy.loginfo('Created new constraint graph: {}'.format(graph_name))
+        rospy.logdebug('Created new constraint graph: {}'.format(graph_name))
         factory = ConstraintGraphFactory(constraint_graph)
         factory.setGrippers(["{}/{}".format(self._rm.name, self._gm.name), ])
         factory.environmentContacts(["{}/{}".format(self._em.name, self._em.surface), ])
@@ -173,26 +183,25 @@ class HPPManipulationInterface(object):
         # factory.setPreplacementDistance('{}'.format(self._om.name), 0.1)
         factory.generate()
         constraint_graph.addConstraints(graph=True, constraints=Constraints(numConstraints=self._lock_hand))
-        constraint_graph.initialize()
+        if initialize:
+            constraint_graph.initialize()
         return constraint_graph
 
     def _update_constraint_graph(self):
-        """Update the constraints if 1) Working mode turned from other modes to the grasp mode. In this mode,
-        we need to add extra constraints to the edges such that the base do not move during grasping. 2) Working
-        mode turned from grasping to other modes, where we need to create a new graph since the original constrained
-        graph cannot be used. When new graph is created, we increase the count of graph_id to prevent naming ambiguous.
+        """Update the constraints according to working modes. In the grasp mode,
+        we need to add extra constraints to the edges such that the base do not move during grasping.
 
         Returns:
             None
         """
-        if self._previous_mode == self._work_modes.grasp and self._current_mode != self._work_modes.grasp:
-            self._constraint_graph = self._create_constraint_graph()
-        if self._previous_mode != self._work_modes.grasp and self._current_mode == self._work_modes.grasp:
+        if self._current_mode == self.Modes.grasp:
+            self._constraint_graph = self._create_constraint_graph(initialize=False)
             self._problem_solver.createLockedJoint("fix_base", "{}/root_joint".format(self._rm.name), [0, 0, 1, 0])
             for e in self._constraint_graph.edges.keys():
                 self._constraint_graph.addConstraints(edge=e, constraints=Constraints(numConstraints=["fix_base"]))
             self._constraint_graph.initialize()
-        self._previous_mode = self._current_mode
+        else:
+            self._constraint_graph = self._create_constraint_graph()
 
     def update_current_config(self, msg):
         if isinstance(msg, JointState):
@@ -219,7 +228,8 @@ class HPPManipulationInterface(object):
         Returns:
 
         """
-        q_current = self._project_config_if_necessary(self._q_current)
+        q_current = self._regulate_lock_hand_joints(self._q_current)
+        # q_current = self._project_config_if_necessary(self._q_current)
         self._problem_solver.addGoalConfig(q_goal)
         self._problem_solver.setInitialConfig(q_current)
 
@@ -244,7 +254,7 @@ class HPPManipulationInterface(object):
         # Get waypoints information
         grasp_stamps = []
         release_stamps = []
-        if self._current_mode == self._work_modes.grasp:
+        if self._current_mode == self.Modes.grasp:
             # waypoints is a list of configurations, each configuration corresponds to a node (or state)
             # in the graph, time stamp to reach that state is recorded in times.
             waypoints, times = self._problem_solver.getWaypoints(self._last_path_id)
@@ -294,14 +304,14 @@ class HPPManipulationInterface(object):
         return True
 
     def _project_config_if_necessary(self, config, node='free'):
-        """
+        """Project the configuration to the given node of the constraint graph to get a valid configuration.
 
         Args:
-            config:
-            node:
+            config: list[double] Complete configuration to project.
+            node: str Name of the node.
 
         Returns:
-
+            list[double] Projected configuration.
         """
         try:
             name = self._constraint_graph.getNode(config)
@@ -317,6 +327,15 @@ class HPPManipulationInterface(object):
             else:
                 raise ValueError('Failed to project config into {} node'.format(node))
 
+    def _regulate_lock_hand_joints(self, config):
+        regulated_configs = config[::]
+        for joint_name in self._joint_names:
+            if joint_name in self._gm.joints:
+                rank = self._robot.rankInConfiguration['{}/{}'.format(self._rm.name, joint_name)]
+                idx = self._gm.joints.index(joint_name)
+                regulated_configs[rank] = self._gm.values[idx]
+        return regulated_configs
+
     def approach(self, base_goal_pose, joint_goal_state, base_pos_tol, base_ori_tol):
         """Make a plan for the robot to approach the given base goal pose and joint goal state.
 
@@ -329,37 +348,35 @@ class HPPManipulationInterface(object):
         Returns:
             bool If success, return True, False otherwise.
         """
-        q_goal = self._project_config_if_necessary(self._q_current[::])
+        q_goal = self._regulate_lock_hand_joints(self._q_current)
+        # q_goal = self._project_config_if_necessary(self._q_current[::])
         goal_odom = Odometry()
         goal_odom.pose.pose = base_goal_pose
         self._set_planar_robot_base_config(q_goal, goal_odom)
         self._set_robot_joint_state_config(q_goal, joint_goal_state)
         self._base_p_tol = base_pos_tol if base_pos_tol > 0 else self._base_p_tol
         self._base_o_tol = base_ori_tol if base_ori_tol > 0 else self._base_o_tol
-        self._current_mode = self._work_modes.approach
+        self._current_mode = self.Modes.approach
         while not self._check_approaching_goal_reached(q_goal):
             if not self._implement_plan(q_goal):
                 return False
-        self._current_mode = self._work_modes.idle
+        self._current_mode = self.Modes.idle
         return True
 
-    def grasp(self, base_goal_pose, joint_goal_state, object_goal_pose, base_pos_tol, base_ori_tol,
-              object_pos_tol, object_ori_tol):
+    def grasp(self, joint_goal_state, object_goal_pose, object_pos_tol, object_ori_tol):
         """Make a grasping plan.
 
         Args:
-            base_goal_pose: Pose Goal pose of the base in the global frame.
             joint_goal_state: JointState Goal joint state of the robot joints.
             object_goal_pose: Pose Goal pose of the object in the global frame.
-            base_pos_tol: double Position tolerance of the base.
-            base_ori_tol: double Orientation tolerance of the base.
             object_pos_tol: double Position tolerance of the object.
             object_ori_tol: double Orientation tolerance of the object.
 
         Returns:
-            True if success, False otherwise.
+            True if succeed, False otherwise.
         """
-        q_goal = self._project_config_if_necessary(self._q_current[::])
+        q_goal = self._regulate_lock_hand_joints(self._q_current)
+        # q_goal = self._project_config_if_necessary(self._q_current[::])
         # TODO Since we fix the base during grasping, the base goal is currently disabled.
         # It shall be activated if we have accurate locomotion.
         # odom = Odometry()
@@ -367,15 +384,15 @@ class HPPManipulationInterface(object):
         # self._set_robot_base_config(self._q_goal, odom)
         # self._base_p_tol = base_pos_tol if base_pos_tol > 0 else self._base_p_tol
         # self._base_o_tol = base_ori_tol if base_ori_tol > 0 else self._base_o_tol
-        self._set_robot_joint_state_config(self._q_goal, joint_goal_state)
-        self._set_object_config(self._q_goal, object_goal_pose)
+        self._set_robot_joint_state_config(q_goal, joint_goal_state)
+        self._set_object_config(q_goal, object_goal_pose)
         self._object_p_tol = object_pos_tol if object_pos_tol > 0 else self._object_p_tol
         self._object_o_tol = object_ori_tol if object_ori_tol > 0 else self._object_o_tol
-        self._current_mode = self._work_modes.grasp
+        self._current_mode = self.Modes.grasp
         while not self._check_grasping_goal_reached(q_goal):
             if not self._implement_plan(q_goal):
                 return False
-        self._current_mode = self._work_modes.idle
+        self._current_mode = self.Modes.idle
         return True
 
     @property
@@ -453,7 +470,7 @@ class HPPManipulationInterface(object):
         config[rank: rank + 7] = common.to_list(common.to_ros_pose(new_pose_matrix))
 
     def _publish_planning_results(self, joint_cmd, base_cmd):
-        if self._current_mode == self._work_modes.grasp:
+        if self._current_mode == self.Modes.grasp:
             self._stop_base()
             self._joint_cmd_publisher.publish(joint_cmd)
         else:
@@ -494,7 +511,7 @@ class HPPManipulationInterface(object):
         Returns:
             True if both position and orientation errors are within tolerance.
         """
-        assert self._current_mode == self._work_modes.approach
+        assert self._current_mode == self.Modes.approach
         base_curr_pos = self._q_current[:2]
         base_curr_ori = self._q_current[2:4]
         base_goal_pos = q_goal[:2]
@@ -511,7 +528,7 @@ class HPPManipulationInterface(object):
         Returns:
             True if both position and orientation errors are within tolerance.
         """
-        assert self._current_mode == self._work_modes.grasp
+        assert self._current_mode == self.Modes.grasp
         rank = self._robot.rankInConfiguration['{}/root_joint'.format(self._om.name)]
         obj_curr_pos = self._q_current[rank: rank + 3]
         obj_curr_ori = self._q_current[rank + 3: rank + 7]

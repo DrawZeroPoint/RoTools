@@ -62,9 +62,8 @@ class HPPManipulationClient(object):
         base_current_global_pose = self.interface.get_current_base_global_pose()
         object_goal_pose = self._to_global_pose(req.object_goal_pose, req.object_goal_pose_type,
                                                 base_current_global_pose)
-        base_goal_pose = self._to_global_pose(req.base_goal_pose, req.base_goal_pose_type, base_current_global_pose)
-        ok = self.interface.grasp(base_goal_pose, req.joint_goal_state, object_goal_pose,
-                                  req.base_pos_tolerance, req.base_ori_tolerance, req.object_pos_tolerance,
+        # base_goal_pose = self._to_global_pose(req.base_goal_pose, req.base_goal_pose_type, base_current_global_pose)
+        ok = self.interface.grasp(req.joint_goal_state, object_goal_pose, req.object_pos_tolerance,
                                   req.object_ori_tolerance)
         resp.result_status = resp.SUCCEEDED if ok else resp.FAILED
         return resp

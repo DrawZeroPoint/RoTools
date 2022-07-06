@@ -63,6 +63,15 @@ class Model(object):
 class Gripper(object):
 
     def __init__(self, robot_model, name, fingers, finger_joints, joint_values):
+        """
+
+        Args:
+            robot_model:
+            name:
+            fingers:
+            finger_joints:
+            joint_values:
+        """
         super(Gripper, self).__init__()
 
         self._dof = 2
