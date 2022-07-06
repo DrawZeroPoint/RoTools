@@ -574,7 +574,7 @@ class MuJoCoInterface(Thread):
         """Set commands for the gripper containing joints denoted by joint_names.
 
         Args:
-            joint_names: list[str] Names of the joints belonging to the gripper.
+            joint_names: list[str] Names of the joints belonging to one or more grippers.
             cmd_values: float/list[float] If a float is given, all joints will be commanded with this value;
                         If a list is given, each of them will be set to a corresponding joint.
 
@@ -597,11 +597,15 @@ class MuJoCoInterface(Thread):
                 rospy.logwarn(e)
                 return False
 
+        timeout = time.time() + 5.  # Wait for 5 secs
         while True:
             qpos_list = [self._data.joint(joint_name).qpos.tolist()[0] for joint_name in joint_names]
             if all_close(qpos_list, cmd_values, 2.e-3):
                 break
+            if time.time() > timeout:
+                break
             rospy.loginfo_throttle(2, "Gripper is reaching to {} (current {})".format(cmd_values, qpos_list))
+            rospy.sleep(0.1)
         return True
 
     def reset_object_pose(self):
