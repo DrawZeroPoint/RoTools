@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import rospy
+from threading import Lock
 
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Pose
@@ -29,9 +30,11 @@ class HPPManipulationClient(object):
         self._srv_execute_manipulation_planning = rospy.Service('execute_manipulation_planning',
                                                                 ExecuteManipulationPlanning,
                                                                 self.execute_manipulation_planning_handle)
+
+        self._mutex = Lock()
         try:
             js_topic = kwargs['joint_state_topic']
-            self._sub_joint_state = rospy.Subscriber(js_topic, JointState, self.update_cb, buff_size=1)
+            self._sub_joint_state = rospy.Subscriber(js_topic, JointState, self.js_update_cb, buff_size=1)
         except KeyError:
             rospy.logwarn("Joint state topic is not provided")
 
@@ -43,7 +46,7 @@ class HPPManipulationClient(object):
 
         try:
             object_pose_topic = kwargs['object_pose_topic']
-            self._sub_object_pose = rospy.Subscriber(object_pose_topic, Pose, self.update_cb, buff_size=1)
+            self._sub_object_pose = rospy.Subscriber(object_pose_topic, Pose, self.object_pose_update_cb, buff_size=1)
         except KeyError:
             rospy.logwarn("Object pose topic is not provided")
 
@@ -78,8 +81,23 @@ class HPPManipulationClient(object):
         else:
             raise NotImplementedError
 
-    def update_cb(self, msg):
-        self.interface.update_current_config(msg)
+    def js_update_cb(self, msg):
+        self._mutex.acquire()
+        try:
+            self.interface.update_current_config(msg)
+        finally:
+            self._mutex.release()
 
     def odom_update_cb(self, msg):
-        self.interface.update_current_config(msg)
+        self._mutex.acquire()
+        try:
+            self.interface.update_current_config(msg)
+        finally:
+            self._mutex.release()
+
+    def object_pose_update_cb(self, msg):
+        self._mutex.acquire()
+        try:
+            self.interface.update_current_config(msg)
+        finally:
+            self._mutex.release()
