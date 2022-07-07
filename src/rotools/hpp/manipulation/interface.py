@@ -228,12 +228,12 @@ class HPPManipulationInterface(object):
         Returns:
 
         """
-        q_current = self._regulate_lock_hand_joints(self._q_current)
-        # q_current = self._project_config_if_necessary(self._q_current)
+        q_init = self._regulate_lock_hand_joints(self._q_current)
+        # q_init = self._project_config_if_necessary(self._q_current)
         self._problem_solver.addGoalConfig(q_goal)
-        self._problem_solver.setInitialConfig(q_current)
+        self._problem_solver.setInitialConfig(q_init)
 
-        rospy.logdebug("Current configuration:\n{}".format(["{0:0.8f}".format(i) for i in q_current]))
+        rospy.logdebug("Init configuration:\n{}".format(["{0:0.8f}".format(i) for i in q_init]))
         rospy.logdebug("Goal configuration:\n{}".format(["{0:0.8f}".format(i) for i in q_goal]))
 
         self._update_constraint_graph()
@@ -247,7 +247,7 @@ class HPPManipulationInterface(object):
 
         if self._enable_viewer:
             viewer = self._viewer_factory.createViewer()
-            viewer(q_current)
+            viewer(q_init)
             path_player = PathPlayer(viewer)
             path_player(self._last_path_id)
 
