@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-import copy
 import os
 import time
 import mujoco
