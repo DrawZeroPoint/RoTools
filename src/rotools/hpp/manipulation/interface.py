@@ -87,7 +87,8 @@ class HPPManipulationInterface(object):
         self._robot.setJointBounds("{}/root_joint".format(self._om.name), object_bound)
 
         # An absolute value, if the threshold is surpassed, will raise the error `A configuration has no node`
-        self._problem_solver.setErrorThreshold(3e-3)
+        self._error_threshold = 3.e-3
+        self._problem_solver.setErrorThreshold(self._error_threshold)
         self._problem_solver.setMaxIterProjection(80)
 
         # Use this one and/or the next to limit solving time. MaxIterPathPlanning is a fairly large value if not set.
@@ -390,6 +391,13 @@ class HPPManipulationInterface(object):
         self._object_o_tol = object_ori_tol if object_ori_tol > 0 else self._object_o_tol
         self._current_mode = self.Modes.grasp
         while not self._check_grasping_goal_reached(q_goal):
+            # During grasping, the robot base could move due to external perturbations or the robot hitting an
+            # obstacle, so we need to make sure the locomotion is within the tolerance, otherwise the initial and
+            # goal configurations will never be connected together. If the base has moved, we use the new base pose
+            # as the goal pose.
+            if not self._check_approaching_goal_reached(q_goal, self._error_threshold):
+                q_goal[:4] = self._q_current[:4]
+
             if not self._implement_plan(q_goal):
                 return False
         self._current_mode = self.Modes.idle
@@ -502,25 +510,30 @@ class HPPManipulationInterface(object):
         base_cmd = Twist()
         self._base_cmd_publisher.publish(base_cmd)
 
-    def _check_approaching_goal_reached(self, q_goal):
+    def _check_approaching_goal_reached(self, q_goal, base_tol=None):
         """Check if the base and the actuated joints have reached the goal.
 
         Args:
             q_goal list[double] Complete goal configuration to be reached.
+            base_tol None/double Tolerance of the base error.
 
         Returns:
             True if both position and orientation errors are within tolerance.
         """
-        assert self._current_mode == self.Modes.approach
         base_curr_pos = self._q_current[:2]
         base_curr_ori = self._q_current[2:4]
         base_goal_pos = q_goal[:2]
         base_goal_ori = q_goal[2:4]
         joint_curr_cfg = self._get_joint_configs(self._q_current)
         joint_goal_cfg = self._get_joint_configs(q_goal)
-        return common.all_close(base_goal_pos, base_curr_pos, self._base_p_tol) & \
-               common.all_close(base_goal_ori, base_curr_ori, self._base_o_tol) & \
-               common.all_close(joint_curr_cfg, joint_goal_cfg, 0.1)
+        if isinstance(base_tol, float) and base_tol > 0:
+            return common.all_close(base_goal_pos, base_curr_pos, base_tol) & \
+                   common.all_close(base_goal_ori, base_curr_ori, base_tol) & \
+                   common.all_close(joint_curr_cfg, joint_goal_cfg, 0.1)
+        else:
+            return common.all_close(base_goal_pos, base_curr_pos, self._base_p_tol) & \
+                   common.all_close(base_goal_ori, base_curr_ori, self._base_o_tol) & \
+                   common.all_close(joint_curr_cfg, joint_goal_cfg, 0.1)
 
     def _check_grasping_goal_reached(self, q_goal):
         """Check if the object being manipulated has reached the goal pose.
