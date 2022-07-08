@@ -221,13 +221,14 @@ class HPPManipulationInterface(object):
         return self._get_planar_robot_base_pose(self._q_current)
 
     def _implement_plan(self, q_goal):
-        """
+        """Given the goal configuration and dynamically retrieved initial configuration, this function plans a
+        valid path and implements the plan.
 
         Args:
-            q_goal:
+            q_goal: list[double] Complete configuration of the goal state.
 
         Returns:
-
+            bool True if succeeded, false otherwise.
         """
         q_init = self._regulate_lock_hand_joints(self._q_current)
         # q_init = self._project_config_if_necessary(self._q_current)
@@ -329,6 +330,14 @@ class HPPManipulationInterface(object):
                 raise ValueError('Failed to project config into {} node'.format(node))
 
     def _regulate_lock_hand_joints(self, config):
+        """Manually set the locked hand joints the values defined with the constraint.
+
+        Args:
+            config: list[double] Complete configuration.
+
+        Returns:
+            list[double] Regulated configuration.
+        """
         regulated_configs = config[::]
         for joint_name in self._joint_names:
             if joint_name in self._gm.joints:
@@ -486,11 +495,23 @@ class HPPManipulationInterface(object):
             self._joint_cmd_publisher.publish(joint_cmd)
 
     def _derive_command_msgs(self, j_q, j_dq, close_gripper=False):
+        """Derive command msgs for robot joints and the base.
+
+        Args:
+            j_q: list[double] Joint position commands.
+            j_dq: list[double] Joint velocity commands.
+            close_gripper: bool If true, the gripper joints' commands will be set as 0.
+                           Otherwise, the commands will follow the values in j_q.
+
+        Returns:
+            list[JointState, Twist] Commands for the joints and the base.
+        """
         joint_cmd = JointState()
         for name in self._joint_names:
             joint_cmd.name.append(name)
             rank = self._robot.rankInConfiguration['{}/{}'.format(self._rm.name, name)]
             if name in self._gm.joints and close_gripper:
+                # TODO the 0 value may fail in different grasping scenarios
                 joint_cmd.position.append(0)
             else:
                 joint_cmd.position.append(j_q[rank])
