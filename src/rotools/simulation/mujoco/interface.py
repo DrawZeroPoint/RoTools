@@ -528,6 +528,9 @@ class MuJoCoInterface(Thread):
                  with the actuator's type.
         Returns:
             None
+
+        Raises:
+            TypeError if the class member control_type is not valid.
         """
         if not cmd.name:
             for i, actuator_name in enumerate(self.actuator_names):
@@ -559,15 +562,26 @@ class MuJoCoInterface(Thread):
                 # We allow the name in cmd not present in _actuated_joint_names
                 pass
 
-    def set_base_command(self, vel):
+    def set_base_command(self, vel, factor=1.4):
+        """Set velocity commands to wheel of the base.
+
+        Args:
+            vel: list[double] A 4-element list containing velocity commands for the 4 wheels:
+                 FrontLeft, FrontRight, BackLeft, BackRight.
+            factor: double A value to be multiplied to the vel to migrate the sim-to-real gap.
+
+        Returns:
+            bool True if succeeded, false otherwise.
+        """
         if len(vel) != 4:
             rospy.logwarn_throttle(1, 'Only support 4 velocity commands for wheels')
-            return
+            return False
         wheel_fl = self._data.actuator('WHEEL_FL')
         wheel_fr = self._data.actuator('WHEEL_FR')
         wheel_bl = self._data.actuator('WHEEL_BL')
         wheel_br = self._data.actuator('WHEEL_BR')
-        wheel_fl.ctrl, wheel_fr.ctrl, wheel_bl.ctrl, wheel_br.ctrl = vel
+        wheel_fl.ctrl, wheel_fr.ctrl, wheel_bl.ctrl, wheel_br.ctrl = vel * factor
+        return True
 
     def set_gripper_command(self, joint_names, cmd_values):
         """Set commands for the gripper containing joints denoted by joint_names.
