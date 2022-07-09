@@ -172,9 +172,9 @@ class HPPManipulationInterface(object):
         """
         self._graph_id += 1
         graph_name = 'graph_{}'.format(self._graph_id)
-        constraint_graph = ConstraintGraph(self._robot, graph_name)
+        graph = ConstraintGraph(self._robot, graph_name)
         rospy.logdebug('Created new constraint graph: {}'.format(graph_name))
-        factory = ConstraintGraphFactory(constraint_graph)
+        factory = ConstraintGraphFactory(graph)
         factory.setGrippers(["{}/{}".format(self._rm.name, self._gm.name), ])
         factory.environmentContacts(["{}/{}".format(self._em.name, self._em.surface), ])
         factory.setObjects([self._om.name, ],
@@ -183,10 +183,16 @@ class HPPManipulationInterface(object):
         factory.setRules([Rule([".*"], [".*"], True), ])
         # factory.setPreplacementDistance('{}'.format(self._om.name), 0.1)
         factory.generate()
-        constraint_graph.addConstraints(graph=True, constraints=Constraints(numConstraints=self._lock_hand))
+        graph.addConstraints(graph=True, constraints=Constraints(numConstraints=self._lock_hand))
+        # TODO
+        # margined_edge = '{}/{} > {}/{} | f'.format(self._rm.name, self._gm.name, self._om.name, self._om.handle)
+        # for edge in graph.edges.keys():
+        #     if edge == margined_edge:
+        #         for joint in self._gm.joints:
+        #             graph.setSecurityMarginForEdge(edge, '{}/{}'.format(self._rm.name, joint), 'universe', 0.5)
         if initialize:
-            constraint_graph.initialize()
-        return constraint_graph
+            graph.initialize()
+        return graph
 
     def _update_constraint_graph(self):
         """Update the constraints according to working modes. In the grasp mode,
