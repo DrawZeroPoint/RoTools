@@ -69,6 +69,8 @@ endif ()
 find_library(CARTESIO_LIB CartesianInterface HINTS /opt/xbot/)
 if (CARTESIO_LIB)
   message(STATUS "Found CARTESIO_LIB ${CARTESIO_LIB}")
+  find_package(OpenSoT REQUIRED)
+  find_package(cartesian_interface REQUIRED)
 else ()
   message(WARNING "CARTESIO_LIB not found")
 endif ()
@@ -223,14 +225,17 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB)
 endif ()
 
 if (CARTESIO_LIB)
-  include_directories(/opt/xbot/include)
-  add_library(${PROJECT_NAME}_CARTESIO_ADDON
-    src/lib/cartesio_server.cpp
-    )
-  target_link_libraries(${PROJECT_NAME}_CARTESIO_ADDON
+  include_directories(/opt/xbot/include ${OpenSoT_INCLUDE_DIRS})
+  add_library(${PROJECT_NAME}_cartesio src/lib/cartesio_server.cpp)
+  target_link_libraries(${PROJECT_NAME}_cartesio ${catkin_LIBRARIES})
+  add_dependencies(${PROJECT_NAME}_cartesio ${PROJECT_NAME}_generate_messages_cpp)
+
+  add_library(${PROJECT_NAME}_cartesio_addon src/lib/cartesio_addon.cpp)
+  add_dependencies(${PROJECT_NAME}_cartesio_addon ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+  target_link_libraries(${PROJECT_NAME}_cartesio_addon
     ${catkin_LIBRARIES}
-    )
-  add_dependencies(${PROJECT_NAME}_CARTESIO_ADDON ${PROJECT_NAME}_generate_messages_cpp)
+    ${OpenSoT_LIBRARIES}
+    ${cartesian_interface_LIBRARIES})
 endif ()
 
 #####################
@@ -288,7 +293,7 @@ if (CARTESIO_LIB)
   target_link_libraries(roport_cartesio_server
     ${catkin_LIBRARIES}
     ${PROJECT_NAME}
-    ${PROJECT_NAME}_CARTESIO_ADDON
+    ${PROJECT_NAME}_cartesio
     )
 endif ()
 
