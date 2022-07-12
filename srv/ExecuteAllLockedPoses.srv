@@ -1,0 +1,23 @@
+# Move multiple groups to the target poses. One group will be used as the reference, whose goal pose is given,
+# other groups will move according to the reference and kept the relative pose along movement.
+
+# Requests
+# group_names: Names of the moving groups.
+# goal_type: GLOBAL: Absolute pose wrt the base frame (robot base).
+#            LOCAL_ALIGNED: Relative pose wrt the base frame transferred to current eef base position.
+#            LOCAL: pose wrt the eef frame.
+# goal: Goal pose for the reference group (the first group in the group_names).
+# stamp: Time interval for reaching goals.
+
+std_msgs/Header header
+string[] group_names
+uint8 GLOBAL=0
+uint8 LOCAL_ALIGNED=1
+uint8 LOCAL=2
+uint8 goal_type
+geometry_msgs/Pose goal
+float64 stamp
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

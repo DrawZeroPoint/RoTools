@@ -43,6 +43,7 @@
 #include <cartesian_interface/ReachPoseAction.h>
 #include <trajectory_msgs/JointTrajectory.h>
 
+#include <roport/ExecuteAllLockedPoses.h>
 #include <roport/ExecuteAllPoses.h>
 #include <roport/ExecuteMirroredPose.h>
 
@@ -64,12 +65,31 @@ class CartesIOServer {
   tf2_ros::TransformListener tf_listener_;
 
   ros::ServiceServer execute_all_poses_srv_;
+  ros::ServiceServer execute_all_locked_poses_srv_;
   ros::ServiceServer execute_mirrored_pose_srv_;
 
   using reachPoseActionClient = actionlib::SimpleActionClient<cartesian_interface::ReachPoseAction>;
   std::vector<std::shared_ptr<reachPoseActionClient>> control_clients_;
 
+  /**
+   * Move the groups to corresponding poses.
+   * @param req
+   * @param resp
+   * @return
+   */
   auto executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req, roport::ExecuteAllPoses::Response& resp) -> bool;
+
+  /**
+   * Move the groups to corresponding poses. If only one group is given, this is identical with executeAllPosesSrvCb,
+   * if multiple groups are given, the first group's pose will be the target, while other groups will move along with
+   * the first and keep their relative poses unchanged during the movement.
+   * @param req
+   * @param resp
+   * @return
+   */
+  auto executeAllLockedPosesSrvCb(roport::ExecuteAllLockedPoses::Request& req,
+                                  roport::ExecuteAllLockedPoses::Response& resp) -> bool;
+
   //  auto executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Request& req, roport::ExecuteMirroredPose::Response&
   //  resp)
   //      -> bool;
@@ -90,6 +110,15 @@ class CartesIOServer {
   //                                    trajectory_msgs::JointTrajectory& mirrored_trajectory);
 
   bool getTransform(const int& index, geometry_msgs::TransformStamped& transform);
+
+  bool getPose(const int& index, geometry_msgs::Pose& pose);
+
+  void getGoalPoseWithReference(const int& ref_idx,
+                                const geometry_msgs::Pose& curr_ref_pose,
+                                const geometry_msgs::Pose& goal_ref_pose,
+                                const int& idx,
+                                const geometry_msgs::Pose& curr_pose,
+                                geometry_msgs::Pose& goal_pose);
 };
 
 }  // namespace roport

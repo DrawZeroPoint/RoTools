@@ -53,6 +53,14 @@ inline auto getParam(const ros::NodeHandle& node_handle,
   return true;
 }
 
+inline auto getIndex(const std::vector<std::string>& names, const std::string& target) -> int {
+  auto res = std::find(names.begin(), names.end(), target);
+  if (res != names.end()) {
+    return res - names.begin();
+  }
+  return -1;
+}
+
 inline void geometryPoseToEigenMatrix(const geometry_msgs::Pose& pose, Eigen::Matrix4d& mat) {
   mat = Eigen::Matrix4d::Identity();
 

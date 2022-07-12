@@ -99,6 +99,7 @@ add_service_files(
   FILES
   ExecuteAddCollisionBox.srv
   ExecuteAddCollisionPlane.srv
+  ExecuteAllLockedPoses.srv
   ExecuteAllPlans.srv
   ExecuteAllPoses.srv
   ExecuteAttachCollisionBox.srv
