@@ -144,6 +144,24 @@ inline void localAlignedPoseToGlobalPose(const geometry_msgs::Pose& pose_local_a
   eigenMatrixToGeometryPose(mat_global_to_target, pose_global_to_target);
 }
 
+inline void toGlobalPose(const int& goal_type,
+                         const geometry_msgs::Pose& current_pose,
+                         const geometry_msgs::Pose& cmd_pose,
+                         geometry_msgs::Pose& goal_pose) {
+  if (goal_type == 0) {
+    // The given pose is already in the reference frame
+    goal_pose = cmd_pose;
+  } else if (goal_type == 1) {
+    // The given pose is relative to the local aligned frame having the same orientation as the reference frame
+    localAlignedPoseToGlobalPose(cmd_pose, current_pose, goal_pose, true);
+  } else if (goal_type == 2) {
+    // The given pose is relative to the local frame
+    localPoseToGlobalPose(cmd_pose, current_pose, goal_pose);
+  } else {
+    throw std::invalid_argument("Goal type not supported");
+  }
+}
+
 inline auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
   if (pose.orientation.w == 0 && pose.orientation.x == 0 && pose.orientation.y == 0 && pose.orientation.z == 0) {
     ROS_ERROR("The pose is empty (all orientation coefficients are zero)");

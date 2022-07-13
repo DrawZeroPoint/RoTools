@@ -66,7 +66,6 @@ class CartesIOServer {
 
   ros::ServiceServer execute_all_poses_srv_;
   ros::ServiceServer execute_all_locked_poses_srv_;
-  ros::ServiceServer execute_mirrored_pose_srv_;
 
   using reachPoseActionClient = actionlib::SimpleActionClient<cartesian_interface::ReachPoseAction>;
   std::vector<std::shared_ptr<reachPoseActionClient>> control_clients_;
@@ -90,11 +89,6 @@ class CartesIOServer {
   auto executeAllLockedPosesSrvCb(roport::ExecuteAllLockedPoses::Request& req,
                                   roport::ExecuteAllLockedPoses::Response& resp) -> bool;
 
-  //  auto executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Request& req, roport::ExecuteMirroredPose::Response&
-  //  resp)
-  //      -> bool;
-  //
-
   void buildActionGoal(const int& index,
                        const geometry_msgs::Pose& goal_pose,
                        cartesian_interface::ReachPoseActionGoal& action_goal);
@@ -104,14 +98,16 @@ class CartesIOServer {
   auto executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goals, double duration = 120)
       -> bool;
 
-  //  static void getMirroredTrajectory(MoveGroupInterface& move_group,
-  //                                    trajectory_msgs::JointTrajectory trajectory,
-  //                                    std::vector<double> mirror_vector,
-  //                                    trajectory_msgs::JointTrajectory& mirrored_trajectory);
-
   bool getTransform(const int& index, geometry_msgs::TransformStamped& transform);
 
-  bool getPose(const int& index, geometry_msgs::Pose& pose);
+  /**
+   * Given the index of the group in group_names_, get current pose of that group's control frame wrt the reference
+   * frame.
+   * @param index Group index in group_names_.
+   * @param pose Pose of the control frame.
+   * @return True if succeed, false otherwise.
+   */
+  bool getCurrentPoseWithIndex(const int& index, geometry_msgs::Pose& pose);
 
   void getGoalPoseWithReference(const int& ref_idx,
                                 const geometry_msgs::Pose& curr_ref_pose,

@@ -64,8 +64,6 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
   execute_all_poses_srv_ = nh_.advertiseService("execute_all_poses", &CartesIOServer::executeAllPosesSrvCb, this);
   execute_all_locked_poses_srv_ =
       nh_.advertiseService("execute_all_locked_poses", &CartesIOServer::executeAllLockedPosesSrvCb, this);
-  //  execute_mirrored_pose_srv_ =
-  //      nh_.advertiseService("execute_mirrored_pose", &CartesIOServer::executeMirroredPoseSrvCb, this);
 }
 
 auto CartesIOServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
@@ -77,24 +75,12 @@ auto CartesIOServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
     for (int j = 0; j < req.group_names.size(); ++j) {
       if (req.group_names[j] == group_names_[i]) {
         geometry_msgs::Pose current_pose;
-        if (!getPose(i, current_pose)) {
+        if (!getCurrentPoseWithIndex(i, current_pose)) {
           return false;
         }
 
-        // Initialize the goal pose
         geometry_msgs::Pose goal_pose;
-
-        // Transfer the given pose to the reference frame
-        if (req.goal_type == req.GLOBAL) {
-          // The given pose is already in the reference frame
-          goal_pose = req.goals.poses[j];
-        } else if (req.goal_type == req.LOCAL_ALIGNED) {
-          // The given pose is relative to the local aligned frame having the same orientation as the reference frame
-          localAlignedPoseToGlobalPose(req.goals.poses[j], current_pose, goal_pose, true);
-        } else {
-          // The given pose is relative to the local frame
-          localPoseToGlobalPose(req.goals.poses[j], current_pose, goal_pose);
-        }
+        toGlobalPose(req.goal_type, current_pose, req.goals.poses[j], goal_pose);
 
         // Build trajectory to reach the goal
         cartesian_interface::ReachPoseActionGoal action_goal;
@@ -130,26 +116,15 @@ auto CartesIOServer::executeAllLockedPosesSrvCb(roport::ExecuteAllLockedPoses::R
 
     geometry_msgs::Pose goal_pose;
     if (j == 0) {
-      if (!getPose(i, current_reference_pose)) {
+      if (!getCurrentPoseWithIndex(i, current_reference_pose)) {
         return false;
       }
       reference_index = i;
-
-      // Transfer the given pose to the reference frame
-      if (req.goal_type == req.GLOBAL) {
-        // The given pose is already in the reference frame
-        goal_pose = req.goal;
-      } else if (req.goal_type == req.LOCAL_ALIGNED) {
-        // The given pose is relative to the local aligned frame having the same orientation as the reference frame
-        localAlignedPoseToGlobalPose(req.goal, current_reference_pose, goal_pose, true);
-      } else {
-        // The given pose is relative to the local frame
-        localPoseToGlobalPose(req.goal, current_reference_pose, goal_pose);
-      }
+      toGlobalPose(req.goal_type, current_reference_pose, req.goal, goal_pose);
       goal_reference_pose = goal_pose;
     } else {
       geometry_msgs::Pose current_pose;
-      if (!getPose(i, current_pose)) {
+      if (!getCurrentPoseWithIndex(i, current_pose)) {
         return false;
       }
       getGoalPoseWithReference(reference_index, current_reference_pose, goal_reference_pose, i, current_pose,
@@ -183,7 +158,7 @@ bool CartesIOServer::getTransform(const int& index, geometry_msgs::TransformStam
   }
 }
 
-bool CartesIOServer::getPose(const int& index, geometry_msgs::Pose& pose) {
+bool CartesIOServer::getCurrentPoseWithIndex(const int& index, geometry_msgs::Pose& pose) {
   geometry_msgs::TransformStamped transform;
   if (!getTransform(index, transform)) {
     return false;
@@ -216,91 +191,6 @@ void CartesIOServer::getGoalPoseWithReference(const int& ref_idx,
   auto trans_b_g = trans_b_rg * trans_b_rc.inverse() * trans_b_c;
   eigenMatrixToGeometryPose(trans_b_g, goal_pose);
 }
-
-// auto CartesIOServer::executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Request& req,
-//                                               roport::ExecuteMirroredPose::Response& resp) -> bool {
-//   int ref_index = getGroupIndex(req.reference_group);
-//   if (ref_index < 0) {
-//     throw std::runtime_error("Reference group does not exist");
-//   }
-//   int mirror_index = getGroupIndex(req.mirror_group);
-//   if (mirror_index < 0) {
-//     throw std::runtime_error("Mirror group does not exist");
-//   }
-//
-//   std::map<int, trajectory_msgs::JointTrajectory> trajectories;
-//   trajectory_msgs::JointTrajectory trajectory;
-//   geometry_msgs::PoseStamped current_pose_wrt_base = interfaces_[ref_index]->getCurrentPose();
-//   geometry_msgs::PoseStamped goal_pose_wrt_base;
-//   goal_pose_wrt_base.header = current_pose_wrt_base.header;
-//
-//   // Transfer given goal pose to the base frame
-//   if (req.goal_type == req.BASE_ABS) {
-//     goal_pose_wrt_base.pose = req.goal;
-//   } else if (req.goal_type == req.BASE_REL) {
-//     geometry_msgs::PoseStamped transform_wrt_local_base;
-//     transform_wrt_local_base.pose = req.goal;
-//     relativePoseToAbsolutePose(transform_wrt_local_base, current_pose_wrt_base, goal_pose_wrt_base);
-//   } else {
-//     geometry_msgs::PoseStamped goal_pose_wrt_eef;
-//     goal_pose_wrt_eef.pose = req.goal;
-//     goal_pose_wrt_eef.header.frame_id = interfaces_[ref_index]->getEndEffectorLink();
-//     goal_pose_wrt_base =
-//         tf_buffer_.transform(goal_pose_wrt_eef, interfaces_[ref_index]->getPlanningFrame(), ros::Duration(1));
-//   }
-//
-//   // Build trajectory to reach the goal
-//   if (!buildTrajectory(*interfaces_[ref_index], goal_pose_wrt_base, trajectory, req.is_cartesian)) {
-//     ROS_ERROR("RoPort: Building trajectory failed");
-//     resp.result_status = resp.FAILED;
-//     return true;
-//   }
-//
-//   trajectory_msgs::JointTrajectory updated_trajectory;
-//   if (req.stamp > 0) {
-//     updateTrajectoryStamp(trajectory, req.stamp, updated_trajectory);
-//   } else {
-//     updated_trajectory = trajectory;
-//   }
-//   trajectories.insert({ref_index, updated_trajectory});
-//
-//   trajectory_msgs::JointTrajectory mirrored_trajectory;
-//   getMirroredTrajectory(*interfaces_[mirror_index], updated_trajectory, req.mirror_vector, mirrored_trajectory);
-//   trajectories.insert({mirror_index, mirrored_trajectory});
-//
-//   if (executeTrajectories(trajectories)) {
-//     resp.result_status = resp.SUCCEEDED;
-//   } else {
-//     resp.result_status = resp.FAILED;
-//   }
-//   return true;
-// }
-//
-// void CartesIOServer::getMirroredTrajectory(MoveGroupInterface& move_group,
-//                                            trajectory_msgs::JointTrajectory trajectory,
-//                                            std::vector<double> mirror_vector,
-//                                            trajectory_msgs::JointTrajectory& mirrored_trajectory) {
-//   mirrored_trajectory.joint_names = move_group.getActiveJoints();
-//   mirrored_trajectory.header = trajectory.header;
-//   for (size_t i = 0; i < trajectory.points.size(); ++i) {
-//     trajectory_msgs::JointTrajectoryPoint p;
-//     p = trajectory.points[i];
-//     ROS_ASSERT(p.positions.size() == mirror_vector.size());
-//     for (size_t j = 0; j < p.positions.size(); ++j) {
-//       p.positions[j] *= mirror_vector[j];
-//       if (!p.velocities.empty()) {
-//         p.velocities[j] *= mirror_vector[j];
-//       }
-//       if (!p.accelerations.empty()) {
-//         p.accelerations[j] *= mirror_vector[j];
-//       }
-//       if (!p.effort.empty()) {
-//         p.effort[j] *= mirror_vector[j];
-//       }
-//     }
-//     mirrored_trajectory.points.push_back(p);
-//   }
-// }
 
 void CartesIOServer::buildActionGoal(const int& index,
                                      const geometry_msgs::Pose& goal_pose,
