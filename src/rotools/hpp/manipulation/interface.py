@@ -187,7 +187,7 @@ class HPPManipulationInterface(object):
         factory.generate()
         graph.addConstraints(graph=True, constraints=Constraints(numConstraints=self._lock_hand))
         # graph.display(open=False)
-        security_margins = SecurityMargins(self._problem_solver, factory, [self._rm.name, self._om.name, 'universe'])
+        security_margins = SecurityMargins(self._problem_solver, factory, [self._rm.name, self._om.name])
         security_margins.setSecurityMarginBetween(self._rm.name, self._om.name, self._safety_margin)
         security_margins.apply()
         if initialize:
