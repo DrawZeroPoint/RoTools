@@ -10,7 +10,7 @@ import rospy
 
 from hpp.corbaserver.manipulation.robot import Robot as Parent
 from hpp.corbaserver.manipulation import ProblemSolver, ConstraintGraph, Rule, \
-    Constraints, ConstraintGraphFactory, Client
+    Constraints, ConstraintGraphFactory, Client, SecurityMargins
 from hpp.corbaserver import loadServerPlugin
 
 from hpp.gepetto import PathPlayer
@@ -49,6 +49,7 @@ class HPPManipulationInterface(object):
             base_cmd_topic,
             enable_viewer=True,
             reduction_ratio=0.2,
+            safety_margin=0.02,
             **kwargs
     ):
         super(HPPManipulationInterface, self).__init__()
@@ -111,6 +112,7 @@ class HPPManipulationInterface(object):
         self._lock_hand = self._create_locks()
 
         self._graph_id = 0
+        self._safety_margin = safety_margin
         self._constraint_graph = self._create_constraint_graph()
 
         self._joint_cmd_publisher = rospy.Publisher(joint_cmd_topic, JointState, queue_size=1)
@@ -184,12 +186,10 @@ class HPPManipulationInterface(object):
         # factory.setPreplacementDistance('{}'.format(self._om.name), 0.1)
         factory.generate()
         graph.addConstraints(graph=True, constraints=Constraints(numConstraints=self._lock_hand))
-        # TODO
-        # margined_edge = '{}/{} > {}/{} | f'.format(self._rm.name, self._gm.name, self._om.name, self._om.handle)
-        # for edge in graph.edges.keys():
-        #     if edge == margined_edge:
-        #         for joint in self._gm.joints:
-        #             graph.setSecurityMarginForEdge(edge, '{}/{}'.format(self._rm.name, joint), 'universe', 0.5)
+        # graph.display(open=False)
+        security_margins = SecurityMargins(self._problem_solver, factory, [self._rm.name, self._om.name, 'universe'])
+        security_margins.setSecurityMarginBetween(self._rm.name, self._om.name, self._safety_margin)
+        security_margins.apply()
         if initialize:
             graph.initialize()
         return graph
