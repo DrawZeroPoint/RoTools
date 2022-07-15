@@ -176,6 +176,29 @@ inline auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
 }
 
 /**
+ * Converting a quaternion representing a planar rotation to theta.
+ * @param quat Quaternion msg.
+ * @return theta.
+ */
+inline double quaternionToTheta(const geometry_msgs::Quaternion& quat) {
+  Eigen::Quaterniond quaternion(quat.w, quat.x, quat.y, quat.z);
+  Eigen::Rotation2Dd rot(quaternion.toRotationMatrix().topLeftCorner<2, 2>());
+  return rot.smallestPositiveAngle();
+}
+
+/**
+ * Pretty print a Eigen matrix. Its size, row number, and column number will also be displayed.
+ * @param mat A matrix with various shape to print.
+ * @param precision How many digits to keep after the decimal point.
+ */
+inline void prettyPrintEigenMatrix(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& mat,
+                                   const int& precision = 3) {
+  Eigen::IOFormat cleanFormat(precision, 0, ", ", "\n", "[", "]");
+  std::cout << "Matrix size: " << mat.size() << " rows: " << mat.rows() << " cols: " << mat.cols() << std::endl;
+  std::cout << mat.format(cleanFormat) << std::endl;
+}
+
+/**
  * Judge if all corresponding elements in the two given vectors are close to each other under the tolerance.
  * @tparam T Value type.
  * @param first One vector.
