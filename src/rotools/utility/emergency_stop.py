@@ -15,17 +15,27 @@ class EStop(object):
         self._enable = False
 
         if Listener is not None:
-            hot_key = 'Alt'
+            hot_key = "Alt"
             if isinstance(function_name, str):
-                print_warn('{} is deactivated, press {} button to activate/deactivate'.format(function_name, hot_key))
+                print_warn(
+                    "{} is deactivated, press {} button to activate/deactivate".format(
+                        function_name, hot_key
+                    )
+                )
             else:
-                print_warn('Function is deactivated, press {} button to activate/deactivate'.format(hot_key))
+                print_warn(
+                    "Function is deactivated, press {} button to activate/deactivate".format(
+                        hot_key
+                    )
+                )
 
             self.listener = Listener(on_press=self._on_press)
             self.listener.start()  # start the thread and run subsequent codes
         else:
-            print_warn('{}'.format(err))
-            print_warn('To use keyboard interactions: sudo pip install pynput playsound')
+            print_warn("{}".format(err))
+            print_warn(
+                "To use keyboard interactions: sudo pip install pynput playsound"
+            )
 
     def _on_press(self, key):
         if key == Key.alt or key == Key.alt_r:
@@ -35,9 +45,9 @@ class EStop(object):
     def set_status(self, status):
         self._enable = status
         if self._enable:
-            print_warn('\nActivated')
+            print_warn("\nActivated")
         else:
-            print_debug('\nStopped')
+            print_debug("\nStopped")
         play_hint_sound(status)
 
     @property

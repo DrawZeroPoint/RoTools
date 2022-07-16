@@ -34,20 +34,17 @@ class MujocoViewer:
         # glfw init
         glfw.init()
         width, height = glfw.get_video_mode(glfw.get_primary_monitor()).size
-        self.window = glfw.create_window(
-            width // 2, height // 2, "mujoco", None, None)
+        self.window = glfw.create_window(width // 2, height // 2, "mujoco", None, None)
         glfw.make_context_current(self.window)
         glfw.swap_interval(1)
 
-        framebuffer_width, framebuffer_height = glfw.get_framebuffer_size(
-            self.window)
+        framebuffer_width, framebuffer_height = glfw.get_framebuffer_size(self.window)
         window_width, _ = glfw.get_window_size(self.window)
         self._scale = framebuffer_width * 1.0 / window_width
 
         # set callbacks
         glfw.set_cursor_pos_callback(self.window, self._cursor_pos_callback)
-        glfw.set_mouse_button_callback(
-            self.window, self._mouse_button_callback)
+        glfw.set_mouse_button_callback(self.window, self._mouse_button_callback)
         glfw.set_scroll_callback(self.window, self._scroll_callback)
         glfw.set_key_callback(self.window, self._key_callback)
         self._last_left_click_time = None
@@ -63,11 +60,11 @@ class MujocoViewer:
         self.scn = mujoco.MjvScene(self.model, maxgeom=10000)
         self.pert = mujoco.MjvPerturb()
         self.ctx = mujoco.MjrContext(
-            self.model, mujoco.mjtFontScale.mjFONTSCALE_150.value)
+            self.model, mujoco.mjtFontScale.mjFONTSCALE_150.value
+        )
 
         # get viewport
-        self.viewport = mujoco.MjrRect(
-            0, 0, framebuffer_width, framebuffer_height)
+        self.viewport = mujoco.MjrRect(0, 0, framebuffer_width, framebuffer_height)
 
         # overlay, markers
         self._overlay = {}
@@ -102,9 +99,13 @@ class MujocoViewer:
         # Capture screenshot
         elif key == glfw.KEY_T:
             img = np.zeros(
-                (glfw.get_framebuffer_size(
-                    self.window)[1], glfw.get_framebuffer_size(
-                    self.window)[0], 3), dtype=np.uint8)
+                (
+                    glfw.get_framebuffer_size(self.window)[1],
+                    glfw.get_framebuffer_size(self.window)[0],
+                    3,
+                ),
+                dtype=np.uint8,
+            )
             mujoco.mjr_readPixels(img, None, self.viewport, self.ctx)
             imageio.imwrite(self._image_path % self._image_idx, np.flipud(img))
             self._image_idx += 1
@@ -130,7 +131,13 @@ class MujocoViewer:
         elif key in (glfw.KEY_0, glfw.KEY_1, glfw.KEY_2, glfw.KEY_3, glfw.KEY_4):
             self.vopt.geomgroup[key - glfw.KEY_0] ^= 1
         elif key == glfw.KEY_P:
-            print("Cam params: ", self.cam.distance, self.cam.azimuth, self.cam.elevation, self.cam.lookat)
+            print(
+                "Cam params: ",
+                self.cam.distance,
+                self.cam.azimuth,
+                self.cam.elevation,
+                self.cam.lookat,
+            )
         # Quit
         if key == glfw.KEY_ESCAPE:
             print("Pressed ESC")
@@ -143,12 +150,21 @@ class MujocoViewer:
             return
 
         mod_shift = (
-            glfw.get_key(window, glfw.KEY_LEFT_SHIFT) == glfw.PRESS or
-            glfw.get_key(window, glfw.KEY_RIGHT_SHIFT) == glfw.PRESS)
+            glfw.get_key(window, glfw.KEY_LEFT_SHIFT) == glfw.PRESS
+            or glfw.get_key(window, glfw.KEY_RIGHT_SHIFT) == glfw.PRESS
+        )
         if self._button_right_pressed:
-            action = mujoco.mjtMouse.mjMOUSE_MOVE_H if mod_shift else mujoco.mjtMouse.mjMOUSE_MOVE_V
+            action = (
+                mujoco.mjtMouse.mjMOUSE_MOVE_H
+                if mod_shift
+                else mujoco.mjtMouse.mjMOUSE_MOVE_V
+            )
         elif self._button_left_pressed:
-            action = mujoco.mjtMouse.mjMOUSE_ROTATE_H if mod_shift else mujoco.mjtMouse.mjMOUSE_ROTATE_V
+            action = (
+                mujoco.mjtMouse.mjMOUSE_ROTATE_H
+                if mod_shift
+                else mujoco.mjtMouse.mjMOUSE_ROTATE_V
+            )
         else:
             action = mujoco.mjtMouse.mjMOUSE_ZOOM
 
@@ -165,22 +181,23 @@ class MujocoViewer:
                     dx / height,
                     dy / height,
                     self.scn,
-                    self.pert)
+                    self.pert,
+                )
             else:
                 mujoco.mjv_moveCamera(
-                    self.model,
-                    action,
-                    dx / height,
-                    dy / height,
-                    self.scn,
-                    self.cam)
+                    self.model, action, dx / height, dy / height, self.scn, self.cam
+                )
 
         self._last_mouse_x = int(self._scale * xpos)
         self._last_mouse_y = int(self._scale * ypos)
 
     def _mouse_button_callback(self, window, button, act, mods):
-        self._button_left_pressed = button == glfw.MOUSE_BUTTON_LEFT and act == glfw.PRESS
-        self._button_right_pressed = button == glfw.MOUSE_BUTTON_RIGHT and act == glfw.PRESS
+        self._button_left_pressed = (
+            button == glfw.MOUSE_BUTTON_LEFT and act == glfw.PRESS
+        )
+        self._button_right_pressed = (
+            button == glfw.MOUSE_BUTTON_RIGHT and act == glfw.PRESS
+        )
 
         x, y = glfw.get_cursor_pos(window)
         self._last_mouse_x = int(self._scale * x)
@@ -195,7 +212,7 @@ class MujocoViewer:
             if self._last_left_click_time is None:
                 self._last_left_click_time = glfw.get_time()
 
-            time_diff = (time_now - self._last_left_click_time)
+            time_diff = time_now - self._last_left_click_time
             if 0.01 < time_diff < 0.3:
                 self._left_double_click_pressed = True
             self._last_left_click_time = time_now
@@ -204,7 +221,7 @@ class MujocoViewer:
             if self._last_right_click_time is None:
                 self._last_right_click_time = glfw.get_time()
 
-            time_diff = (time_now - self._last_right_click_time)
+            time_diff = time_now - self._last_right_click_time
             if 0.01 < time_diff < 0.2:
                 self._right_double_click_pressed = True
             self._last_right_click_time = time_now
@@ -221,8 +238,7 @@ class MujocoViewer:
 
             # perturbation onste: reset reference
             if newperturb and not self.pert.active:
-                mujoco.mjv_initPerturb(
-                    self.model, self.data, self.scn, self.pert)
+                mujoco.mjv_initPerturb(self.model, self.data, self.scn, self.pert)
         self.pert.active = newperturb
 
         # handle doubleclick
@@ -254,7 +270,8 @@ class MujocoViewer:
                 self.scn,
                 selpnt,
                 selgeom,
-                selskin)
+                selskin,
+            )
 
             # set lookat point, start tracking is requested
             if selmode == 2 or selmode == 3:
@@ -275,8 +292,7 @@ class MujocoViewer:
                     # compute localpos
                     vec = selpnt.flatten() - self.data.xpos[selbody]
                     mat = self.data.xmat[selbody].reshape(3, 3)
-                    self.pert.localpos = self.data.xmat[selbody].reshape(
-                        3, 3).dot(vec)
+                    self.pert.localpos = self.data.xmat[selbody].reshape(3, 3).dot(vec)
                 else:
                     self.pert.select = 0
                     self.pert.skinselect = -1
@@ -290,16 +306,20 @@ class MujocoViewer:
     def _scroll_callback(self, window, x_offset, y_offset):
         with self._gui_lock:
             mujoco.mjv_moveCamera(
-                self.model, mujoco.mjtMouse.mjMOUSE_ZOOM, 0, -0.05 * y_offset, self.scn, self.cam)
+                self.model,
+                mujoco.mjtMouse.mjMOUSE_ZOOM,
+                0,
+                -0.05 * y_offset,
+                self.scn,
+                self.cam,
+            )
 
     def add_marker(self, **marker_params):
         self._markers.append(marker_params)
 
     def _add_marker_to_scene(self, marker):
         if self.scn.ngeom >= self.scn.maxgeom:
-            raise RuntimeError(
-                'Ran out of geoms. maxgeom: %d' %
-                self.scn.maxgeom)
+            raise RuntimeError("Ran out of geoms. maxgeom: %d" % self.scn.maxgeom)
 
         g = self.scn.geoms[self.scn.ngeom]
         # default values.
@@ -335,7 +355,9 @@ class MujocoViewer:
             elif hasattr(g, key):
                 raise ValueError(
                     "mjtGeom has attr {} but type {} is invalid".format(
-                        key, type(value)))
+                        key, type(value)
+                    )
+                )
             else:
                 raise ValueError("mjtGeom doesn't have field %s" % key)
 
@@ -360,38 +382,28 @@ class MujocoViewer:
         else:
             add_overlay(
                 topleft,
-                "Run speed = %.3f x real time" %
-                self._run_speed,
-                "[S]lower, [F]aster")
+                "Run speed = %.3f x real time" % self._run_speed,
+                "[S]lower, [F]aster",
+            )
+        add_overlay(
+            topleft, "Ren[d]er every frame", "On" if self._render_every_frame else "Off"
+        )
         add_overlay(
             topleft,
-            "Ren[d]er every frame",
-            "On" if self._render_every_frame else "Off")
-        add_overlay(
-            topleft, "Switch camera (#cams = %d)" %
-            (self.model.ncam + 1), "[Tab] (camera ID = %d)" %
-            self.cam.fixedcamid)
-        add_overlay(
-            topleft,
-            "[C]ontact forces",
-            "On" if self._contacts else "Off")
-        add_overlay(
-            topleft,
-            "T[r]ansparent",
-            "On" if self._transparent else "Off")
+            "Switch camera (#cams = %d)" % (self.model.ncam + 1),
+            "[Tab] (camera ID = %d)" % self.cam.fixedcamid,
+        )
+        add_overlay(topleft, "[C]ontact forces", "On" if self._contacts else "Off")
+        add_overlay(topleft, "T[r]ansparent", "On" if self._transparent else "Off")
         if self._paused is not None:
             if not self._paused:
                 add_overlay(topleft, "Stop", "[Space]")
             else:
                 add_overlay(topleft, "Start", "[Space]")
-                add_overlay(
-                    topleft,
-                    "Advance simulation by one step",
-                    "[right arrow]")
+                add_overlay(topleft, "Advance simulation by one step", "[right arrow]")
         add_overlay(
-            topleft,
-            "Referenc[e] frames",
-            "On" if self.vopt.frame == 1 else "Off")
+            topleft, "Referenc[e] frames", "On" if self.vopt.frame == 1 else "Off"
+        )
         add_overlay(topleft, "[H]ide Menu", "")
         if self._image_idx > 0:
             fname = self._image_path % (self._image_idx - 1)
@@ -400,16 +412,11 @@ class MujocoViewer:
             add_overlay(topleft, "Cap[t]ure frame", "")
         add_overlay(topleft, "Toggle geomgroup visibility", "0-4")
 
+        add_overlay(bottomleft, "FPS", "%d%s" % (1 / self._time_per_render, ""))
+        add_overlay(bottomleft, "Solver iterations", str(self.data.solver_iter + 1))
         add_overlay(
-            bottomleft, "FPS", "%d%s" %
-            (1 / self._time_per_render, ""))
-        add_overlay(
-            bottomleft, "Solver iterations", str(
-                self.data.solver_iter + 1))
-        add_overlay(
-            bottomleft, "Step", str(
-                round(
-                    self.data.time / self.model.opt.timestep)))
+            bottomleft, "Step", str(round(self.data.time / self.model.opt.timestep))
+        )
         add_overlay(bottomleft, "timestep", "%.5f" % self.model.opt.timestep)
 
     def apply_perturbations(self):
@@ -430,7 +437,8 @@ class MujocoViewer:
                 glfw.terminate()
                 sys.exit(0)
             self.viewport.width, self.viewport.height = glfw.get_framebuffer_size(
-                self.window)
+                self.window
+            )
             with self._gui_lock:
                 # update scene
                 mujoco.mjv_updateScene(
@@ -440,7 +448,8 @@ class MujocoViewer:
                     self.pert,
                     self.cam,
                     mujoco.mjtCatBit.mjCAT_ALL.value,
-                    self.scn)
+                    self.scn,
+                )
                 # marker items
                 for marker in self._markers:
                     self._add_marker_to_scene(marker)
@@ -455,11 +464,13 @@ class MujocoViewer:
                             self.viewport,
                             t1,
                             t2,
-                            self.ctx)
+                            self.ctx,
+                        )
                 glfw.swap_buffers(self.window)
             glfw.poll_events()
-            self._time_per_render = 0.9 * self._time_per_render + \
-                0.1 * (time.time() - render_start)
+            self._time_per_render = 0.9 * self._time_per_render + 0.1 * (
+                time.time() - render_start
+            )
 
             # clear overlay
             self._overlay.clear()
@@ -471,8 +482,9 @@ class MujocoViewer:
                     self._advance_by_one_step = False
                     break
         else:
-            self._loop_count += self.model.opt.timestep / \
-                (self._time_per_render * self._run_speed)
+            self._loop_count += self.model.opt.timestep / (
+                self._time_per_render * self._run_speed
+            )
             if self._render_every_frame:
                 self._loop_count = 1
             while self._loop_count > 0:

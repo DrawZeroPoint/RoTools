@@ -9,20 +9,22 @@ from rotools.utility.common import get_param, pretty_print_configs
 
 if __name__ == "__main__":
     try:
-        rospy.init_node('roport_sensing_server')
+        rospy.init_node("roport_sensing_server")
         # You only need to modify the config to apply this to new robots
-        device_names = get_param('~device_names')
+        device_names = get_param("~device_names")
         assert device_names is not None, print("No sensing device available")
-        algorithm_names = get_param('~algorithm_names')
-        algorithm_ports = get_param('~algorithm_ports')
+        algorithm_names = get_param("~algorithm_names")
+        algorithm_ports = get_param("~algorithm_ports")
         assert algorithm_ports is not None, print("No sensing algorithm available")
         if algorithm_names and algorithm_ports:
-            assert len(algorithm_names) == len(algorithm_ports), print('Algorithm names mismatch ports')
+            assert len(algorithm_names) == len(algorithm_ports), print(
+                "Algorithm names mismatch ports"
+            )
 
         configs = {
-            'device_names': device_names,
-            'algorithm_names': algorithm_names,
-            'algorithm_ports': algorithm_ports,
+            "device_names": device_names,
+            "algorithm_names": algorithm_names,
+            "algorithm_ports": algorithm_ports,
         }
         pretty_print_configs(configs)
         server = SensingServer(configs)

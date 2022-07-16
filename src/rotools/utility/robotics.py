@@ -59,9 +59,9 @@ def vector_to_so3(omega):
                   [ 3,  0, -1],
                   [-2,  1,  0]])
     """
-    return np.array([[0, -omega[2], omega[1]],
-                     [omega[2], 0, -omega[0]],
-                     [-omega[1], omega[0], 0]])
+    return np.array(
+        [[0, -omega[2], omega[1]], [omega[2], 0, -omega[0]], [-omega[1], omega[0], 0]]
+    )
 
 
 def so3_to_vector(so3_mat):
@@ -112,7 +112,11 @@ def matrix_exp3(so3_mat):
     else:
         theta = axis_angle3(omega_theta)[1]
         omega_mat = so3_mat / theta
-        return np.eye(3) + np.sin(theta) * omega_mat + (1 - np.cos(theta)) * np.dot(omega_mat, omega_mat)
+        return (
+            np.eye(3)
+            + np.sin(theta) * omega_mat
+            + (1 - np.cos(theta)) * np.dot(omega_mat, omega_mat)
+        )
 
 
 def matrix_log3(R):
@@ -134,14 +138,17 @@ def matrix_log3(R):
         return np.zeros((3, 3))
     elif acos_input <= -1:
         if not near_zero(1 + R[2][2]):
-            omg = (1.0 / np.sqrt(2 * (1 + R[2][2]))) \
-                  * np.array([R[0][2], R[1][2], 1 + R[2][2]])
+            omg = (1.0 / np.sqrt(2 * (1 + R[2][2]))) * np.array(
+                [R[0][2], R[1][2], 1 + R[2][2]]
+            )
         elif not near_zero(1 + R[1][1]):
-            omg = (1.0 / np.sqrt(2 * (1 + R[1][1]))) \
-                  * np.array([R[0][1], 1 + R[1][1], R[2][1]])
+            omg = (1.0 / np.sqrt(2 * (1 + R[1][1]))) * np.array(
+                [R[0][1], 1 + R[1][1], R[2][1]]
+            )
         else:
-            omg = (1.0 / np.sqrt(2 * (1 + R[0][0]))) \
-                  * np.array([1 + R[0][0], R[1][0], R[2][0]])
+            omg = (1.0 / np.sqrt(2 * (1 + R[0][0]))) * np.array(
+                [1 + R[0][0], R[1][0], R[2][0]]
+            )
         return vector_to_so3(np.pi * omg)
     else:
         theta = np.arccos(acos_input)
@@ -188,7 +195,7 @@ def SE3_to_Rp(T):
          np.array([0, 0, 3]))
     """
     T = np.array(T)
-    return T[0: 3, 0: 3], T[0: 3, 3]
+    return T[0:3, 0:3], T[0:3, 3]
 
 
 def SE3_inv(T):
@@ -227,8 +234,9 @@ def vector_to_se3(V):
                   [-2,  1,  0, 6],
                   [ 0,  0,  0, 0]])
     """
-    return np.r_[np.c_[vector_to_so3([V[0], V[1], V[2]]), [V[3], V[4], V[5]]],
-                 np.zeros((1, 4))]
+    return np.r_[
+        np.c_[vector_to_so3([V[0], V[1], V[2]]), [V[3], V[4], V[5]]], np.zeros((1, 4))
+    ]
 
 
 def se3_to_vec(se3mat):
@@ -244,8 +252,10 @@ def se3_to_vec(se3mat):
     Output:
         np.array([1, 2, 3, 4, 5, 6])
     """
-    return np.r_[[se3mat[2][1], se3mat[0][2], se3mat[1][0]],
-                 [se3mat[0][3], se3mat[1][3], se3mat[2][3]]]
+    return np.r_[
+        [se3mat[2][1], se3mat[0][2], se3mat[1][0]],
+        [se3mat[0][3], se3mat[1][3], se3mat[2][3]],
+    ]
 
 
 def Adjoint(T):
@@ -263,8 +273,7 @@ def Adjoint(T):
         Chapter 3.3. Rigid-Body Motions and Twists. Pg. 98, Definition 3.20.
     """
     R, p = SE3_to_Rp(T)
-    return np.r_[np.c_[R, np.zeros((3, 3))],
-                 np.c_[np.dot(vector_to_so3(p), R), R]]
+    return np.r_[np.c_[R, np.zeros((3, 3))], np.c_[np.dot(vector_to_so3(p), R), R]]
 
 
 def ScrewToAxis(q, s, h):
@@ -326,19 +335,25 @@ def matrix_exp6(se3_mat):
                   [  0,   0,    0,   1]])
     """
     se3_mat = np.array(se3_mat)
-    omgtheta = so3_to_vector(se3_mat[0: 3, 0: 3])
+    omgtheta = so3_to_vector(se3_mat[0:3, 0:3])
     if near_zero(np.linalg.norm(omgtheta)):
-        return np.r_[np.c_[np.eye(3), se3_mat[0: 3, 3]], [[0, 0, 0, 1]]]
+        return np.r_[np.c_[np.eye(3), se3_mat[0:3, 3]], [[0, 0, 0, 1]]]
     else:
         theta = axis_angle3(omgtheta)[1]
-        omgmat = se3_mat[0: 3, 0: 3] / theta
-        return np.r_[np.c_[matrix_exp3(se3_mat[0: 3, 0: 3]),
-                           np.dot(np.eye(3) * theta
-                                  + (1 - np.cos(theta)) * omgmat
-                                  + (theta - np.sin(theta))
-                                  * np.dot(omgmat, omgmat),
-                                  se3_mat[0: 3, 3]) / theta],
-                     [[0, 0, 0, 1]]]
+        omgmat = se3_mat[0:3, 0:3] / theta
+        return np.r_[
+            np.c_[
+                matrix_exp3(se3_mat[0:3, 0:3]),
+                np.dot(
+                    np.eye(3) * theta
+                    + (1 - np.cos(theta)) * omgmat
+                    + (theta - np.sin(theta)) * np.dot(omgmat, omgmat),
+                    se3_mat[0:3, 3],
+                )
+                / theta,
+            ],
+            [[0, 0, 0, 1]],
+        ]
 
 
 def matrix_log6(T):
@@ -360,18 +375,25 @@ def matrix_log6(T):
     R, p = SE3_to_Rp(T)
     omgmat = matrix_log3(R)
     if np.array_equal(omgmat, np.zeros((3, 3))):
-        return np.r_[np.c_[np.zeros((3, 3)),
-                           [T[0][3], T[1][3], T[2][3]]],
-                     [[0, 0, 0, 0]]]
+        return np.r_[
+            np.c_[np.zeros((3, 3)), [T[0][3], T[1][3], T[2][3]]], [[0, 0, 0, 0]]
+        ]
     else:
         theta = np.arccos((np.trace(R) - 1) / 2.0)
-        return np.r_[np.c_[omgmat,
-                           np.dot(np.eye(3) - omgmat / 2.0
-                                  + (1.0 / theta - 1.0 / np.tan(theta / 2.0) / 2)
-                                  * np.dot(omgmat, omgmat) / theta, [T[0][3],
-                                                                     T[1][3],
-                                                                     T[2][3]])],
-                     [[0, 0, 0, 0]]]
+        return np.r_[
+            np.c_[
+                omgmat,
+                np.dot(
+                    np.eye(3)
+                    - omgmat / 2.0
+                    + (1.0 / theta - 1.0 / np.tan(theta / 2.0) / 2)
+                    * np.dot(omgmat, omgmat)
+                    / theta,
+                    [T[0][3], T[1][3], T[2][3]],
+                ),
+            ],
+            [[0, 0, 0, 0]],
+        ]
 
 
 def project_to_SO3(mat):
@@ -442,7 +464,7 @@ def distance_to_SO3(mat):
     if np.linalg.det(mat) > 0:
         return np.linalg.norm(np.dot(np.array(mat).T, mat) - np.eye(3))
     else:
-        return 1e+9
+        return 1e9
 
 
 def distance_to_SE3(mat):
@@ -465,12 +487,17 @@ def distance_to_SE3(mat):
     Output:
         0.134931
     """
-    matR = np.array(mat)[0: 3, 0: 3]
+    matR = np.array(mat)[0:3, 0:3]
     if np.linalg.det(matR) > 0:
         return np.linalg.norm(
-            np.r_[np.c_[np.dot(np.transpose(matR), matR), np.zeros((3, 1))], [np.array(mat)[3, :]]] - np.eye(4))
+            np.r_[
+                np.c_[np.dot(np.transpose(matR), matR), np.zeros((3, 1))],
+                [np.array(mat)[3, :]],
+            ]
+            - np.eye(4)
+        )
     else:
-        return 1e+9
+        return 1e9
 
 
 def test_if_SO3(mat):
@@ -516,9 +543,9 @@ def test_if_SE3(mat):
     return abs(distance_to_SE3(mat)) < 1e-3
 
 
-'''
+"""
 *** CHAPTER 4: FORWARD KINEMATICS ***
-'''
+"""
 
 
 def fk_in_body(M, Blist, q_list):
@@ -578,7 +605,9 @@ def fk_in_space(M, s_list, theta_list):
     """
     T = np.array(M)
     for i in range(len(theta_list) - 1, -1, -1):
-        T = np.dot(matrix_exp6(vector_to_se3(np.array(s_list)[:, i] * theta_list[i])), T)
+        T = np.dot(
+            matrix_exp6(vector_to_se3(np.array(s_list)[:, i] * theta_list[i])), T
+        )
     return T
 
 
@@ -607,8 +636,9 @@ def jacobian_body(Blist, q_list):
     Jb = np.array(Blist).copy().astype(np.float)
     T = np.eye(4)
     for i in range(len(q_list) - 2, -1, -1):
-        T = np.dot(T, matrix_exp6(vector_to_se3(np.array(Blist)[:, i + 1]
-                                                * -q_list[i + 1])))
+        T = np.dot(
+            T, matrix_exp6(vector_to_se3(np.array(Blist)[:, i + 1] * -q_list[i + 1]))
+        )
         Jb[:, i] = np.dot(Adjoint(T), np.array(Blist)[:, i])
     return Jb
 
@@ -638,14 +668,16 @@ def jacobian_space(S_list, q_list):
     Js = np.array(S_list).copy().astype(float)
     T = np.eye(4)
     for i in range(1, len(q_list)):
-        T = np.dot(T, matrix_exp6(vector_to_se3(np.array(S_list)[:, i - 1] * q_list[i - 1])))
+        T = np.dot(
+            T, matrix_exp6(vector_to_se3(np.array(S_list)[:, i - 1] * q_list[i - 1]))
+        )
         Js[:, i] = np.dot(Adjoint(T), np.array(S_list)[:, i])
     return Js
 
 
-'''
+"""
 *** CHAPTER 6: INVERSE KINEMATICS ***
-'''
+"""
 
 
 def ik_in_body(S_body, M, T, q_list0, eomg, ev):
@@ -694,20 +726,19 @@ def ik_in_body(S_body, M, T, q_list0, eomg, ev):
     q_list = np.array(q_list0).copy()
     i = 0
     maxiterations = 20
-    Vb = se3_to_vec(matrix_log6(np.dot(SE3_inv(fk_in_body(M, S_body,
-                                                          q_list)), T)))
-    err = np.linalg.norm([Vb[0], Vb[1], Vb[2]]) > eomg \
-          or np.linalg.norm([Vb[3], Vb[4], Vb[5]]) > ev
+    Vb = se3_to_vec(matrix_log6(np.dot(SE3_inv(fk_in_body(M, S_body, q_list)), T)))
+    err = (
+        np.linalg.norm([Vb[0], Vb[1], Vb[2]]) > eomg
+        or np.linalg.norm([Vb[3], Vb[4], Vb[5]]) > ev
+    )
     while err and i < maxiterations:
-        q_list = q_list \
-                 + np.dot(np.linalg.pinv(jacobian_body(S_body,
-                                                       q_list)), Vb)
+        q_list = q_list + np.dot(np.linalg.pinv(jacobian_body(S_body, q_list)), Vb)
         i = i + 1
-        Vb \
-            = se3_to_vec(matrix_log6(np.dot(SE3_inv(fk_in_body(M, S_body,
-                                                               q_list)), T)))
-        err = np.linalg.norm([Vb[0], Vb[1], Vb[2]]) > eomg \
-              or np.linalg.norm([Vb[3], Vb[4], Vb[5]]) > ev
+        Vb = se3_to_vec(matrix_log6(np.dot(SE3_inv(fk_in_body(M, S_body, q_list)), T)))
+        err = (
+            np.linalg.norm([Vb[0], Vb[1], Vb[2]]) > eomg
+            or np.linalg.norm([Vb[3], Vb[4], Vb[5]]) > ev
+        )
     return q_list, not err
 
 
@@ -758,24 +789,26 @@ def ik_in_space(S_space, M, T, q_list0, eomg, ev):
     i = 0
     maxiterations = 20
     Tsb = fk_in_space(M, S_space, q_list)
-    Vs = np.dot(Adjoint(Tsb),
-                se3_to_vec(matrix_log6(np.dot(SE3_inv(Tsb), T))))
-    err = np.linalg.norm([Vs[0], Vs[1], Vs[2]]) > eomg \
-          or np.linalg.norm([Vs[3], Vs[4], Vs[5]]) > ev
+    Vs = np.dot(Adjoint(Tsb), se3_to_vec(matrix_log6(np.dot(SE3_inv(Tsb), T))))
+    err = (
+        np.linalg.norm([Vs[0], Vs[1], Vs[2]]) > eomg
+        or np.linalg.norm([Vs[3], Vs[4], Vs[5]]) > ev
+    )
     while err and i < maxiterations:
         q_list = q_list + np.dot(np.linalg.pinv(jacobian_space(S_space, q_list)), Vs)
         i = i + 1
         Tsb = fk_in_space(M, S_space, q_list)
-        Vs = np.dot(Adjoint(Tsb),
-                    se3_to_vec(matrix_log6(np.dot(SE3_inv(Tsb), T))))
-        err = np.linalg.norm([Vs[0], Vs[1], Vs[2]]) > eomg \
-              or np.linalg.norm([Vs[3], Vs[4], Vs[5]]) > ev
+        Vs = np.dot(Adjoint(Tsb), se3_to_vec(matrix_log6(np.dot(SE3_inv(Tsb), T))))
+        err = (
+            np.linalg.norm([Vs[0], Vs[1], Vs[2]]) > eomg
+            or np.linalg.norm([Vs[3], Vs[4], Vs[5]]) > ev
+        )
     return q_list, not err
 
 
-'''
+"""
 *** CHAPTER 8: DYNAMICS OF OPEN CHAINS ***
-'''
+"""
 
 
 def ad(V):
@@ -792,8 +825,10 @@ def ad(V):
         Chapter 8. Dynamics of Open Chains. Pg. 287, Eq. 8.38.
     """
     omega_mat = vector_to_so3([V[0], V[1], V[2]])
-    return np.r_[np.c_[omega_mat, np.zeros((3, 3))],
-                 np.c_[vector_to_so3([V[3], V[4], V[5]]), omega_mat]]
+    return np.r_[
+        np.c_[omega_mat, np.zeros((3, 3))],
+        np.c_[vector_to_so3([V[3], V[4], V[5]]), omega_mat],
+    ]
 
 
 def InverseDynamics(q_list, dq_list, ddq_list, g, Ftip, Mlist, Glist, Slist):
@@ -860,18 +895,23 @@ def InverseDynamics(q_list, dq_list, ddq_list, g, Ftip, Mlist, Glist, Slist):
     for i in range(n):
         Mi = np.dot(Mi, Mlist[i])
         Ai[:, i] = np.dot(Adjoint(SE3_inv(Mi)), np.array(Slist)[:, i])
-        AdTi[i] = Adjoint(np.dot(matrix_exp6(vector_to_se3(Ai[:, i] *
-                                                           -q_list[i])),
-                                 SE3_inv(Mlist[i])))
+        AdTi[i] = Adjoint(
+            np.dot(matrix_exp6(vector_to_se3(Ai[:, i] * -q_list[i])), SE3_inv(Mlist[i]))
+        )
         Vi[:, i + 1] = np.dot(AdTi[i], Vi[:, i]) + Ai[:, i] * dq_list[i]
-        Vdi[:, i + 1] = np.dot(AdTi[i], Vdi[:, i]) \
-                        + Ai[:, i] * ddq_list[i] \
-                        + np.dot(ad(Vi[:, i + 1]), Ai[:, i]) * dq_list[i]
+        Vdi[:, i + 1] = (
+            np.dot(AdTi[i], Vdi[:, i])
+            + Ai[:, i] * ddq_list[i]
+            + np.dot(ad(Vi[:, i + 1]), Ai[:, i]) * dq_list[i]
+        )
     for i in range(n - 1, -1, -1):
-        Fi = np.dot(np.array(AdTi[i + 1]).T, Fi) \
-             + np.dot(np.array(Glist[i]), Vdi[:, i + 1]) \
-             - np.dot(np.array(ad(Vi[:, i + 1])).T,
-                      np.dot(np.array(Glist[i]), Vi[:, i + 1]))
+        Fi = (
+            np.dot(np.array(AdTi[i + 1]).T, Fi)
+            + np.dot(np.array(Glist[i]), Vdi[:, i + 1])
+            - np.dot(
+                np.array(ad(Vi[:, i + 1])).T, np.dot(np.array(Glist[i]), Vi[:, i + 1])
+            )
+        )
         tau_list[i] = np.dot(np.array(Fi).T, Ai[:, i])
     return tau_list
 
@@ -927,9 +967,16 @@ def MassMatrix(q_list, Mlist, Glist, Slist):
     for i in range(n):
         ddq_list = [0] * n
         ddq_list[i] = 1
-        M[:, i] = InverseDynamics(q_list, [0] * n, ddq_list,
-                                  [0, 0, 0], [0, 0, 0, 0, 0, 0], Mlist,
-                                  Glist, Slist)
+        M[:, i] = InverseDynamics(
+            q_list,
+            [0] * n,
+            ddq_list,
+            [0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            Mlist,
+            Glist,
+            Slist,
+        )
     return M
 
 
@@ -976,9 +1023,16 @@ def vel_quadratic_forces(q_list, dq_list, Mlist, Glist, Slist):
     Output:
         np.array([0.26453118, -0.05505157, -0.00689132])
     """
-    return InverseDynamics(q_list, dq_list, [0] * len(q_list),
-                           [0, 0, 0], [0, 0, 0, 0, 0, 0], Mlist, Glist,
-                           Slist)
+    return InverseDynamics(
+        q_list,
+        dq_list,
+        [0] * len(q_list),
+        [0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+        Mlist,
+        Glist,
+        Slist,
+    )
 
 
 def GravityForces(q_list, g, Mlist, Glist, Slist):
@@ -1024,8 +1078,9 @@ def GravityForces(q_list, g, Mlist, Glist, Slist):
         np.array([28.40331262, -37.64094817, -5.4415892])
     """
     n = len(q_list)
-    return InverseDynamics(q_list, [0] * n, [0] * n, g,
-                           [0, 0, 0, 0, 0, 0], Mlist, Glist, Slist)
+    return InverseDynamics(
+        q_list, [0] * n, [0] * n, g, [0, 0, 0, 0, 0, 0], Mlist, Glist, Slist
+    )
 
 
 def EndEffectorForces(q_list, Ftip, Mlist, Glist, Slist):
@@ -1073,8 +1128,9 @@ def EndEffectorForces(q_list, Ftip, Mlist, Glist, Slist):
         np.array([1.40954608, 1.85771497, 1.392409])
     """
     n = len(q_list)
-    return InverseDynamics(q_list, [0] * n, [0] * n, [0, 0, 0], Ftip,
-                           Mlist, Glist, Slist)
+    return InverseDynamics(
+        q_list, [0] * n, [0] * n, [0, 0, 0], Ftip, Mlist, Glist, Slist
+    )
 
 
 def ForwardDynamics(q_list, dq_list, tau_list, g, Ftip, Mlist, Glist, Slist):
@@ -1126,11 +1182,13 @@ def ForwardDynamics(q_list, dq_list, tau_list, g, Ftip, Mlist, Glist, Slist):
     Output:
         np.array([-0.97392907, 25.58466784, -32.91499212])
     """
-    return np.dot(np.linalg.inv(MassMatrix(q_list, Mlist, Glist, Slist)),
-                  np.array(tau_list)
-                  - vel_quadratic_forces(q_list, dq_list, Mlist, Glist, Slist)
-                  - GravityForces(q_list, g, Mlist, Glist, Slist)
-                  - EndEffectorForces(q_list, Ftip, Mlist, Glist, Slist))
+    return np.dot(
+        np.linalg.inv(MassMatrix(q_list, Mlist, Glist, Slist)),
+        np.array(tau_list)
+        - vel_quadratic_forces(q_list, dq_list, Mlist, Glist, Slist)
+        - GravityForces(q_list, g, Mlist, Glist, Slist)
+        - EndEffectorForces(q_list, Ftip, Mlist, Glist, Slist),
+    )
 
 
 def EulerStep(q_list, dq_list, ddq_list, dt):
@@ -1158,8 +1216,7 @@ def EulerStep(q_list, dq_list, ddq_list, dt):
     return q_list + dt * np.array(dq_list), dq_list + dt * np.array(ddq_list)
 
 
-def InverseDynamicsTrajectory(q_mat, dq_mat, ddq_mat, g,
-                              Ftipmat, Mlist, Glist, Slist):
+def InverseDynamicsTrajectory(q_mat, dq_mat, ddq_mat, g, Ftipmat, Mlist, Glist, Slist):
     """Calculates the joint forces/torques required to move the serial chain
     along the given trajectory using inverse dynamics
     :param q_mat: An N x n matrix of robot joint variables
@@ -1251,16 +1308,23 @@ def InverseDynamicsTrajectory(q_mat, dq_mat, ddq_mat, g,
     Ftipmat = np.array(Ftipmat).T
     tau_mat = np.array(q_mat).copy()
     for i in range(np.array(q_mat).shape[1]):
-        tau_mat[:, i] \
-            = InverseDynamics(q_mat[:, i], dq_mat[:, i],
-                              ddq_mat[:, i], g, Ftipmat[:, i], Mlist,
-                              Glist, Slist)
+        tau_mat[:, i] = InverseDynamics(
+            q_mat[:, i],
+            dq_mat[:, i],
+            ddq_mat[:, i],
+            g,
+            Ftipmat[:, i],
+            Mlist,
+            Glist,
+            Slist,
+        )
     tau_mat = np.array(tau_mat).T
     return tau_mat
 
 
-def ForwardDynamicsTrajectory(q_list, dq_list, tau_mat, g, Ftipmat,
-                              Mlist, Glist, Slist, dt, intRes):
+def ForwardDynamicsTrajectory(
+    q_list, dq_list, tau_mat, g, Ftipmat, Mlist, Glist, Slist, dt, intRes
+):
     """Simulates the motion of a serial chain given an open-loop history of
     joint forces/torques.
 
@@ -1366,11 +1430,10 @@ def ForwardDynamicsTrajectory(q_list, dq_list, tau_mat, g, Ftipmat,
     dq_mat[:, 0] = dq_list
     for i in range(np.array(tau_mat).shape[1] - 1):
         for j in range(intRes):
-            ddq_list \
-                = ForwardDynamics(q_list, dq_list, tau_mat[:, i], g,
-                                  Ftipmat[:, i], Mlist, Glist, Slist)
-            q_list, dq_list = EulerStep(q_list, dq_list,
-                                        ddq_list, 1.0 * dt / intRes)
+            ddq_list = ForwardDynamics(
+                q_list, dq_list, tau_mat[:, i], g, Ftipmat[:, i], Mlist, Glist, Slist
+            )
+            q_list, dq_list = EulerStep(q_list, dq_list, ddq_list, 1.0 * dt / intRes)
         q_mat[:, i + 1] = q_list
         dq_mat[:, i + 1] = dq_list
     q_mat = np.array(q_mat).T
@@ -1378,9 +1441,9 @@ def ForwardDynamicsTrajectory(q_list, dq_list, tau_mat, g, Ftipmat,
     return q_mat, dq_mat
 
 
-'''
+"""
 *** CHAPTER 9: TRAJECTORY GENERATION ***
-'''
+"""
 
 
 def CubicTimeScaling(Tf, t):
@@ -1507,7 +1570,9 @@ def ScrewTrajectory(x_start, x_end, Tf, N, method):
             s = CubicTimeScaling(Tf, timegap * i)
         else:
             s = QuinticTimeScaling(Tf, timegap * i)
-        traj[i] = np.dot(x_start, matrix_exp6(matrix_log6(np.dot(SE3_inv(x_start), x_end)) * s))
+        traj[i] = np.dot(
+            x_start, matrix_exp6(matrix_log6(np.dot(SE3_inv(x_start), x_end)) * s)
+        )
     return traj
 
 
@@ -1568,21 +1633,39 @@ def CartesianTrajectory(x_start, x_end, Tf, N, method):
             s = CubicTimeScaling(Tf, timegap * i)
         else:
             s = QuinticTimeScaling(Tf, timegap * i)
-        traj[i] \
-            = np.r_[np.c_[np.dot(rot_start,
-                                 matrix_exp3(matrix_log3(np.dot(np.array(rot_start).T, Rend)) * s)),
-                          s * np.array(pend) + (1 - s) * np.array(p_start)],
-                    [[0, 0, 0, 1]]]
+        traj[i] = np.r_[
+            np.c_[
+                np.dot(
+                    rot_start,
+                    matrix_exp3(matrix_log3(np.dot(np.array(rot_start).T, Rend)) * s),
+                ),
+                s * np.array(pend) + (1 - s) * np.array(p_start),
+            ],
+            [[0, 0, 0, 1]],
+        ]
     return traj
 
 
-'''
+"""
 *** CHAPTER 11: ROBOT CONTROL ***
-'''
+"""
 
 
-def ComputedTorque(q_list, dq_list, eint, g, Mlist, Glist, Slist,
-                   q_d_list, dq_d_list, ddq_d_list, kp, ki, kd):
+def ComputedTorque(
+    q_list,
+    dq_list,
+    eint,
+    g,
+    Mlist,
+    Glist,
+    Slist,
+    q_d_list,
+    dq_d_list,
+    ddq_d_list,
+    kp,
+    ki,
+    kd,
+):
     """Computes the joint control torques at a particular time instant
     :param q_list: n-vector of joint variables
     :param dq_list: n-vector of joint rates
@@ -1640,16 +1723,34 @@ def ComputedTorque(q_list, dq_list, eint, g, Mlist, Glist, Slist,
         np.array([133.00525246, -29.94223324, -3.03276856])
     """
     e = np.subtract(q_d_list, q_list)
-    return np.dot(MassMatrix(q_list, Mlist, Glist, Slist),
-                  kp * e + ki * (np.array(eint) + e)
-                  + kd * np.subtract(dq_d_list, dq_list)) + InverseDynamics(q_list, dq_list, ddq_d_list, g,
-                                                                            [0, 0, 0, 0, 0, 0], Mlist, Glist,
-                                                                            Slist)
+    return np.dot(
+        MassMatrix(q_list, Mlist, Glist, Slist),
+        kp * e + ki * (np.array(eint) + e) + kd * np.subtract(dq_d_list, dq_list),
+    ) + InverseDynamics(
+        q_list, dq_list, ddq_d_list, g, [0, 0, 0, 0, 0, 0], Mlist, Glist, Slist
+    )
 
 
-def simulate_control(q_list, dq_list, g, tip_force_mat, Mlist, Glist,
-                     Slist, q_d_mat, dq_d_mat, ddq_d_mat, g_tilde,
-                     Mtildelist, Gtildelist, kp, ki, kd, dt, intRes):
+def simulate_control(
+    q_list,
+    dq_list,
+    g,
+    tip_force_mat,
+    Mlist,
+    Glist,
+    Slist,
+    q_d_mat,
+    dq_d_mat,
+    ddq_d_mat,
+    g_tilde,
+    Mtildelist,
+    Gtildelist,
+    kp,
+    ki,
+    kd,
+    dt,
+    intRes,
+):
     """Simulates the computed torque controller over a given desired
     trajectory.
 
@@ -1776,21 +1877,41 @@ def simulate_control(q_list, dq_list, g, tip_force_mat, Mlist, Glist,
     m, n = np.array(q_d_mat).shape
     q_current = np.array(q_list).copy()
     dq_current = np.array(dq_list).copy()
-    eint = np.zeros((m, 1)).reshape(m, )
+    eint = np.zeros((m, 1)).reshape(
+        m,
+    )
     tau_mat = np.zeros(np.array(q_d_mat).shape)
     q_mat = np.zeros(np.array(q_d_mat).shape)
     for i in range(n):
-        tau_list \
-            = ComputedTorque(q_current, dq_current, eint, g_tilde,
-                             Mtildelist, Gtildelist, Slist, q_d_mat[:, i],
-                             dq_d_mat[:, i], ddq_d_mat[:, i], kp, ki, kd)
+        tau_list = ComputedTorque(
+            q_current,
+            dq_current,
+            eint,
+            g_tilde,
+            Mtildelist,
+            Gtildelist,
+            Slist,
+            q_d_mat[:, i],
+            dq_d_mat[:, i],
+            ddq_d_mat[:, i],
+            kp,
+            ki,
+            kd,
+        )
         for j in range(intRes):
-            ddq_list \
-                = ForwardDynamics(q_current, dq_current, tau_list, g,
-                                  tip_force_mat[:, i], Mlist, Glist, Slist)
-            q_current, dq_current \
-                = EulerStep(q_current, dq_current, ddq_list,
-                            1.0 * dt / intRes)
+            ddq_list = ForwardDynamics(
+                q_current,
+                dq_current,
+                tau_list,
+                g,
+                tip_force_mat[:, i],
+                Mlist,
+                Glist,
+                Slist,
+            )
+            q_current, dq_current = EulerStep(
+                q_current, dq_current, ddq_list, 1.0 * dt / intRes
+            )
         tau_mat[:, i] = tau_list
         q_mat[:, i] = q_current
         eint = np.add(eint, dt * np.subtract(q_d_mat[:, i], q_current))
@@ -1799,20 +1920,33 @@ def simulate_control(q_list, dq_list, g, tip_force_mat, Mlist, Glist,
         import matplotlib.pyplot as plt
     except ImportError:
         plt = None
-        print('The result will not be plotted due to a lack of package matplotlib')
+        print("The result will not be plotted due to a lack of package matplotlib")
     else:
         links = np.array(q_mat).shape[0]
         N = np.array(q_mat).shape[1]
         Tf = N * dt
         timestamp = np.linspace(0, Tf, N)
         for i in range(links):
-            col = [np.random.uniform(0, 1), np.random.uniform(0, 1),
-                   np.random.uniform(0, 1)]
-            plt.plot(timestamp, q_mat[i, :], "-", color=col,
-                     label=("ActualTheta" + str(i + 1)))
-            plt.plot(timestamp, q_d_mat[i, :], ".", color=col,
-                     label=("DesiredTheta" + str(i + 1)))
-        plt.legend(loc='upper left')
+            col = [
+                np.random.uniform(0, 1),
+                np.random.uniform(0, 1),
+                np.random.uniform(0, 1),
+            ]
+            plt.plot(
+                timestamp,
+                q_mat[i, :],
+                "-",
+                color=col,
+                label=("ActualTheta" + str(i + 1)),
+            )
+            plt.plot(
+                timestamp,
+                q_d_mat[i, :],
+                ".",
+                color=col,
+                label=("DesiredTheta" + str(i + 1)),
+            )
+        plt.legend(loc="upper left")
         plt.xlabel("Time")
         plt.ylabel("Joint Angles")
         plt.title("Plot of Actual and Desired Joint Angles")
@@ -1834,16 +1968,26 @@ def mecanum_base_get_wheel_velocities(base_vel, wheel_radius, width, length):
     Returns:
         ndarray [vel_fl, vel_fr, vel_bl, vel_br]
     """
-    radius_reciprocal = 1. / wheel_radius
-    angular_factor = (width + length) / 2. * base_vel.angular.z
-    vel_fl = radius_reciprocal * (base_vel.linear.x - base_vel.linear.y - angular_factor)
-    vel_fr = radius_reciprocal * (base_vel.linear.x + base_vel.linear.y + angular_factor)
-    vel_bl = radius_reciprocal * (base_vel.linear.x + base_vel.linear.y - angular_factor)
-    vel_br = radius_reciprocal * (base_vel.linear.x - base_vel.linear.y + angular_factor)
+    radius_reciprocal = 1.0 / wheel_radius
+    angular_factor = (width + length) / 2.0 * base_vel.angular.z
+    vel_fl = radius_reciprocal * (
+        base_vel.linear.x - base_vel.linear.y - angular_factor
+    )
+    vel_fr = radius_reciprocal * (
+        base_vel.linear.x + base_vel.linear.y + angular_factor
+    )
+    vel_bl = radius_reciprocal * (
+        base_vel.linear.x + base_vel.linear.y - angular_factor
+    )
+    vel_br = radius_reciprocal * (
+        base_vel.linear.x - base_vel.linear.y + angular_factor
+    )
     return np.array([vel_fl, vel_fr, vel_bl, vel_br])
 
 
-def mecanum_base_get_base_vel(vel_fl, vel_fr, vel_bl, vel_br, wheel_radius, width, length):
+def mecanum_base_get_base_vel(
+    vel_fl, vel_fr, vel_bl, vel_br, wheel_radius, width, length
+):
     """Given velocities for the four wheels, get the base velocity.
 
     Args:
@@ -1859,7 +2003,9 @@ def mecanum_base_get_base_vel(vel_fl, vel_fr, vel_bl, vel_br, wheel_radius, widt
         Base velocity in Twist.
     """
     twist = Twist()
-    twist.linear.x = (vel_fl + vel_fr + vel_bl + vel_br) * (wheel_radius / 4.)
-    twist.linear.y = (-vel_fl + vel_fr + vel_bl - vel_br) * (wheel_radius / 4.)
-    twist.angular.z = (-vel_fl + vel_fr - vel_bl + vel_br) * (wheel_radius / (2. * (width + length)))
+    twist.linear.x = (vel_fl + vel_fr + vel_bl + vel_br) * (wheel_radius / 4.0)
+    twist.linear.y = (-vel_fl + vel_fr + vel_bl - vel_br) * (wheel_radius / 4.0)
+    twist.angular.z = (-vel_fl + vel_fr - vel_bl + vel_br) * (
+        wheel_radius / (2.0 * (width + length))
+    )
     return twist

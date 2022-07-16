@@ -27,21 +27,27 @@ class Test(unittest.TestCase):
         90 * np.pi / 180, (0, 1, 0)  [0.         0.70710678 0.         0.70710678]
         -90 * np.pi / 180, (0, 1, 0)  [0.         -0.70710678 0.         0.70710678]
         """
-        homogeneous_matrix = np.array([
-            [0., 0., 1., 0.084415],
-            [1., 0., 0., 0.],
-            [0., 1., 0, 0.098503 + 0.093313],
-            [0., 0., 0., 1.]
-        ], dtype=float)
+        homogeneous_matrix = np.array(
+            [
+                [0.0, 0.0, 1.0, 0.084415],
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0, 0.098503 + 0.093313],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+            dtype=float,
+        )
         q = transform.quaternion_from_matrix(homogeneous_matrix)
 
         # walker base link to head l3
-        homogeneous_matrix = np.array([
-            [0., 0., 1., 0.084415],
-            [1., 0., 0., 0.],
-            [0., 1., 0, 0.098503 + 0.093313],
-            [0., 0., 0., 1.]
-        ], dtype=float)
+        homogeneous_matrix = np.array(
+            [
+                [0.0, 0.0, 1.0, 0.084415],
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0, 0.098503 + 0.093313],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+            dtype=float,
+        )
         q = transform.quaternion_from_matrix(homogeneous_matrix)
         print("base_link to l3\n", q)
 
@@ -54,30 +60,46 @@ class Test(unittest.TestCase):
         270 deg: [ 0.          0.         -0.70710678  0.70710678]
         """
         # Franka robot install on non-default pose (curiosity's left arm)
-        qm_left = transform.quaternion_matrix([-0.40318, 0.52543, 0.097796, 0.74283])  # T_base_to_install
-        print('qm_left\n', qm_left)
-        g_vector = np.array([0., 0., -9.81, 0])  # G_base
-        g_vector_t = np.dot(qm_left.transpose(), g_vector)  # G_install = T_install_to_base * G_base
+        qm_left = transform.quaternion_matrix(
+            [-0.40318, 0.52543, 0.097796, 0.74283]
+        )  # T_base_to_install
+        print("qm_left\n", qm_left)
+        g_vector = np.array([0.0, 0.0, -9.81, 0])  # G_base
+        g_vector_t = np.dot(
+            qm_left.transpose(), g_vector
+        )  # G_install = T_install_to_base * G_base
         print(qm_left.transpose())
-        print('left arm g_vector_t\n', g_vector_t)
+        print("left arm g_vector_t\n", g_vector_t)
 
         # Franka robot install on non-default pose (curiosity's right arm)
-        qm_right = transform.quaternion_matrix([0.40318, 0.52543, -0.097796, 0.74283])  # T_base_to_install
-        g_vector = np.array([0., 0., -9.81, 0])  # G_base
-        g_vector_t = np.dot(qm_right.transpose(), g_vector)  # G_install = T_install_to_base * G_base
-        print('right arm g_vector_t\n', g_vector_t)
+        qm_right = transform.quaternion_matrix(
+            [0.40318, 0.52543, -0.097796, 0.74283]
+        )  # T_base_to_install
+        g_vector = np.array([0.0, 0.0, -9.81, 0])  # G_base
+        g_vector_t = np.dot(
+            qm_right.transpose(), g_vector
+        )  # G_install = T_install_to_base * G_base
+        print("right arm g_vector_t\n", g_vector_t)
 
         print(np.linalg.norm(np.subtract(g_vector_t, g_vector)))
 
         # Calculate the orientation of the CURI arms regarding the base frame
         qm_left_new = transform.quaternion_matrix(
-            [-0.5824349629454723, 0.3718840519259553, 0.2206752352096998, 0.688312549534299])
+            [
+                -0.5824349629454723,
+                0.3718840519259553,
+                0.2206752352096998,
+                0.688312549534299,
+            ]
+        )
         print(qm_left_new)
         print(np.rad2deg(transform.euler_from_matrix(qm_left_new)))
 
         # FR Wheel joint axis
-        rotated_axis = np.dot(transform.euler_matrix(0, np.deg2rad(-30), np.deg2rad(-45), 'rxyz'),
-                              np.array([0., 1., 0., 0.]))
+        rotated_axis = np.dot(
+            transform.euler_matrix(0, np.deg2rad(-30), np.deg2rad(-45), "rxyz"),
+            np.array([0.0, 1.0, 0.0, 0.0]),
+        )
         print(rotated_axis)
 
     def test_quaternion_multiply(self):
@@ -87,8 +109,8 @@ class Test(unittest.TestCase):
         Notice that here '*' must be implemented with np.dot, and for rotation matrix,
         T.T == T^-1
         """
-        Tb1 = transform.rotation_matrix(45 * np.pi / 180., (0, 0, 1))
-        Tbs = transform.rotation_matrix(90 * np.pi / 180., (0, 1, 0))
+        Tb1 = transform.rotation_matrix(45 * np.pi / 180.0, (0, 0, 1))
+        Tbs = transform.rotation_matrix(90 * np.pi / 180.0, (0, 1, 0))
         T1s = np.dot(np.transpose(Tb1), Tbs)
         Ts1 = np.transpose(T1s)
 
@@ -110,15 +132,19 @@ class Test(unittest.TestCase):
     def test_most_used_transforms(self):
         """This test output well-used transformations around x-, y-, and z- axes in quaternion"""
         # Only rotate around +Z axis
-        q = transform.quaternion_from_matrix(transform.euler_matrix(0, 0, -np.pi * 0.25))  # -45
-        self.assertTrue(common.all_close(q, [0., 0, -0.38268343, 0.92387953]))
+        q = transform.quaternion_from_matrix(
+            transform.euler_matrix(0, 0, -np.pi * 0.25)
+        )  # -45
+        self.assertTrue(common.all_close(q, [0.0, 0, -0.38268343, 0.92387953]))
         # Only rotate around +Y axis
-        q = transform.quaternion_from_matrix(transform.euler_matrix(0, -np.pi * 0.5, 0))  # -90
-        self.assertTrue(common.all_close(q, [0., -0.70710678, 0., 0.70710678]))
+        q = transform.quaternion_from_matrix(
+            transform.euler_matrix(0, -np.pi * 0.5, 0)
+        )  # -90
+        self.assertTrue(common.all_close(q, [0.0, -0.70710678, 0.0, 0.70710678]))
         # Only rotate around +X axis
         q = transform.quaternion_from_matrix(transform.euler_matrix(np.pi, 0, 0))  # 180
-        self.assertTrue(common.all_close(q, [1., 0., 0., 0.]))
+        self.assertTrue(common.all_close(q, [1.0, 0.0, 0.0, 0.0]))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

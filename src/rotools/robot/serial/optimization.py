@@ -82,9 +82,7 @@ class OptimizationHandler:
 
     def generate_optimization_vector(self):
         """Generate vector."""
-        kc_vector = np.compress(
-            self.kinematic_chain_mask, self.robot.mdh.vector
-        )
+        kc_vector = np.compress(self.kinematic_chain_mask, self.robot.mdh.vector)
         tool_vector = np.compress(self.tool_mask, self.robot.tool.vector)
         world_vector = np.compress(
             self.world_mask, matrix_2_vector(self.robot.world_frame)
@@ -101,7 +99,9 @@ def optimize_accuracy(optimization_vector, handler, qs, positions):
     :param positions: Sequence[Sequence[float]]
     """
     handler.apply_optimization_vector(optimization_vector)
-    errors = compute_absolute_errors(qs=qs, positions=positions, robot=handler.commander)
+    errors = compute_absolute_errors(
+        qs=qs, positions=positions, robot=handler.commander
+    )
     return errors
 
 

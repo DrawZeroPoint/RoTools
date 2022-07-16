@@ -47,15 +47,23 @@ class RMPPlanner(Sized):
 
         # For now, the root and leaf need to be explicitly initialized, otherwise
         # some temporary state will make the planning go wrong TODO figure the reason
-        self._root = RMPRoot('root')
-        leaf_goal = GoalAttractorUni('goal_attractor', self._root, goal, gain=1)
+        self._root = RMPRoot("root")
+        leaf_goal = GoalAttractorUni("goal_attractor", self._root, goal, gain=1)
         if obstacle is not None:
-            leaf_obs = CollisionAvoidance('collision_avoidance', self._root,
-                                          None, c=obstacle[:3], R=obstacle[3], epsilon=0.2)
+            leaf_obs = CollisionAvoidance(
+                "collision_avoidance",
+                self._root,
+                None,
+                c=obstacle[:3],
+                R=obstacle[3],
+                epsilon=0.2,
+            )
         sol = solve_ivp(self._dynamics, span, state)
         if sol:
-            positions = sol.y[:self.dim, :]  # shape (dof, N), N is the way point number
-            velocities = sol.y[self.dim:, :]
+            positions = sol.y[
+                : self.dim, :
+            ]  # shape (dof, N), N is the way point number
+            velocities = sol.y[self.dim :, :]
             timestamps = sol.t
             return timestamps, positions, velocities  # accelerations
         else:

@@ -4,23 +4,28 @@ import rospy
 
 from rotools.optitrack.linux.client import OptiTrackClient
 
-from rotools.utility.common import get_param, pretty_print_configs, is_ip_valid, is_port_valid
+from rotools.utility.common import (
+    get_param,
+    pretty_print_configs,
+    is_ip_valid,
+    is_port_valid,
+)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
-        rospy.init_node('roport_optitrack_client', anonymous=True)
+        rospy.init_node("roport_optitrack_client", anonymous=True)
 
         configs = {
-            'ip': get_param('ip'),
-            'port': get_param('port'),
-            'odom_topic': get_param('odom_topic'),
-            'pose_topic': get_param('pose_topic'),
-            'rate': get_param('rate', 100.),
-            'transform': get_param('base_to_markers_transform'),
+            "ip": get_param("ip"),
+            "port": get_param("port"),
+            "odom_topic": get_param("odom_topic"),
+            "pose_topic": get_param("pose_topic"),
+            "rate": get_param("rate", 100.0),
+            "transform": get_param("base_to_markers_transform"),
         }
 
-        if not is_ip_valid(configs['ip']) or not is_port_valid(configs['port']):
+        if not is_ip_valid(configs["ip"]) or not is_port_valid(configs["port"]):
             exit(-1)
 
         pretty_print_configs(configs)

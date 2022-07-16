@@ -69,7 +69,7 @@ def vector_2_matrix(vector, convention=OrientationConvention.EULER_ZYX):
 
 def position_from_matrix(matrix):
     """Get the position values from a 4x4 transform matrix.
-    
+
     :param matrix: np.ndarray
     :return np.ndarray
     """

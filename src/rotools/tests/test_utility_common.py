@@ -15,13 +15,12 @@ import rotools.utility.common as common
 
 
 class Test(unittest.TestCase):
-
     def test_print(self):
-        common.print_debug('This is a debug msg')
-        common.print_info('This is a info msg')
-        common.print_warn('This is a warn msg')
-        common.print_warning('This is a warning msg')
-        common.print_error('This is a error msg')
+        common.print_debug("This is a debug msg")
+        common.print_info("This is a info msg")
+        common.print_warn("This is a warn msg")
+        common.print_warning("This is a warning msg")
+        common.print_error("This is a error msg")
 
     def test_all_close(self):
         values_a = [1, 2, 4]
@@ -85,10 +84,10 @@ class Test(unittest.TestCase):
         """
         pose_1 = common.sd_pose(np.array([0.307, 0, 0.59, 0.924, -0.382, 0, 0]))
         pose_2 = common.sd_pose(np.array([0.307, 0, 0.59, -0.708, 0.706, 0, 0]))
-        rel_trans = common.sd_pose(np.array([0, 0, 0, 0., 0., 0.383, 0.924]))
+        rel_trans = common.sd_pose(np.array([0, 0, 0, 0.0, 0.0, 0.383, 0.924]))
         trans = np.dot(pose_1, rel_trans)
         ros_pose_2 = common.to_ros_pose(pose_2)
-        print(trans, '\n', pose_2, '\n', ros_pose_2)
+        print(trans, "\n", pose_2, "\n", ros_pose_2)
         self.assertTrue(common.all_close(common.to_ros_pose(trans), ros_pose_2, 0.01))
 
     # def test_create_publishers(self):
@@ -112,5 +111,5 @@ class Test(unittest.TestCase):
             common.to_ros_orientation([0, 0, 0, 0], check=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

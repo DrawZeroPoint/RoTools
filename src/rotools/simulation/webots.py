@@ -17,19 +17,25 @@ class WebotsInterfaceUR(object):
         super(WebotsInterfaceUR, self).__init__()
 
         self.robot = Supervisor()
-        print('Robot name: ', self.robot.getName())
+        print("Robot name: ", self.robot.getName())
 
         # To get TCP pose, we need add a Transform to the children slot
         # of the last endPoint's children->Transform->children,
         # and change the DEF name of the Transform to UR10_TCP
-        self.base_node = self.robot.getFromDef('UR_BASE')
-        self.eef_node = self.robot.getFromDef('UR_TCP')
+        self.base_node = self.robot.getFromDef("UR_BASE")
+        self.eef_node = self.robot.getFromDef("UR_TCP")
 
         self.time_step = int(self.robot.getBasicTimeStep())
 
         # modify this according to robot configuration
-        self.joint_names = ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint',
-                            'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint']
+        self.joint_names = [
+            "shoulder_pan_joint",
+            "shoulder_lift_joint",
+            "elbow_joint",
+            "wrist_1_joint",
+            "wrist_2_joint",
+            "wrist_3_joint",
+        ]
         self.motors = []
         for name in self.joint_names:
             motor = self.robot.getMotor(name)
@@ -92,9 +98,7 @@ class WebotsInterfaceUR(object):
                 break
 
     def _set_joint_position_sensor(self, enabled=True):
-        """Enable/disable position sensors of the joints.
-
-        """
+        """Enable/disable position sensors of the joints."""
         for motor in self.motors:
             try:
                 js_sensor = motor.getPositionSensor()
@@ -103,9 +107,7 @@ class WebotsInterfaceUR(object):
                 pass
 
     def set_joint_max_velocity(self, velocity):
-        """
-
-        """
+        """ """
         if isinstance(velocity, list):
             for i, vel in enumerate(velocity):
                 try:

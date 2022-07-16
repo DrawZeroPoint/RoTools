@@ -2,6 +2,7 @@
 
 import json
 from uuid import uuid4
+
 # If using python 2.7:
 # sudo pip install websocket-client
 # If using python 3+, you will also need:
@@ -23,26 +24,36 @@ class WebsocketClient(object):
         Class to manage publishing to ROS through a ros-bridge websocket.
         """
         self._advertise_dict = {}
-        rospy.loginfo("Connecting to websocket: {}:{}".format(kwargs['ip'], kwargs['port']))
-        self.ws = websocket.create_connection('ws://' + kwargs['ip'] + ':' + str(kwargs['port']), timeout=4)
+        rospy.loginfo(
+            "Connecting to websocket: {}:{}".format(kwargs["ip"], kwargs["port"])
+        )
+        self.ws = websocket.create_connection(
+            "ws://" + kwargs["ip"] + ":" + str(kwargs["port"]), timeout=4
+        )
 
         # Down streams: the client subscribe to local topics and publish it to the server
-        from_client_key = 'from_client_topics'
+        from_client_key = "from_client_topics"
         if from_client_key in kwargs:
             if kwargs[from_client_key] is not None:
                 self.local_subscribers = []
                 self.downstream_list = kwargs[from_client_key]
                 for i, entity in enumerate(self.downstream_list):
                     local_topic_id, remote_topic_id, msg_type = entity
-                    subscriber = self.create_subscriber(local_topic_id, msg_type, remote_topic_id)
+                    subscriber = self.create_subscriber(
+                        local_topic_id, msg_type, remote_topic_id
+                    )
                     self.local_subscribers.append(subscriber)
             else:
-                rospy.loginfo('{} is empty'.format(from_client_key))
+                rospy.loginfo("{} is empty".format(from_client_key))
         else:
-            rospy.logwarn('{} is not presented in the config dict {}'.format(from_client_key, kwargs))
+            rospy.logwarn(
+                "{} is not presented in the config dict {}".format(
+                    from_client_key, kwargs
+                )
+            )
 
         # Up stream: the client receive topics from the server and publish them locally
-        to_client_key = 'to_client_topics'
+        to_client_key = "to_client_topics"
         if to_client_key in kwargs:
             if kwargs[to_client_key] is not None:
                 self.local_timers = []
@@ -54,20 +65,28 @@ class WebsocketClient(object):
                     self.local_timers.append(timer)
                     self.local_publishers.append(publisher)
             else:
-                rospy.loginfo('{} is empty'.format(to_client_key))
+                rospy.loginfo("{} is empty".format(to_client_key))
         else:
-            rospy.logwarn('{} is not presented in the config dict {}'.format(to_client_key, kwargs))
+            rospy.logwarn(
+                "{} is not presented in the config dict {}".format(
+                    to_client_key, kwargs
+                )
+            )
 
     def create_subscriber(self, local_topic_id, msg_type, remote_topic_id):
-        if 'PoseStamped' in msg_type:
-            return rospy.Subscriber(local_topic_id, PoseStamped, self._pose_stamped_cb, remote_topic_id)
-        elif 'Twist' in msg_type:
-            return rospy.Subscriber(local_topic_id, Twist, self._twist_cb, remote_topic_id)
+        if "PoseStamped" in msg_type:
+            return rospy.Subscriber(
+                local_topic_id, PoseStamped, self._pose_stamped_cb, remote_topic_id
+            )
+        elif "Twist" in msg_type:
+            return rospy.Subscriber(
+                local_topic_id, Twist, self._twist_cb, remote_topic_id
+            )
         else:
             raise NotImplementedError
 
     def create_timer(self, local_topic_id, msg_type):
-        if 'Odometry' in msg_type:
+        if "Odometry" in msg_type:
             timer = rospy.Timer(rospy.Duration.from_sec(0.001), self._odometry_cb)
             publisher = rospy.Publisher(local_topic_id, Odometry, queue_size=1)
             return timer, publisher
@@ -88,8 +107,8 @@ class WebsocketClient(object):
     def _odometry_cb(self, event):
         for i, entity in enumerate(self.upstream_list):
             local_topic_id, remote_topic_id, msg_type = entity
-            if 'Odometry' in msg_type:
-                result = self.subscribe_once(remote_topic_id, 'nav_msgs/Odometry')
+            if "Odometry" in msg_type:
+                result = self.subscribe_once(remote_topic_id, "nav_msgs/Odometry")
                 self.local_publishers[i].publish(result)
 
     def _advertise(self, topic_name, topic_type):
@@ -103,21 +122,25 @@ class WebsocketClient(object):
             str: ID to de-advertise later on.
         """
         new_uuid = str(uuid4())
-        self._advertise_dict[new_uuid] = {'topic_name': topic_name,
-                                          'topic_type': topic_type}
-        advertise_msg = {"op": "advertise",
-                         "id": new_uuid,
-                         "topic": topic_name,
-                         "type": topic_type
-                         }
+        self._advertise_dict[new_uuid] = {
+            "topic_name": topic_name,
+            "topic_type": topic_type,
+        }
+        advertise_msg = {
+            "op": "advertise",
+            "id": new_uuid,
+            "topic": topic_name,
+            "type": topic_type,
+        }
         self.ws.send(json.dumps(advertise_msg))
         return new_uuid
 
     def _un_advertise(self, uuid):
-        unad_msg = {"op": "unadvertise",
-                    "id": uuid,
-                    # "topic": topic_name
-                    }
+        unad_msg = {
+            "op": "unadvertise",
+            "id": uuid,
+            # "topic": topic_name
+        }
         self.ws.send(json.dumps(unad_msg))
 
     def __del__(self):
@@ -136,11 +159,7 @@ class WebsocketClient(object):
         Returns:
 
         """
-        msg = {
-            'op': 'publish',
-            'topic': topic_name,
-            'msg': message
-        }
+        msg = {"op": "publish", "topic": topic_name, "msg": message}
         json_msg = json.dumps(msg)
         self.ws.send(json_msg)
 
@@ -157,7 +176,7 @@ class WebsocketClient(object):
         # First check if we already advertised the topic
         d = self._advertise_dict
         for k in d:
-            if d[k]['topic_name'] == topic_name:
+            if d[k]["topic_name"] == topic_name:
                 # Already advertised, do nothing
                 break
         else:
@@ -178,16 +197,14 @@ class WebsocketClient(object):
         Returns:
             result: ROS message
         """
-        msg = {
-            'op': 'subscribe',
-            'topic': topic_name,
-            'type': msg_type
-        }
+        msg = {"op": "subscribe", "topic": topic_name, "type": msg_type}
         json_msg = json.dumps(msg)
         self.ws.send(json_msg)
         json_message = self.ws.recv()
 
-        dictionary = json.loads(json_message)['msg']
-        result = message_converter.convert_dictionary_to_ros_message(msg_type, dictionary)
+        dictionary = json.loads(json_message)["msg"]
+        result = message_converter.convert_dictionary_to_ros_message(
+            msg_type, dictionary
+        )
         # print("Type: '%s' \n Received: '%s'" % (type, result))
         return result

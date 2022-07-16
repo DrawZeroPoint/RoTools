@@ -6,16 +6,10 @@ from rotools.utility import common
 
 
 class PlannerInterface(object):
-    """
-
-    """
+    """ """
 
     def __init__(
-            self,
-            algorithm_port,
-            robot_initial_poses,
-            planning_initial_poses,
-            **kwargs
+        self, algorithm_port, robot_initial_poses, planning_initial_poses, **kwargs
     ):
         """
         :param algorithm_port: str The port of the algorithm server. It takes the form:
@@ -26,15 +20,17 @@ class PlannerInterface(object):
         """
         super(PlannerInterface, self).__init__()
 
-        if not isinstance(algorithm_port, str) or algorithm_port == '':
-            rospy.logerr('algorithm_port is not defined: {}'.format(algorithm_port))
+        if not isinstance(algorithm_port, str) or algorithm_port == "":
+            rospy.logerr("algorithm_port is not defined: {}".format(algorithm_port))
 
         self._algorithm_port = algorithm_port
 
         robot_initial_poses = np.array(robot_initial_poses)
         planning_initial_poses = np.array(planning_initial_poses)
-        assert robot_initial_poses.shape[-1] == 7 and planning_initial_poses.shape == robot_initial_poses.shape, \
-            rospy.logerr('poses shape should be (N, 7)')
+        assert (
+            robot_initial_poses.shape[-1] == 7
+            and planning_initial_poses.shape == robot_initial_poses.shape
+        ), rospy.logerr("poses shape should be (N, 7)")
 
         self._robot_initial_poses = robot_initial_poses
         self._planning_initial_poses = planning_initial_poses
@@ -58,7 +54,9 @@ class PlannerInterface(object):
 
         """
         translations = []
-        for r_pose, p_pose in zip(self._robot_initial_poses, self._planning_initial_poses):
+        for r_pose, p_pose in zip(
+            self._robot_initial_poses, self._planning_initial_poses
+        ):
             translations.append(common.get_transform_same_target(r_pose, p_pose))
         return translations
 
@@ -68,11 +66,15 @@ class PlannerInterface(object):
             return False, None
         out_list = []
         for poses in trajectories:
-            assert len(poses) == len(self._translations), rospy.logerr('Poses number is not equal to translations')
+            assert len(poses) == len(self._translations), rospy.logerr(
+                "Poses number is not equal to translations"
+            )
             pose_msg_list = []
             for i, pose in enumerate(poses):
                 std_pose = common.sd_pose(pose)  # pose in the planning frame
-                std_robot_pose = np.dot(self._translations[i], std_pose)  # pose in the robot frame
+                std_robot_pose = np.dot(
+                    self._translations[i], std_pose
+                )  # pose in the robot frame
                 pose_stamped_msg = common.to_ros_pose_stamped(std_robot_pose)
                 pose_msg_list.append(pose_stamped_msg)
             out_list.append(pose_msg_list)
@@ -90,18 +92,20 @@ class PlannerInterface(object):
                  relative to the planning start point (set at the planner side, not here)
         """
         header = {}
-        body = {'data': json.dumps(self._planning_initial_poses.tolist())}
-        payload = {'header': header, 'body': body}
+        body = {"data": json.dumps(self._planning_initial_poses.tolist())}
+        payload = {"header": header, "body": body}
 
-        feedback = common.post_http_requests('http://{}'.format(self._algorithm_port), payload=payload)
+        feedback = common.post_http_requests(
+            "http://{}".format(self._algorithm_port), payload=payload
+        )
         if feedback is None:
             return False, None
         # print(feedback)
         results = feedback.json()
         # The keys 'status' and 'results' should be coincide with the definition in the Flask server
-        ok = results['response']['status']
+        ok = results["response"]["status"]
         if ok:
-            return True, json.loads(results['response']['results'])
+            return True, json.loads(results["response"]["results"])
         else:
-            print('Post data failed to load results')
+            print("Post data failed to load results")
             return False, None

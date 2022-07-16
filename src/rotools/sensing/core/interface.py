@@ -20,30 +20,35 @@ from roport.srv import GetImageData, GetImageDataRequest
 
 
 class SensingInterface(object):
-
     def __init__(
-            self,
-            device_names,
-            algorithm_ports,
-            algorithm_names=None,
+        self,
+        device_names,
+        algorithm_ports,
+        algorithm_names=None,
     ):
         super(SensingInterface, self).__init__()
 
         self._bridge = CvBridge()
-        self._pose_publisher = rospy.Publisher('roport_visualization/pose', GeometryMsg.PoseStamped, queue_size=1)
+        self._pose_publisher = rospy.Publisher(
+            "roport_visualization/pose", GeometryMsg.PoseStamped, queue_size=1
+        )
 
         if not isinstance(device_names, list) and not isinstance(device_names, tuple):
-            raise TypeError('device_names should be list or tuple, but got {}'.format(type(device_names)))
+            raise TypeError(
+                "device_names should be list or tuple, but got {}".format(
+                    type(device_names)
+                )
+            )
 
-        assert len(device_names) > 0, rospy.logerr('No sensing device given')
+        assert len(device_names) > 0, rospy.logerr("No sensing device given")
         self.device_names = device_names
         self.device_ids = np.arange(len(self.device_names))
         for i, name in enumerate(self.device_names):
-            rospy.loginfo('Assigning id {} to the device {}'.format(i, name))
+            rospy.loginfo("Assigning id {} to the device {}".format(i, name))
 
         # TODO check device status
 
-        assert len(algorithm_ports) > 0, rospy.logerr('No sensing algorithm given')
+        assert len(algorithm_ports) > 0, rospy.logerr("No sensing algorithm given")
         self.algorithm_ports = algorithm_ports
         self.algorithm_ids = np.arange(len(self.algorithm_ports))
 
@@ -51,7 +56,7 @@ class SensingInterface(object):
             assert len(algorithm_names) == len(self.algorithm_ports)
             self.algorithm_names = algorithm_names
             for name, port in zip(self.algorithm_names, self.algorithm_ports):
-                rospy.loginfo('Algorithm \'{}\' available at {}'.format(name, port))
+                rospy.loginfo("Algorithm '{}' available at {}".format(name, port))
         else:
             self.algorithm_names = None
 
@@ -61,22 +66,24 @@ class SensingInterface(object):
         """Sensing the manipulation poses (i.e., the poses that the robot's end-effector
         should move to to perform manipulation.) By default, these poses are wrt the
         sensor's frame.
-        
+
         :param device_names: str Names of the device.
-        :param algorithm_id: int ID of the algorithm. 
+        :param algorithm_id: int ID of the algorithm.
         :param data_types: int Type ID of the data. If not given, the method will guess
                            it based on the device name.
         """
         for name in device_names:
-            assert name in self.device_names, rospy.logerr('Device name {} is not registered'.format(name))
+            assert name in self.device_names, rospy.logerr(
+                "Device name {} is not registered".format(name)
+            )
         assert algorithm_id in self.algorithm_ids
 
         if data_types is None:
             temp_types = []
             for name in device_names:
-                if 'rgb' in name or 'RGB' in name or 'color' in name:
+                if "rgb" in name or "RGB" in name or "color" in name:
                     temp_types.append(0)
-                elif 'depth' in name:
+                elif "depth" in name:
                     temp_types.append(1)
                 else:
                     raise NotImplementedError
@@ -88,7 +95,9 @@ class SensingInterface(object):
         if not ok:
             return False, None, None
         # Send sensory data to the algorithm and get the poses
-        ok, sd_poses = self._post_data(self.algorithm_ports[algorithm_id], data, data_types)
+        ok, sd_poses = self._post_data(
+            self.algorithm_ports[algorithm_id], data, data_types
+        )
         if ok:
             return True, common.to_ros_poses(sd_poses), common.to_ros_pose(sd_poses[0])
         else:
@@ -104,7 +113,7 @@ class SensingInterface(object):
         :return: ok, list[ndarray]
         """
         if service_name is None:
-            service_name = 'get_image_data'
+            service_name = "get_image_data"
         rospy.wait_for_service(service_name, 1000)  # wait for 1s
         try:
             get_img = rospy.ServiceProxy(service_name, GetImageData)
@@ -114,7 +123,9 @@ class SensingInterface(object):
             if resp.result_status == resp.SUCCEEDED:
                 image_list = []
                 for img_msg in resp.images:
-                    cv_img = self._bridge.imgmsg_to_cv2(img_msg, desired_encoding='passthrough')
+                    cv_img = self._bridge.imgmsg_to_cv2(
+                        img_msg, desired_encoding="passthrough"
+                    )
                     image_list.append(cv_img)
                 return True, image_list
             else:
@@ -156,16 +167,16 @@ class SensingInterface(object):
             type_list.append(dt)
             data_list.append(str(encoded))
 
-        body = {'data': json.dumps(data_list), 'data_types': json.dumps(data_types)}
-        payload = {'header': header, 'body': body}
-        feedback = common.post_http_requests('http://{}'.format(port), payload=payload)
+        body = {"data": json.dumps(data_list), "data_types": json.dumps(data_types)}
+        payload = {"header": header, "body": body}
+        feedback = common.post_http_requests("http://{}".format(port), payload=payload)
         results = feedback.json()
         # The keys 'status' and 'results' should be coincide with the definition in the Flask server
-        ok = results['response']['status']
+        ok = results["response"]["status"]
         if ok:
-            return True, np.array(json.loads(results['response']['results']))
+            return True, np.array(json.loads(results["response"]["results"]))
         else:
-            rospy.logerr('Post data failed to load results')
+            rospy.logerr("Post data failed to load results")
             return False, None
 
     def visualize_pose(self, pose, frame):

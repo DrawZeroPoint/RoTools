@@ -77,7 +77,7 @@ def test_hash2(test_name, test_hash_str, test_object, run_test=True):
         out_str2 = "%sERROR: test_object was None" % indent_string
     else:
 
-        if str(type(test_object)) != 'NoneType':
+        if str(type(test_object)) != "NoneType":
             obj_out_str = test_object.get_as_string()
             obj_out_hash_str = hashlib.sha1(obj_out_str.encode()).hexdigest()
 
@@ -85,7 +85,10 @@ def test_hash2(test_name, test_hash_str, test_object, run_test=True):
             out_str = "PASS"
             ret_value = K_PASS
         else:
-            out_str2 += "%s%s test_hash_str != out_hash_str\n" % (indent_string, test_name)
+            out_str2 += "%s%s test_hash_str != out_hash_str\n" % (
+                indent_string,
+                test_name,
+            )
             out_str2 += "%stest_hash_str=%s\n" % (indent_string, test_hash_str)
             out_str2 += "%sobj_out_hash_str=%s\n" % (indent_string, obj_out_hash_str)
             out_str2 += "%sobj_out_str =\n%s" % (indent_string, obj_out_str)
@@ -104,7 +107,7 @@ def get_as_string(input_str):
     elif type_input_str == "<class 'NoneType'>":
         return ""
     elif type_input_str == "<class 'bytes'>":
-        return input_str.decode('utf-8')
+        return input_str.decode("utf-8")
     else:
         print("type_input_str = %s NOT HANDLED" % type_input_str)
         return input_str
@@ -141,12 +144,21 @@ class MarkerData:
         out_tab_str2 = get_tab_str(tab_str, level + 1)
         out_str = ""
         if self.model_name != "":
-            out_str += "%sModel Name : %s\n" % (out_tab_str, get_as_string(self.model_name))
+            out_str += "%sModel Name : %s\n" % (
+                out_tab_str,
+                get_as_string(self.model_name),
+            )
         marker_count = len(self.marker_pos_list)
         out_str += "%sMarker Count :%3.1d\n" % (out_tab_str, marker_count)
         for i in range(marker_count):
             pos = self.marker_pos_list[i]
-            out_str += "%sMarker %3.1d pos : [%3.2f,%3.2f,%3.2f]\n" % (out_tab_str2, i, pos[0], pos[1], pos[2])
+            out_str += "%sMarker %3.1d pos : [%3.2f,%3.2f,%3.2f]\n" % (
+                out_tab_str2,
+                i,
+                pos[0],
+                pos[1],
+                pos[2],
+            )
         return out_str
 
 
@@ -182,7 +194,10 @@ class MarkerSetData:
 
         # Unlabeled markers count (4 bytes)
         unlabeled_markers_count = self.unlabeled_markers.get_num_points()
-        out_str += "%sUnlabeled Markers Count:%3.1d\n" % (out_tab_str, unlabeled_markers_count)
+        out_str += "%sUnlabeled Markers Count:%3.1d\n" % (
+            out_tab_str,
+            unlabeled_markers_count,
+        )
         out_str += self.unlabeled_markers.get_as_string(tab_str, level + 1)
         return out_str
 
@@ -198,7 +213,12 @@ class RigidBodyMarker:
         out_tab_str = get_tab_str(tab_str, level)
         out_str = ""
 
-        out_str += "%sPosition: [%3.2f %3.2f %3.2f]\n" % (out_tab_str, self.pos[0], self.pos[1], self.pos[2])
+        out_str += "%sPosition: [%3.2f %3.2f %3.2f]\n" % (
+            out_tab_str,
+            self.pos[0],
+            self.pos[1],
+            self.pos[2],
+        )
         out_str += "%sID      : %3.1d\n" % (out_tab_str, self.id_num)
         out_str += "%sSize    : %3.1d\n" % (out_tab_str, self.size)
         return out_str
@@ -226,9 +246,19 @@ class RigidBody:
         # header
         out_str += "%sID            : %3.1d\n" % (out_tab_str, self.id_num)
         # Position and orientation
-        out_str += "%sPosition      : [%3.2f, %3.2f, %3.2f]\n" % (out_tab_str, self.pos[0], self.pos[1], self.pos[2])
+        out_str += "%sPosition      : [%3.2f, %3.2f, %3.2f]\n" % (
+            out_tab_str,
+            self.pos[0],
+            self.pos[1],
+            self.pos[2],
+        )
         out_str += "%sOrientation   : [%3.2f, %3.2f, %3.2f, %3.2f]\n" % (
-            out_tab_str, self.rot[0], self.rot[1], self.rot[2], self.rot[3])
+            out_tab_str,
+            self.rot[0],
+            self.rot[1],
+            self.rot[2],
+            self.rot[3],
+        )
 
         marker_count = len(self.rb_marker_list)
         marker_count_range = range(0, marker_count)
@@ -244,9 +274,9 @@ class RigidBody:
         out_str += "%sMarker Error  : %3.2f\n" % (out_tab_str, self.error)
 
         # Valid Tracking
-        tf_string = 'False'
+        tf_string = "False"
         if self.tracking_valid:
-            tf_string = 'True'
+            tf_string = "True"
         out_str += "%sTracking Valid: %s\n" % (out_tab_str, tf_string)
 
         return out_str
@@ -314,7 +344,9 @@ class SkeletonData:
         out_str += "%sSkeleton Count: %3.1d\n" % (out_tab_str, skeleton_count)
         for skeleton_num in range(skeleton_count):
             out_str += "%sSkeleton %3.1d\n" % (out_tab_str2, skeleton_num)
-            out_str += self.skeleton_list[skeleton_num].get_as_string(tab_str, level + 2)
+            out_str += self.skeleton_list[skeleton_num].get_as_string(
+                tab_str, level + 2
+            )
         return out_str
 
 
@@ -330,7 +362,7 @@ class LabeledMarker:
 
     def __decode_marker_id(self):
         model_id = self.id_num >> 16
-        marker_id = self.id_num & 0x0000ffff
+        marker_id = self.id_num & 0x0000FFFF
         return model_id, marker_id
 
     def __decode_param(self):
@@ -343,14 +375,25 @@ class LabeledMarker:
         out_tab_str = get_tab_str(tab_str, level)
         model_id, marker_id = self.__decode_marker_id()
         out_str = ""
-        out_str += "%sID                 : [MarkerID: %3.1d] [ModelID: %3.1d]\n" % (out_tab_str, marker_id, model_id)
+        out_str += "%sID                 : [MarkerID: %3.1d] [ModelID: %3.1d]\n" % (
+            out_tab_str,
+            marker_id,
+            model_id,
+        )
         out_str += "%spos                : [%3.2f, %3.2f, %3.2f]\n" % (
-            out_tab_str, self.pos[0], self.pos[1], self.pos[2])
+            out_tab_str,
+            self.pos[0],
+            self.pos[1],
+            self.pos[2],
+        )
         out_str += "%ssize               : [%3.2f]\n" % (out_tab_str, self.size)
 
         occluded, point_cloud_solved, model_solved = self.__decode_param()
         out_str += "%soccluded           : [%3.1d]\n" % (out_tab_str, occluded)
-        out_str += "%spoint_cloud_solved : [%3.1d]\n" % (out_tab_str, point_cloud_solved)
+        out_str += "%spoint_cloud_solved : [%3.1d]\n" % (
+            out_tab_str,
+            point_cloud_solved,
+        )
         out_str += "%smodel_solved       : [%3.1d]\n" % (out_tab_str, model_solved)
         out_str += "%serr                : [%3.2f]\n" % (out_tab_str, self.residual)
 
@@ -374,7 +417,10 @@ class LabeledMarkerData:
         out_str = ""
 
         labeled_marker_count = len(self.labeled_marker_list)
-        out_str += "%sLabeled Marker Count:%3.1d\n" % (out_tab_str, labeled_marker_count)
+        out_str += "%sLabeled Marker Count:%3.1d\n" % (
+            out_tab_str,
+            labeled_marker_count,
+        )
         for i in range(0, labeled_marker_count):
             out_str += "%sLabeled Marker %3.1d\n" % (out_tab_str2, i)
             labeled_marker = self.labeled_marker_list[i]
@@ -500,7 +546,11 @@ class Device:
 
         num_channels = len(self.channel_data_list)
         out_str += "%sDevice %3.1d      ID: %3.1d Num Channels: %3.1d\n" % (
-            out_tab_str, device_num, self.id_num, num_channels)
+            out_tab_str,
+            device_num,
+            self.id_num,
+            num_channels,
+        )
         for i in range(num_channels):
             out_str += self.channel_data_list[i].get_as_string(tab_str, level + 1, i)
 
@@ -549,11 +599,20 @@ class FrameSuffixData:
         if not self.timestamp == -1:
             out_str += "%sTimestamp : %3.2f\n" % (out_tab_str, self.timestamp)
         if not self.stamp_camera_mid_exposure == -1:
-            out_str += "%sMid-exposure timestamp : %3.1d\n" % (out_tab_str, self.stamp_camera_mid_exposure)
+            out_str += "%sMid-exposure timestamp : %3.1d\n" % (
+                out_tab_str,
+                self.stamp_camera_mid_exposure,
+            )
         if not self.stamp_data_received == -1:
-            out_str += "%sCamera data received timestamp : %3.1d\n" % (out_tab_str, self.stamp_data_received)
+            out_str += "%sCamera data received timestamp : %3.1d\n" % (
+                out_tab_str,
+                self.stamp_data_received,
+            )
         if not self.stamp_transmit == -1:
-            out_str += "%sTransmit timestamp : %3.1d\n" % (out_tab_str, self.stamp_transmit)
+            out_str += "%sTransmit timestamp : %3.1d\n" % (
+                out_tab_str,
+                self.stamp_transmit,
+            )
 
         return out_str
 
@@ -598,7 +657,10 @@ class MoCapData:
         out_tab_str = get_tab_str(tab_str, level)
 
         out_str = ""
-        out_str += "%sMoCap Frame Begin\n%s-----------------\n" % (out_tab_str, out_tab_str)
+        out_str += "%sMoCap Frame Begin\n%s-----------------\n" % (
+            out_tab_str,
+            out_tab_str,
+        )
         if not self.prefix_data == None:
             out_str += self.prefix_data.get_as_string()
         else:
@@ -639,12 +701,16 @@ class MoCapData:
         else:
             out_str += "%sNo Suffix Data Set\n" % (out_tab_str)
 
-        out_str += "%sMoCap Frame End\n%s-----------------\n" % (out_tab_str, out_tab_str)
+        out_str += "%sMoCap Frame End\n%s-----------------\n" % (
+            out_tab_str,
+            out_tab_str,
+        )
 
         return out_str
 
 
 # test program
+
 
 def generate_prefix_data(frame_num=0):
     frame_prefix_data = FramePrefixData(frame_num)
@@ -658,13 +724,17 @@ def generate_label(label_base="label", label_num=0):
 
 def generate_position_srand(pos_num=0, frame_num=0):
     random.seed(pos_num + (frame_num * 1000))
-    position = [(random.random() * 100), (random.random() * 100), (random.random() * 100)]
+    position = [
+        (random.random() * 100),
+        (random.random() * 100),
+        (random.random() * 100),
+    ]
     return position
 
 
 def generate_marker_data(label_base, label_num, num_points=1):
     label = generate_label(label_base, label_num)
-    if ((label_base == None) or (label_base == "")):
+    if (label_base == None) or (label_base == ""):
         label = ""
     marker_data = MarkerData()
     marker_data.set_model_name(label)
@@ -793,7 +863,9 @@ def generate_force_plate_data(frame_num=0):
     return force_plate_data
 
 
-def generate_device_channel_data(frame_num=0, device_num=0, channel_num=0, num_frames=1):
+def generate_device_channel_data(
+    frame_num=0, device_num=0, channel_num=0, num_frames=1
+):
     rseed = (frame_num * 100000) + (device_num * 10000) + (channel_num * 1000)
     random.seed(rseed)
     device_channel_data = DeviceChannelData()
@@ -846,29 +918,68 @@ def generate_mocap_data(frame_num=0):
 def test_all(run_test=True):
     totals = [0, 0, 0]
     if run_test is True:
-        test_cases = [["Test Prefix Data 0", "bffba016d02cf2167780df31aee697e1ec746b4c",
-                       "generate_prefix_data(0)", True],
-                      ["Test Marker Set Data 0", "d2550194fed1b1fc525f4f4d06bf584f291f41c7",
-                       "generate_marker_set_data(0)", True],
-                      ["Test Rigid Body Data 0", "abd1a48a476eaa9b5c4fae6e705e03aa75f85624",
-                       "generate_rigid_body_data(0)", True],
-                      ["Test Skeleton Data 0", "1e36e3334e291cebfaa530d7aab2122d6983ecab",
-                       "generate_skeleton_data(0)", True],
-                      ["Test Labeled Marker Data 0", "25f3ee026c3c8fc716fbb05c34138ef5afd95d75",
-                       "generate_labeled_marker_data(0)", True],
-                      ["Test Force Plate Data 0", "b83d04a1b89169bdcefee3bc3951c3bdcb6b792e",
-                       "generate_force_plate_data(0)", True],
-                      ["Test Device Data 0", "be10f0b93a7ba3858dce976b7868c1f79fd719c3",
-                       "generate_device_data(0)", True],
-                      ["Test Suffix Data 0", "6aa02c434bdb53a418ae1b1f73317dc80a5f887d",
-                       "generate_suffix_data(0)", True],
-                      ["Test MoCap Data 0", "09930ecf665d9eb3ca61616f9bcc55890373f414",
-                       "generate_mocap_data(0)", True]
-                      ]
+        test_cases = [
+            [
+                "Test Prefix Data 0",
+                "bffba016d02cf2167780df31aee697e1ec746b4c",
+                "generate_prefix_data(0)",
+                True,
+            ],
+            [
+                "Test Marker Set Data 0",
+                "d2550194fed1b1fc525f4f4d06bf584f291f41c7",
+                "generate_marker_set_data(0)",
+                True,
+            ],
+            [
+                "Test Rigid Body Data 0",
+                "abd1a48a476eaa9b5c4fae6e705e03aa75f85624",
+                "generate_rigid_body_data(0)",
+                True,
+            ],
+            [
+                "Test Skeleton Data 0",
+                "1e36e3334e291cebfaa530d7aab2122d6983ecab",
+                "generate_skeleton_data(0)",
+                True,
+            ],
+            [
+                "Test Labeled Marker Data 0",
+                "25f3ee026c3c8fc716fbb05c34138ef5afd95d75",
+                "generate_labeled_marker_data(0)",
+                True,
+            ],
+            [
+                "Test Force Plate Data 0",
+                "b83d04a1b89169bdcefee3bc3951c3bdcb6b792e",
+                "generate_force_plate_data(0)",
+                True,
+            ],
+            [
+                "Test Device Data 0",
+                "be10f0b93a7ba3858dce976b7868c1f79fd719c3",
+                "generate_device_data(0)",
+                True,
+            ],
+            [
+                "Test Suffix Data 0",
+                "6aa02c434bdb53a418ae1b1f73317dc80a5f887d",
+                "generate_suffix_data(0)",
+                True,
+            ],
+            [
+                "Test MoCap Data 0",
+                "09930ecf665d9eb3ca61616f9bcc55890373f414",
+                "generate_mocap_data(0)",
+                True,
+            ],
+        ]
         num_tests = len(test_cases)
         for i in range(num_tests):
             data = eval(test_cases[i][2])
-            totals_tmp = test_hash2(test_cases[i][0], test_cases[i][1], data, test_cases[i][3])
+            totals_tmp = test_hash2(
+                test_cases[i][0], test_cases[i][1], data, test_cases[i][3]
+            )
             totals = add_lists(totals, totals_tmp)
 
     print("--------------------")

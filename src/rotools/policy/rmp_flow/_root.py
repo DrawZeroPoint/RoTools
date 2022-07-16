@@ -50,7 +50,7 @@ class RMPNode:
         """
 
         if self.verbose:
-            print('%s: pushforward' % self.name)
+            print("%s: pushforward" % self.name)
 
         if self.psi is not None and self.J is not None:
             self.x = self.psi(self.parent.x)
@@ -68,11 +68,10 @@ class RMPNode:
         [child.pullback() for child in self.children]
 
         if self.verbose:
-            print('%s: pullback' % self.name)
+            print("%s: pullback" % self.name)
 
-        f = np.zeros_like(self.x, dtype='float64')
-        M = np.zeros((max(self.x.shape), max(self.x.shape)),
-                     dtype='float64')
+        f = np.zeros_like(self.x, dtype="float64")
+        M = np.zeros((max(self.x.shape), max(self.x.shape)), dtype="float64")
 
         for child in self.children:
 
@@ -82,8 +81,10 @@ class RMPNode:
             assert J_child.ndim == 2 and J_dot_child.ndim == 2
 
             if child.f is not None and child.M is not None:
-                f += np.dot(J_child.T, (child.f - np.dot(
-                    np.dot(child.M, J_dot_child), self.x_dot)))
+                f += np.dot(
+                    J_child.T,
+                    (child.f - np.dot(np.dot(child.M, J_dot_child), self.x_dot)),
+                )
                 M += np.dot(np.dot(J_child.T, child.M), J_child)
 
         self.f = f
@@ -116,7 +117,7 @@ class RMPRoot(RMPNode):
         """
 
         if self.verbose:
-            print('%s: pushforward' % self.name)
+            print("%s: pushforward" % self.name)
 
         [child.pushforward() for child in self.children]
 
@@ -124,7 +125,7 @@ class RMPRoot(RMPNode):
         """compute the canonical-formed RMP."""
 
         if self.verbose:
-            print('%s: resolve' % self.name)
+            print("%s: resolve" % self.name)
 
         self.a = np.dot(np.linalg.pinv(self.M), self.f)
         return self.a
@@ -155,11 +156,10 @@ class RMPLeaf(RMPNode):
         self.f, self.M = self.RMP_func(self.x, self.x_dot)
 
     def pullback(self):
-        """pullback at leaf node is just evaluating the RMP
-        """
+        """pullback at leaf node is just evaluating the RMP"""
 
         if self.verbose:
-            print('%s: pullback' % self.name)
+            print("%s: pullback" % self.name)
 
         self.eval_leaf()
 

@@ -22,36 +22,63 @@ class XsensServer(EStop):
         super(XsensServer, self).__init__()
 
         # Publisher switch
-        self.srv_pub_switch = rospy.Service('/xsens/enable', SetBool, self.pub_switch_handle)
-        print_warn('Use [rosservice call /xsens/enable "data: true"] to enable receiving XSens data.')
+        self.srv_pub_switch = rospy.Service(
+            "/xsens/enable", SetBool, self.pub_switch_handle
+        )
+        print_warn(
+            'Use [rosservice call /xsens/enable "data: true"] to enable receiving XSens data.'
+        )
 
         self.interface = interface.XsensInterface(**kwargs)
 
         # Cartesian pose publishers
-        self.all_poses_publisher = rospy.Publisher('/xsens/all_poses', PoseArray, queue_size=1)
-        self.body_poses_publisher = rospy.Publisher('/xsens/body_poses', PoseArray, queue_size=1)
-        self.pose_array_publishers = [self.all_poses_publisher, self.body_poses_publisher]
+        self.all_poses_publisher = rospy.Publisher(
+            "/xsens/all_poses", PoseArray, queue_size=1
+        )
+        self.body_poses_publisher = rospy.Publisher(
+            "/xsens/body_poses", PoseArray, queue_size=1
+        )
+        self.pose_array_publishers = [
+            self.all_poses_publisher,
+            self.body_poses_publisher,
+        ]
 
-        self.base_pose_publisher = rospy.Publisher('/xsens/base', PoseStamped, queue_size=1)
-        self.left_tcp_publisher = rospy.Publisher('/xsens/left_tcp', PoseStamped, queue_size=1)
-        self.right_tcp_publisher = rospy.Publisher('/xsens/right_tcp', PoseStamped, queue_size=1)
-        self.left_sole_publisher = rospy.Publisher('/xsens/left_sole', PoseStamped, queue_size=1)
-        self.right_sole_publisher = rospy.Publisher('/xsens/right_sole', PoseStamped, queue_size=1)
-        self.head_publisher = rospy.Publisher('/xsens/head', PoseStamped, queue_size=1)
+        self.base_pose_publisher = rospy.Publisher(
+            "/xsens/base", PoseStamped, queue_size=1
+        )
+        self.left_tcp_publisher = rospy.Publisher(
+            "/xsens/left_tcp", PoseStamped, queue_size=1
+        )
+        self.right_tcp_publisher = rospy.Publisher(
+            "/xsens/right_tcp", PoseStamped, queue_size=1
+        )
+        self.left_sole_publisher = rospy.Publisher(
+            "/xsens/left_sole", PoseStamped, queue_size=1
+        )
+        self.right_sole_publisher = rospy.Publisher(
+            "/xsens/right_sole", PoseStamped, queue_size=1
+        )
+        self.head_publisher = rospy.Publisher("/xsens/head", PoseStamped, queue_size=1)
         self.core_poses_publishers = (
-            self.base_pose_publisher, self.left_tcp_publisher, self.right_tcp_publisher,
-            self.left_sole_publisher, self.right_sole_publisher, self.head_publisher,
+            self.base_pose_publisher,
+            self.left_tcp_publisher,
+            self.right_tcp_publisher,
+            self.left_sole_publisher,
+            self.right_sole_publisher,
+            self.head_publisher,
         )
 
-        self.pub_prop = kwargs['prop']
+        self.pub_prop = kwargs["prop"]
         # Prop pose publisher
-        self.prop_1_publisher = rospy.Publisher('/xsens/prop_1', PoseStamped, queue_size=1)
+        self.prop_1_publisher = rospy.Publisher(
+            "/xsens/prop_1", PoseStamped, queue_size=1
+        )
 
         # Customized poses publishers
-        self.customized_poses = rospy.get_param('~customized_poses', [])
+        self.customized_poses = rospy.get_param("~customized_poses", [])
 
         if self.customized_poses:
-            rospy.loginfo('Defined customized poses: {}'.format(self.customized_poses))
+            rospy.loginfo("Defined customized poses: {}".format(self.customized_poses))
             self.customized_poses_publishers = []
             for i, entity in enumerate(self.customized_poses):
                 try:
@@ -59,22 +86,28 @@ class XsensServer(EStop):
                     publisher = rospy.Publisher(topic_id, PoseStamped, queue_size=1)
                     self.customized_poses_publishers.append(publisher)
                 except ValueError as e:
-                    rospy.logerr('Entity {}: {}'.format(i, e))
+                    rospy.logerr("Entity {}: {}".format(i, e))
 
         # Hand joint states publishers
-        self.left_hand_publisher = rospy.Publisher('/xsens/left_hand_js', JointState, queue_size=1)
-        self.right_hand_publisher = rospy.Publisher('/xsens/right_hand_js', JointState, queue_size=1)
+        self.left_hand_publisher = rospy.Publisher(
+            "/xsens/left_hand_js", JointState, queue_size=1
+        )
+        self.right_hand_publisher = rospy.Publisher(
+            "/xsens/right_hand_js", JointState, queue_size=1
+        )
 
         # Tracked object publishers
-        self.object_pose_publisher = rospy.Publisher('/xsens/object', PoseStamped, queue_size=1)
+        self.object_pose_publisher = rospy.Publisher(
+            "/xsens/object", PoseStamped, queue_size=1
+        )
 
-        rate = kwargs['rate']
-        self.all_poses_msg_timer = rospy.Timer(rospy.Duration.from_sec(1.0 / rate), self.all_poses_msg_handle)
+        rate = kwargs["rate"]
+        self.all_poses_msg_timer = rospy.Timer(
+            rospy.Duration.from_sec(1.0 / rate), self.all_poses_msg_handle
+        )
 
     def all_poses_msg_handle(self, event):
-        """
-
-        """
+        """ """
         if not self.enabled:
             return
         if not self.interface.get_datagram():
@@ -117,8 +150,8 @@ class XsensServer(EStop):
     def pub_switch_handle(self, req):
         if req.data:
             self.set_status(True)
-            msg = 'Xsens stream receiving enabled'
+            msg = "Xsens stream receiving enabled"
         else:
             self.set_status(False)
-            msg = 'Xsens stream receiving disabled'
+            msg = "Xsens stream receiving disabled"
         return SetBoolResponse(True, msg)

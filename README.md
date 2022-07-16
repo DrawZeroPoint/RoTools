@@ -2,7 +2,10 @@
 
 <img alt="logo" height="120" src="misc/image/ms-icon-310x310.png" width="120"/>
 
-[![CI](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml)
+<p align="left">
+<a href="https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml/badge.svg?branch=master"></a>
+<a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+</p>
 
 RoTools is an all-in-one ROS package for high-level robotic task scheduling, visual perception, path planning,
 simulation, and direct-/tele-manipulation control. It leverages BehaviorTree to deliver fast task construction and

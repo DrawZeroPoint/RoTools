@@ -28,8 +28,19 @@ import MoCapData
 # This is a callback function that gets connected to the NatNet client
 # and called once per mocap frame.
 def receive_new_frame(data_dict):
-    order_list = ["frameNumber", "markerSetCount", "unlabeledMarkersCount", "rigidBodyCount", "skeletonCount",
-                  "labeledMarkerCount", "timecode", "timecodeSub", "timestamp", "isRecording", "trackedMdelsChangedo"]
+    order_list = [
+        "frameNumber",
+        "markerSetCount",
+        "unlabeledMarkersCount",
+        "rigidBodyCount",
+        "skeletonCount",
+        "labeledMarkerCount",
+        "timecode",
+        "timecodeSub",
+        "timestamp",
+        "isRecording",
+        "trackedMdelsChangedo",
+    ]
     dump_args = False
     if dump_args == True:
         out_string = "    "
@@ -76,13 +87,29 @@ def print_configuration(natnet_client):
 
     print("  NatNet Server Info")
     print("    Application Name %s" % (application_name))
-    print("    NatNetVersion  %d %d %d %d" % (
-    nat_net_version_server[0], nat_net_version_server[1], nat_net_version_server[2], nat_net_version_server[3]))
     print(
-        "    ServerVersion  %d %d %d %d" % (server_version[0], server_version[1], server_version[2], server_version[3]))
+        "    NatNetVersion  %d %d %d %d"
+        % (
+            nat_net_version_server[0],
+            nat_net_version_server[1],
+            nat_net_version_server[2],
+            nat_net_version_server[3],
+        )
+    )
+    print(
+        "    ServerVersion  %d %d %d %d"
+        % (server_version[0], server_version[1], server_version[2], server_version[3])
+    )
     print("  NatNet Bitstream Requested")
-    print("    NatNetVersion  %d %d %d %d" % (nat_net_requested_version[0], nat_net_requested_version[1], \
-                                              nat_net_requested_version[2], nat_net_requested_version[3]))
+    print(
+        "    NatNetVersion  %d %d %d %d"
+        % (
+            nat_net_requested_version[0],
+            nat_net_requested_version[1],
+            nat_net_requested_version[2],
+            nat_net_requested_version[3],
+        )
+    )
     # print("command_socket = %s"%(str(natnet_client.command_socket)))
     # print("data_socket    = %s"%(str(natnet_client.data_socket)))
 
@@ -96,12 +123,16 @@ def print_commands(can_change_bitstream):
     outstring += "     pause may require several seconds\n"
     outstring += "     depending on the frame data size\n"
     outstring += "Change Working Range\n"
-    outstring += "  o  reset Working Range to: start/current/end frame = 0/0/end of take\n"
+    outstring += (
+        "  o  reset Working Range to: start/current/end frame = 0/0/end of take\n"
+    )
     outstring += "  w  set Working Range to: start/current/end frame = 1/100/1500\n"
     outstring += "Return Data Display Modes\n"
     outstring += "  j  print_level = 0 supress data description and mocap frame data\n"
     outstring += "  k  print_level = 1 show data description and mocap frame data\n"
-    outstring += "  l  print_level = 20 show data description and every 20th mocap frame data\n"
+    outstring += (
+        "  l  print_level = 20 show data description and every 20th mocap frame data\n"
+    )
     outstring += "Change NatNet data stream version (Unicast only)\n"
     outstring += "  3  Request 3.1 data stream (Unicast only)\n"
     outstring += "  4  Request 4.0 data stream (Unicast only)\n"
@@ -114,16 +145,20 @@ def print_commands(can_change_bitstream):
     outstring += "       Endpoint, Loop, and Bounce playback modes.\n"
     outstring += "\n"
     outstring += "EXAMPLE: PacketClient [serverIP [ clientIP [ Multicast/Unicast]]]\n"
-    outstring += "         PacketClient \"192.168.10.14\" \"192.168.10.14\" Multicast\n"
-    outstring += "         PacketClient \"127.0.0.1\" \"127.0.0.1\" u\n"
+    outstring += '         PacketClient "192.168.10.14" "192.168.10.14" Multicast\n'
+    outstring += '         PacketClient "127.0.0.1" "127.0.0.1" u\n'
     outstring += "\n"
     print(outstring)
 
 
 def request_data_descriptions(s_client):
     # Request the model definitions
-    s_client.send_request(s_client.command_socket, s_client.NAT_REQUEST_MODELDEF, "",
-                          (s_client.server_ip_address, s_client.command_port))
+    s_client.send_request(
+        s_client.command_socket,
+        s_client.NAT_REQUEST_MODELDEF,
+        "",
+        (s_client.server_ip_address, s_client.command_port),
+    )
 
 
 def test_classes():
@@ -215,8 +250,10 @@ if __name__ == "__main__":
 
         in_socket = streaming_client.data_socket
         data, addr = in_socket.recvfrom(recv_buffer_size)
-        packet_size = int.from_bytes(data[2:4], byteorder='little')
-        offset_tmp, mocap_data = streaming_client.unpack_mocap_data(data[offset:], packet_size, major, minor)
+        packet_size = int.from_bytes(data[2:4], byteorder="little")
+        offset_tmp, mocap_data = streaming_client.unpack_mocap_data(
+            data[offset:], packet_size, major, minor
+        )
         # streaming_client.send_request(streaming_client.command_socket, streaming_client.NAT_CONNECT, "", (streaming_client.server_ip_address, streaming_client.command_port))
         data_p = mocap_data.rigid_body_data
         data_p = data_p.get_as_string()

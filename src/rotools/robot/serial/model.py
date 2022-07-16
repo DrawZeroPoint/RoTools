@@ -17,7 +17,7 @@ def config_factory(robot):
     if robot.mdh is not None or robot.poe is not None:
         return np.zeros(robot.dof, dtype=float)
     else:
-        raise ValueError('No MDH or POE param defined')
+        raise ValueError("No MDH or POE param defined")
 
 
 def config_limits_factory(robot):
@@ -38,7 +38,9 @@ class RobotModel(Sized):
     mdh = attrib(default=None, type=MDHKinematicChain)
 
     # For transforming eef pose in the arm's base frame to the robot's base frame or getting the inverse transform.
-    arm_base_to_robot_base_trans = attrib(factory=lambda: transform.identity_matrix(), type=np.ndarray)
+    arm_base_to_robot_base_trans = attrib(
+        factory=lambda: transform.identity_matrix(), type=np.ndarray
+    )
 
     random_state = attrib(
         factory=lambda: np.random.RandomState(),
@@ -90,7 +92,9 @@ class RobotModel(Sized):
             pose = robotics.fk_in_space(self.poe.home_matrix, self.poe.screw_axes, q)
         else:
             transforms = [self.world_frame]
-            transforms.extend(self.mdh.transforms(q))  # Add n=dof transforms to the list
+            transforms.extend(
+                self.mdh.transforms(q)
+            )  # Add n=dof transforms to the list
             transforms.append(self.tool.matrix)
 
             # matrix multiply through transforms
@@ -103,7 +107,9 @@ class RobotModel(Sized):
         if i >= self.dof:
             raise IndexError
         transforms = []
-        transforms.extend(self.mdh.transforms(q[:i + 1]))  # Add n=dof transforms to the list
+        transforms.extend(
+            self.mdh.transforms(q[: i + 1])
+        )  # Add n=dof transforms to the list
 
         # matrix multiply through transforms
         pose = np.eye(4, dtype=float)
@@ -133,12 +139,22 @@ class RobotModel(Sized):
         """
         target_pose = common.sd_pose(target_pose, check=True)
         if self.poe is not None:
-            target_q, ok = robotics.ik_in_space(self.poe.screw_axes, self.poe.home_matrix, target_pose,
-                                                current_q, 1e-2, 1e-3)
+            target_q, ok = robotics.ik_in_space(
+                self.poe.screw_axes,
+                self.poe.home_matrix,
+                target_pose,
+                current_q,
+                1e-2,
+                1e-3,
+            )
             return target_q if ok else None
 
-        result = scipy.optimize.least_squares(fun=_ik_cost_function, x0=current_q,
-                                              bounds=self.q_limits, args=(self, target_pose))
+        result = scipy.optimize.least_squares(
+            fun=_ik_cost_function,
+            x0=current_q,
+            bounds=self.q_limits,
+            args=(self, target_pose),
+        )
 
         if result.success:  # pragma: no cover
             actual_pose = self.fk(result.x)
@@ -155,14 +171,14 @@ class RobotModel(Sized):
         for i in range(self.dof):
             q = np.zeros(i + 1)
             trans_0 = self.partial_fk(q, i)
-            q[-1] = np.pi / 2.
+            q[-1] = np.pi / 2.0
             trans_1 = self.partial_fk(q, i)
             trans_rot = np.dot(np.linalg.inv(trans_0), trans_1)
 
             # This is the rotation axis of joint i in its frame, where 0, 1, 2 for x, y, z
             local_axis_i = 0
             for col in range(3):
-                if trans_rot[col, col] == 1.:
+                if trans_rot[col, col] == 1.0:
                     local_axis_i = col
 
             # Get the global axis corresponding to the local axis, which is by definition the omega component of S.
@@ -212,7 +228,9 @@ class RobotModel(Sized):
         :return:
         """
         if np.any(value < self.dq_limits[0]) or np.any(value > self.dq_limits[1]):
-            raise ValueError('Velocity to set {} out of permissible range'.format(value))
+            raise ValueError(
+                "Velocity to set {} out of permissible range".format(value)
+            )
         self._dq = value
 
     @property
@@ -222,7 +240,9 @@ class RobotModel(Sized):
     @dq_limits.setter
     def dq_limits(self, value):
         if value.shape[0] != 2 or value.shape[1] != len(self):
-            raise ValueError('Velocity limits should have the shape (2, dof), 2 for min max')
+            raise ValueError(
+                "Velocity limits should have the shape (2, dof), 2 for min max"
+            )
         self._dq_limits = value
 
     @property
@@ -244,8 +264,10 @@ class RobotModel(Sized):
             self._q_limits = value.T
         else:
             raise ValueError(
-                'Joint limits should have the shape (2, dof), 2 for min max, but the given shape is {}'.format(
-                    value.shape))
+                "Joint limits should have the shape (2, dof), 2 for min max, but the given shape is {}".format(
+                    value.shape
+                )
+            )
 
     def jacobian_space(self, q=None):
         """Calculate the Jacobian wrt the world frame."""
@@ -278,11 +300,16 @@ class RobotModel(Sized):
         current_trans = self.tool.matrix.copy()
 
         for i in reversed(range(self.dof)):
-            d = np.array([
-                -current_trans[0, 0] * current_trans[1, 3] + current_trans[1, 0] * current_trans[0, 3],
-                -current_trans[0, 1] * current_trans[1, 3] + current_trans[1, 1] * current_trans[0, 3],
-                -current_trans[0, 2] * current_trans[1, 3] + current_trans[1, 2] * current_trans[0, 3],
-            ])
+            d = np.array(
+                [
+                    -current_trans[0, 0] * current_trans[1, 3]
+                    + current_trans[1, 0] * current_trans[0, 3],
+                    -current_trans[0, 1] * current_trans[1, 3]
+                    + current_trans[1, 1] * current_trans[0, 3],
+                    -current_trans[0, 2] * current_trans[1, 3]
+                    + current_trans[1, 2] * current_trans[0, 3],
+                ]
+            )
             delta = current_trans[2, 0:3]
             jacobian_flange[:, i] = np.hstack((d, delta))
             current_link = self.mdh.links[i]

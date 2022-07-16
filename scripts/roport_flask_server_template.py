@@ -17,11 +17,11 @@ from flask import Flask, request, make_response
 # Custom functions
 # TODO add this
 
-'''
+"""
 Note that this is a template for guiding the usage of Flask server
 for porting the algorithm using Python3. You could implement the
 server for your algorithm by referring this.
-'''
+"""
 
 app = Flask(__name__, template_folder="templates")
 
@@ -49,14 +49,18 @@ def decode_b64_to_image(b64_str, is_bgr=True):
         img = base64.b64decode(b64_str)
         # imdecode use the same flag as imread. cf. https://docs.opencv.org/3.4/d8/d6a/group__imgcodecs__flags.html
         if is_bgr:
-            return True, cv2.imdecode(np.frombuffer(img, dtype=np.uint8), cv2.IMREAD_COLOR)
+            return True, cv2.imdecode(
+                np.frombuffer(img, dtype=np.uint8), cv2.IMREAD_COLOR
+            )
         else:
-            return True, cv2.imdecode(np.frombuffer(img, dtype=np.uint8), cv2.IMREAD_ANYDEPTH)
+            return True, cv2.imdecode(
+                np.frombuffer(img, dtype=np.uint8), cv2.IMREAD_ANYDEPTH
+            )
     except cv2.error:
         return False, None
 
 
-@app.route('/process', methods=['POST'])
+@app.route("/process", methods=["POST"])
 def process():
     """The main entrance of the server.
 
@@ -65,22 +69,22 @@ def process():
     """
     try:
         req_data = json.loads(request.data)
-        if 'body' not in req_data:
+        if "body" not in req_data:
             return make_response("Failed to load request data", 200)
         else:
-            req_body = req_data['body']
+            req_body = req_data["body"]
     except ValueError:
         return make_response("Failed to phase JSON", 200)
 
     header = {}
-    response = {'status': False, 'results': []}
+    response = {"status": False, "results": []}
 
     cv_image_list = []
-    image_strings = json.loads(req_body['images'])
+    image_strings = json.loads(req_body["images"])
     for s in image_strings:
         ok, image = decode_b64_to_image(s)
         if not ok:
-            feedback = {'header': header, 'response': response}
+            feedback = {"header": header, "response": response}
             return make_response(json.dumps(feedback), 200)
         cv_image_list.append(image)
 
@@ -88,11 +92,11 @@ def process():
     torch.cuda.empty_cache()
 
     if ok:
-        response['status'] = True
-        response['results'] = json.dumps(results)
-    feedback = {'header': header, 'response': response}
+        response["status"] = True
+        response["results"] = json.dumps(results)
+    feedback = {"header": header, "response": response}
     return make_response(json.dumps(feedback), 200)
 
 
 if __name__ == "__main__":
-    waitress.serve(app, host='0.0.0.0', port=6060, threads=6)
+    waitress.serve(app, host="0.0.0.0", port=6060, threads=6)

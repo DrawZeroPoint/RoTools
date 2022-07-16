@@ -74,7 +74,7 @@ def test_hash2(test_name, test_hash_str, test_object, run_test=True):
         out_str2 = "%sERROR: test_object was None" % indent_string
     else:
         obj_out_hash_str = ""
-        if str(type(test_object)) != 'NoneType':
+        if str(type(test_object)) != "NoneType":
             obj_out_str = test_object.get_as_string()
             obj_out_hash_str = hashlib.sha1(obj_out_str.encode()).hexdigest()
 
@@ -82,7 +82,10 @@ def test_hash2(test_name, test_hash_str, test_object, run_test=True):
             out_str = "PASS"
             ret_value = K_PASS
         else:
-            out_str2 += "%s%s test_hash_str != out_hash_str\n" % (indent_string, test_name)
+            out_str2 += "%s%s test_hash_str != out_hash_str\n" % (
+                indent_string,
+                test_name,
+            )
             out_str2 += "%stest_hash_str=%s\n" % (indent_string, test_hash_str)
             out_str2 += "%sobj_out_hash_str=%s\n" % (indent_string, obj_out_hash_str)
             out_str2 += "%sobj_out_str =\n%s" % (indent_string, obj_out_str)
@@ -98,7 +101,7 @@ def get_as_string(input_str):
     if type(input_str) == str:
         return input_str
     else:
-        return input_str.decode('utf-8')
+        return input_str.decode("utf-8")
 
 
 def get_data_sub_packet_type(new_data):
@@ -144,11 +147,18 @@ class MarkerSetDescription:
         out_tab_str2 = get_tab_str(tab_str, level + 1)
         out_tab_str3 = get_tab_str(tab_str, level + 2)
         out_string = ""
-        out_string += "%sMarker Set Name: %s\n" % (out_tab_str, get_as_string(self.marker_set_name))
+        out_string += "%sMarker Set Name: %s\n" % (
+            out_tab_str,
+            get_as_string(self.marker_set_name),
+        )
         num_markers = len(self.marker_names_list)
         out_string += "%sMarker Count   : %d\n" % (out_tab_str2, num_markers)
         for i in range(num_markers):
-            out_string += "%s%3.1d Marker Name: %s\n" % (out_tab_str3, i, get_as_string(self.marker_names_list[i]))
+            out_string += "%s%3.1d Marker Name: %s\n" % (
+                out_tab_str3,
+                i,
+                get_as_string(self.marker_names_list[i]),
+            )
         return out_string
 
 
@@ -161,8 +171,14 @@ class RBMarker:
     def get_as_string(self, tab_str="  ", level=0):
         out_tab_str = get_tab_str(tab_str, level)
         out_string = ""
-        out_string += "%sMarker Label: %s Position: [%f %f %f] %s\n" % \
-                      (out_tab_str, self.active_label, self.pos[0], self.pos[1], self.pos[2], self.marker_name)
+        out_string += "%sMarker Label: %s Position: [%f %f %f] %s\n" % (
+            out_tab_str,
+            self.active_label,
+            self.pos[0],
+            self.pos[1],
+            self.pos[2],
+            self.marker_name,
+        )
         return out_string
 
 
@@ -197,16 +213,27 @@ class RigidBodyDescription:
         out_tab_str = get_tab_str(tab_str, level)
         out_tab_str2 = get_tab_str(tab_str, level + 1)
         out_string = ""
-        out_string += "%sRigid Body Name   : %s\n" % (out_tab_str, get_as_string(self.sz_name))
+        out_string += "%sRigid Body Name   : %s\n" % (
+            out_tab_str,
+            get_as_string(self.sz_name),
+        )
         out_string += "%sID                : %d\n" % (out_tab_str, self.id_num)
         out_string += "%sParent ID         : %d\n" % (out_tab_str, self.parent_id)
         out_string += "%sPosition          : [%3.2f, %3.2f, %3.2f]\n" % (
-            out_tab_str, self.pos[0], self.pos[1], self.pos[2])
+            out_tab_str,
+            self.pos[0],
+            self.pos[1],
+            self.pos[2],
+        )
         num_markers = len(self.rb_marker_list)
         out_string += "%sNumber of Markers : %d\n" % (out_tab_str, num_markers)
         # loop over markers
         for i in range(num_markers):
-            out_string += "%s%i %s" % (out_tab_str2, i, self.rb_marker_list[i].get_as_string(tab_str, 0))
+            out_string += "%s%i %s" % (
+                out_tab_str2,
+                i,
+                self.rb_marker_list[i].get_as_string(tab_str, 0),
+            )
         return out_string
 
 
@@ -230,13 +257,18 @@ class SkeletonDescription:
         out_tab_str = get_tab_str(tab_str, level)
         out_tab_str2 = get_tab_str(tab_str, level + 1)
         out_string = ""
-        out_string += "%sName                    : %s\n" % (out_tab_str, get_as_string(self.name))
+        out_string += "%sName                    : %s\n" % (
+            out_tab_str,
+            get_as_string(self.name),
+        )
         out_string += "%sID                      : %d\n" % (out_tab_str, self.id_num)
         num_bones = len(self.rigid_body_description_list)
         out_string += "%sRigid Body (Bone) Count : %d\n" % (out_tab_str, num_bones)
         for i in range(num_bones):
             out_string += "%sRigid Body (Bone) %d\n" % (out_tab_str2, i)
-            out_string += self.rigid_body_description_list[i].get_as_string(tab_str, level + 2)
+            out_string += self.rigid_body_description_list[i].get_as_string(
+                tab_str, level + 2
+            )
         return out_string
 
 
@@ -289,14 +321,25 @@ class ForcePlateDescription:
         out_string = ""
         out_string += "%sCal Matrix:\n" % out_tab_str
         for i in range(0, 12):
-            out_string += "%s%2.1d %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e\n" % \
-                          (out_tab_str2, i,
-                           self.cal_matrix[i][0], self.cal_matrix[i][1],
-                           self.cal_matrix[i][2], self.cal_matrix[i][3],
-                           self.cal_matrix[i][4], self.cal_matrix[i][5],
-                           self.cal_matrix[i][6], self.cal_matrix[i][7],
-                           self.cal_matrix[i][8], self.cal_matrix[i][9],
-                           self.cal_matrix[i][10], self.cal_matrix[i][11])
+            out_string += (
+                "%s%2.1d %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e %3.3e\n"
+                % (
+                    out_tab_str2,
+                    i,
+                    self.cal_matrix[i][0],
+                    self.cal_matrix[i][1],
+                    self.cal_matrix[i][2],
+                    self.cal_matrix[i][3],
+                    self.cal_matrix[i][4],
+                    self.cal_matrix[i][5],
+                    self.cal_matrix[i][6],
+                    self.cal_matrix[i][7],
+                    self.cal_matrix[i][8],
+                    self.cal_matrix[i][9],
+                    self.cal_matrix[i][10],
+                    self.cal_matrix[i][11],
+                )
+            )
         return out_string
 
     def get_corners_as_string(self, tab_str="", level=0):
@@ -307,9 +350,13 @@ class ForcePlateDescription:
         out_string = ""
         out_string += "%sCorners:\n" % out_tab_str
         for i in range(0, 4):
-            out_string += "%s%2.1d %3.3e %3.3e %3.3e\n" % \
-                          (out_tab_str2, i,
-                           self.corners[i][0], self.corners[i][1], self.corners[i][2])
+            out_string += "%s%2.1d %3.3e %3.3e %3.3e\n" % (
+                out_tab_str2,
+                i,
+                self.corners[i][0],
+                self.corners[i][1],
+                self.corners[i][2],
+            )
         return out_string
 
     def get_as_string(self, tab_str="  ", level=0):
@@ -317,25 +364,39 @@ class ForcePlateDescription:
         out_tab_str = get_tab_str(tab_str, level)
         out_string = ""
         out_string += "%sID                      : %d\n" % (out_tab_str, self.id_num)
-        out_string += "%sSerial Number           : %s\n" % (out_tab_str, get_as_string(self.serial_number))
+        out_string += "%sSerial Number           : %s\n" % (
+            out_tab_str,
+            get_as_string(self.serial_number),
+        )
         out_string += "%sWidth                   : %3.2f\n" % (out_tab_str, self.width)
         out_string += "%sLength                  : %3.2f\n" % (out_tab_str, self.length)
-        out_string += "%sOrigin                  : %3.2f, %3.2f, %3.2f\n" % (out_tab_str,
-                                                                             self.position[0],
-                                                                             self.position[1],
-                                                                             self.position[2])
+        out_string += "%sOrigin                  : %3.2f, %3.2f, %3.2f\n" % (
+            out_tab_str,
+            self.position[0],
+            self.position[1],
+            self.position[2],
+        )
         out_string += self.get_cal_matrix_as_string(tab_str, level)
         out_string += self.get_corners_as_string(tab_str, level)
 
-        out_string += "%sPlate Type                : %d\n" % (out_tab_str, self.plate_type)
-        out_string += "%sChannel Data Type         : %d\n" % (out_tab_str, self.channel_data_type)
+        out_string += "%sPlate Type                : %d\n" % (
+            out_tab_str,
+            self.plate_type,
+        )
+        out_string += "%sChannel Data Type         : %d\n" % (
+            out_tab_str,
+            self.channel_data_type,
+        )
         num_channels = len(self.channel_list)
         out_string += "%sNumber of Channels        : %d\n" % (out_tab_str, num_channels)
         # Channel Names list of NoC strings
         out_tab_str2 = get_tab_str(tab_str, level + 1)
         for channel_num in range(num_channels):
-            out_string += "%sChannel Name %d: %s\n" % (out_tab_str2, channel_num,
-                                                       get_as_string(self.channel_list[channel_num]))
+            out_string += "%sChannel Name %d: %s\n" % (
+                out_tab_str2,
+                channel_num,
+                get_as_string(self.channel_list[channel_num]),
+            )
 
         return out_string
 
@@ -370,14 +431,27 @@ class DeviceDescription:
         out_tab_str2 = get_tab_str(tab_str, level + 1)
         out_string = ""
         out_string += "%sID                 : %5.1d\n" % (out_tab_str, self.id_num)
-        out_string += "%sName               : %s\n" % (out_tab_str, get_as_string(self.name))
-        out_string += "%sSerial Number      : %s\n" % (out_tab_str, get_as_string(self.serial_number))
+        out_string += "%sName               : %s\n" % (
+            out_tab_str,
+            get_as_string(self.name),
+        )
+        out_string += "%sSerial Number      : %s\n" % (
+            out_tab_str,
+            get_as_string(self.serial_number),
+        )
         out_string += "%sDevice Type        : %d\n" % (out_tab_str, self.device_type)
-        out_string += "%sChannel Data Type  : %d\n" % (out_tab_str, self.channel_data_type)
+        out_string += "%sChannel Data Type  : %d\n" % (
+            out_tab_str,
+            self.channel_data_type,
+        )
         num_channels = len(self.channel_list)
         out_string += "%sNumber of Channels : %d\n" % (out_tab_str, num_channels)
         for i in range(num_channels):
-            out_string += "%sChannel %2.1d Name : %s\n" % (out_tab_str2, i, get_as_string(self.channel_list[i]))
+            out_string += "%sChannel %2.1d Name : %s\n" % (
+                out_tab_str2,
+                i,
+                get_as_string(self.channel_list[i]),
+            )
         return out_string
 
 
@@ -394,19 +468,27 @@ class CameraDescription:
         out_tab_str = get_tab_str(tab_str, level)
         out_string = ""
         out_string += "%sName        : %s\n" % (out_tab_str, get_as_string(self.name))
-        out_string += "%sPosition    : [%3.2f, %3.2f, %3.2f]\n" % \
-                      (out_tab_str, self.position[0], self.position[1], self.position[2])
-        out_string += "%sOrientation : [%3.2f, %3.2f, %3.2f, %3.2f]\n" % \
-                      (out_tab_str,
-                       self.orientation[0], self.orientation[1],
-                       self.orientation[2], self.orientation[3])
+        out_string += "%sPosition    : [%3.2f, %3.2f, %3.2f]\n" % (
+            out_tab_str,
+            self.position[0],
+            self.position[1],
+            self.position[2],
+        )
+        out_string += "%sOrientation : [%3.2f, %3.2f, %3.2f, %3.2f]\n" % (
+            out_tab_str,
+            self.orientation[0],
+            self.orientation[1],
+            self.orientation[2],
+            self.orientation[3],
+        )
         return out_string
 
 
 # cDataDescriptions
 # Full data descriptions
-class DataDescriptions():
+class DataDescriptions:
     """Data Descriptions class"""
+
     order_num = 0
 
     def __init__(self):
@@ -466,7 +548,7 @@ class DataDescriptions():
         self.force_plate_list.append(copy.deepcopy(new_force_plate))
 
     def add_device(self, newdevice):
-        """ add_device - Add a device"""
+        """add_device - Add a device"""
         order_name = self.generate_order_name()
 
         # generate order entry
@@ -475,7 +557,7 @@ class DataDescriptions():
         self.device_list.append(copy.deepcopy(newdevice))
 
     def add_camera(self, newcamera):
-        """ Add a new camera """
+        """Add a new camera"""
         order_name = self.generate_order_name()
 
         # generate order entry
@@ -506,28 +588,24 @@ class DataDescriptions():
     def get_object_from_list(self, list_name, pos_num):
         """Determine list name and position of the object"""
         ret_value = None
-        if (list_name == "marker_set_list") and \
-                (pos_num < len(self.marker_set_list)):
+        if (list_name == "marker_set_list") and (pos_num < len(self.marker_set_list)):
             ret_value = self.marker_set_list[pos_num]
 
-        elif (list_name == "rigid_body_list") and \
-                (pos_num < len(self.rigid_body_list)):
+        elif (list_name == "rigid_body_list") and (pos_num < len(self.rigid_body_list)):
             ret_value = self.rigid_body_list[pos_num]
 
-        elif (list_name == "skeleton_list") and \
-                (pos_num < len(self.skeleton_list)):
+        elif (list_name == "skeleton_list") and (pos_num < len(self.skeleton_list)):
             ret_value = self.skeleton_list[pos_num]
 
-        elif (list_name == "force_plate_list") and \
-                (pos_num < len(self.force_plate_list)):
+        elif (list_name == "force_plate_list") and (
+            pos_num < len(self.force_plate_list)
+        ):
             ret_value = self.force_plate_list[pos_num]
 
-        elif (list_name == "device_list") and \
-                (pos_num < len(self.device_list)):
+        elif (list_name == "device_list") and (pos_num < len(self.device_list)):
             ret_value = self.device_list[pos_num]
 
-        elif (list_name == "camera_list") and \
-                (pos_num < len(self.camera_list)):
+        elif (list_name == "camera_list") and (pos_num < len(self.camera_list)):
             ret_value = self.camera_list[pos_num]
 
         else:
@@ -558,7 +636,12 @@ class DataDescriptions():
             if tmp_object is not None:
                 out_string += tmp_object.get_as_string(tab_str, level + 2)
             else:
-                out_string += "%s%s %s %s not found\n" % (out_tab_str3, tmp_key, tmp_name, tmp_num)
+                out_string += "%s%s %s %s not found\n" % (
+                    out_tab_str3,
+                    tmp_key,
+                    tmp_name,
+                    tmp_num,
+                )
             out_string += "\n"
             i += 1
 
@@ -566,6 +649,7 @@ class DataDescriptions():
 
 
 # cDataDescriptions END
+
 
 def generate_marker_set_description(set_num=0):
     """generate_marker_set_description - Testing functions"""
@@ -610,7 +694,9 @@ def generate_rigid_body_description(rbd_num=0):
 
 def generate_skeleton_description(skeleton_num=0):
     """generate_skeleton_description -Generate Test SkeletonDescription Data"""
-    skel_desc = SkeletonDescription("SkeletonDescription_%3.3d" % skeleton_num, skeleton_num)
+    skel_desc = SkeletonDescription(
+        "SkeletonDescription_%3.3d" % skeleton_num, skeleton_num
+    )
     # generate some rigid bodies to add
     skel_desc.add_rigid_body_description(generate_rigid_body_description(0))
     skel_desc.add_rigid_body_description(generate_rigid_body_description(1))
@@ -630,10 +716,7 @@ def generate_force_plate_description(force_plate_num=0):
     width = random.random() * 10
     length = random.random() * 10
     origin = [(random.random() * 100), (random.random() * 100), (random.random() * 100)]
-    corners = [[0.0, 0.0, 0.0],
-               [0.0, 1.0, 0.0],
-               [1.0, 1.0, 0.0],
-               [1.0, 0.0, 0.0]]
+    corners = [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0], [1.0, 0.0, 0.0]]
 
     fp_desc = ForcePlateDescription(fp_id, serial_number)
     fp_desc.set_dimensions(width, length)
@@ -652,7 +735,9 @@ def generate_device_description(dev_num=0):
     serial_number = "SerialNumber%3.3d" % dev_num
     device_type = dev_num % 4
     channel_data_type = dev_num % 5
-    dev_desc = DeviceDescription(new_id, name, serial_number, device_type, channel_data_type)
+    dev_desc = DeviceDescription(
+        new_id, name, serial_number, device_type, channel_data_type
+    )
     for i in range(channel_data_type + 3):
         dev_desc.add_channel_name("channel_name_%2.2d" % i)
     return dev_desc
@@ -700,27 +785,62 @@ def test_all(run_test=True):
     """Test all the Data Description classes"""
     totals = [0, 0, 0]
     if run_test is True:
-        test_cases = [["Test Marker Set Description 0", "754fe535286ca84bd054d9aca5e9906ab9384d92",
-                       "generate_marker_set_description(0)", True],
-                      ["Test RB Marker 0", "0f2612abf2ce70e479d7b9912f646f12910b3310",
-                       "generate_rb_marker(0)", True],
-                      ["Test Rigid Body Description 0", "7a4e93dcda442c1d9c5dcc5c01a247e4a6c01b66",
-                       "generate_rigid_body_description(0)", True],
-                      ["Test Skeleton Description 0", "b4d1a031dd7c323e3d316b5312329881a6a552ca",
-                       "generate_skeleton_description(0)", True],
-                      ["Test Force Plate Description 0", "b385dd1096bdd9f521eb48bb9cbfb3414ea075bd",
-                       "generate_force_plate_description(0)", True],
-                      ["Test Device Description 0", "39b4fdda402bc73c0b1cd5c7f61599476aa9a926",
-                       "generate_device_description(0)", True],
-                      ["Test Camera Description 0", "614602c5d290bda3b288138d5e25516dd1e1e85a",
-                       "generate_camera_description(0)", True],
-                      ["Test Data Description 0", "e5f448d10087ac818a65934710a85fc7ebfdf89e",
-                       "generate_data_descriptions(0)", True],
-                      ]
+        test_cases = [
+            [
+                "Test Marker Set Description 0",
+                "754fe535286ca84bd054d9aca5e9906ab9384d92",
+                "generate_marker_set_description(0)",
+                True,
+            ],
+            [
+                "Test RB Marker 0",
+                "0f2612abf2ce70e479d7b9912f646f12910b3310",
+                "generate_rb_marker(0)",
+                True,
+            ],
+            [
+                "Test Rigid Body Description 0",
+                "7a4e93dcda442c1d9c5dcc5c01a247e4a6c01b66",
+                "generate_rigid_body_description(0)",
+                True,
+            ],
+            [
+                "Test Skeleton Description 0",
+                "b4d1a031dd7c323e3d316b5312329881a6a552ca",
+                "generate_skeleton_description(0)",
+                True,
+            ],
+            [
+                "Test Force Plate Description 0",
+                "b385dd1096bdd9f521eb48bb9cbfb3414ea075bd",
+                "generate_force_plate_description(0)",
+                True,
+            ],
+            [
+                "Test Device Description 0",
+                "39b4fdda402bc73c0b1cd5c7f61599476aa9a926",
+                "generate_device_description(0)",
+                True,
+            ],
+            [
+                "Test Camera Description 0",
+                "614602c5d290bda3b288138d5e25516dd1e1e85a",
+                "generate_camera_description(0)",
+                True,
+            ],
+            [
+                "Test Data Description 0",
+                "e5f448d10087ac818a65934710a85fc7ebfdf89e",
+                "generate_data_descriptions(0)",
+                True,
+            ],
+        ]
         num_tests = len(test_cases)
         for i in range(num_tests):
             data = eval(test_cases[i][2])
-            totals_tmp = test_hash2(test_cases[i][0], test_cases[i][1], data, test_cases[i][3])
+            totals_tmp = test_hash2(
+                test_cases[i][0], test_cases[i][1], data, test_cases[i][3]
+            )
             totals = add_lists(totals, totals_tmp)
 
     print("--------------------")
