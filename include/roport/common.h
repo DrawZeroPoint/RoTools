@@ -198,6 +198,35 @@ inline void prettyPrintEigenMatrix(const Eigen::Matrix<double, Eigen::Dynamic, E
   std::cout << mat.format(cleanFormat) << std::endl;
 }
 
+inline void getCartesianError(const Eigen::Vector3d& current_position,
+                              const Eigen::Quaterniond& current_orientation,
+                              const Eigen::Vector3d& goal_position,
+                              const Eigen::Quaterniond& goal_orientation,
+                              Eigen::Matrix<double, 6, 1>& error) {
+  error.head(3) << current_position - goal_position;
+  Eigen::Quaterniond regularized_current_orientation;
+  regularized_current_orientation.coeffs() << current_orientation.coeffs();
+  if (goal_orientation.coeffs().dot(current_orientation.coeffs()) < 0.) {
+    regularized_current_orientation.coeffs() << -current_orientation.coeffs();
+  }
+  Eigen::Quaterniond error_quaternion(regularized_current_orientation.inverse() * goal_orientation);
+  Eigen::AngleAxisd error_quaternion_ax(error_quaternion);
+  auto res_1 = error_quaternion_ax.axis() * error_quaternion_ax.angle();
+  error.tail(3) << error_quaternion.x(), error_quaternion.y(), error_quaternion.z();
+  error.tail(3) << -Eigen::Affine3d(regularized_current_orientation).linear() * error.tail(3);
+  assert(res_1 == error.tail(3));  // TODO test this
+}
+
+inline void getCartesianError(const Eigen::Affine3d& current_transform,
+                              const Eigen::Affine3d& goal_transform,
+                              Eigen::Matrix<double, 6, 1>& error) {
+  Eigen::Vector3d current_position(current_transform.translation());
+  Eigen::Quaterniond current_orientation(current_transform.linear());
+  Eigen::Vector3d goal_position(goal_transform.translation());
+  Eigen::Quaterniond goal_orientation(goal_transform.linear());
+  getCartesianError(current_position, current_orientation, goal_position, goal_orientation, error);
+}
+
 /**
  * Judge if all corresponding elements in the two given vectors are close to each other under the tolerance.
  * @tparam T Value type.
@@ -208,9 +237,12 @@ inline void prettyPrintEigenMatrix(const Eigen::Matrix<double, Eigen::Dynamic, E
  * @param tol Tolerance.
  * @return True if close.
  */
-template <typename T>
-inline auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, T tol = kTolerance)
-    -> bool {
+    template <typename T>
+    inline auto allClose(std::vector<T> first,
+                         std::vector<T> second,
+                         size_t& violated_i,
+                         T& residual,
+                         T tol = kTolerance) -> bool {
   if (tol <= 0) {
     tol = kTolerance;
   }
