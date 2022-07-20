@@ -55,7 +55,7 @@ class HPPManipulationInterface(object):
         base_cmd_topic,
         enable_viewer=True,
         reduction_ratio=0.2,
-        safety_margin=0.02,
+        safety_margin=0.2,
         **kwargs
     ):
         super(HPPManipulationInterface, self).__init__()
