@@ -204,17 +204,19 @@ inline void getCartesianError(const Eigen::Vector3d& current_position,
                               const Eigen::Quaterniond& goal_orientation,
                               Eigen::Matrix<double, 6, 1>& error) {
   error.head(3) << current_position - goal_position;
+
+  Eigen::Affine3d current_affine_transform;
+  current_affine_transform.translation() = current_position;
+  current_affine_transform.linear() = current_orientation.toRotationMatrix();
+
   Eigen::Quaterniond regularized_current_orientation;
   regularized_current_orientation.coeffs() << current_orientation.coeffs();
   if (goal_orientation.coeffs().dot(current_orientation.coeffs()) < 0.) {
     regularized_current_orientation.coeffs() << -current_orientation.coeffs();
   }
   Eigen::Quaterniond error_quaternion(regularized_current_orientation.inverse() * goal_orientation);
-  Eigen::AngleAxisd error_quaternion_ax(error_quaternion);
-  auto res_1 = error_quaternion_ax.axis() * error_quaternion_ax.angle();
   error.tail(3) << error_quaternion.x(), error_quaternion.y(), error_quaternion.z();
-  error.tail(3) << -Eigen::Affine3d(regularized_current_orientation).linear() * error.tail(3);
-  assert(res_1 == error.tail(3));  // TODO test this
+  error.tail(3) << -current_affine_transform.linear() * error.tail(3);
 }
 
 inline void getCartesianError(const Eigen::Affine3d& current_transform,
@@ -237,12 +239,9 @@ inline void getCartesianError(const Eigen::Affine3d& current_transform,
  * @param tol Tolerance.
  * @return True if close.
  */
-    template <typename T>
-    inline auto allClose(std::vector<T> first,
-                         std::vector<T> second,
-                         size_t& violated_i,
-                         T& residual,
-                         T tol = kTolerance) -> bool {
+template <typename T>
+inline auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, T tol = kTolerance)
+    -> bool {
   if (tol <= 0) {
     tol = kTolerance;
   }
