@@ -36,23 +36,43 @@ class Header:
         self.payload_size = header[9]  # Size of the measurement excluding the header
 
     def __repr__(self):
-        s = 'Header {}: \nsample_counter {}, datagram_counter {},\n' \
-            'item #{}, body segment #{}, prop #{}, finger segment #{}\n'.format(
-            self.ID_str, self.sample_counter, self.datagram_counter, self.item_counter,
-            self.body_segments_num, self.props_num, self.finger_segments_num)
+        s = (
+            "Header {}: \nsample_counter {}, datagram_counter {},\n"
+            "item #{}, body segment #{}, prop #{}, finger segment #{}\n".format(
+                self.ID_str,
+                self.sample_counter,
+                self.datagram_counter,
+                self.item_counter,
+                self.body_segments_num,
+                self.props_num,
+                self.finger_segments_num,
+            )
+        )
         return s
 
     @property
     def is_valid(self):
-        if self.ID_str != 'MXTP02':
-            rospy.logwarn('XSensInterface: Current only support MXTP02, but got {}'.format(self.ID_str))
+        if self.ID_str != "MXTP02":
+            rospy.logwarn(
+                "XSensInterface: Current only support MXTP02, but got {}".format(
+                    self.ID_str
+                )
+            )
             return False
-        if self.item_counter != self.body_segments_num + self.props_num + self.finger_segments_num:
-            rospy.logwarn('XSensInterface: Segments number in total does not match item counter')
+        if (
+            self.item_counter
+            != self.body_segments_num + self.props_num + self.finger_segments_num
+        ):
+            rospy.logwarn(
+                "XSensInterface: Segments number in total does not match item counter"
+            )
             return False
         if self.payload_size % self.item_counter != 0:
-            rospy.logwarn('XSensInterface: Payload size {} is not dividable by item number {}'.format(
-                self.payload_size, self.item_num))
+            rospy.logwarn(
+                "XSensInterface: Payload size {} is not dividable by item number {}".format(
+                    self.payload_size, self.item_num
+                )
+            )
             return False
         return True
 
@@ -72,11 +92,7 @@ class Header:
 
 
 class Datagram(object):
-    def __init__(
-            self,
-            header,
-            payload
-    ):
+    def __init__(self, header, payload):
         self.header = header
         self.payload = payload
 
@@ -84,7 +100,9 @@ class Datagram(object):
     def is_object(self):
         return self.header.is_object
 
-    def decode_to_pose_array_msg(self, ref_frame, ref_frame_id=None, scaling_factor=1.0):
+    def decode_to_pose_array_msg(
+        self, ref_frame, ref_frame_id=None, scaling_factor=1.0
+    ):
         """Decode the bytes in the streaming data to pose array message.
 
         :param ref_frame: str Reference frame name of the generated pose array message.
@@ -98,7 +116,9 @@ class Datagram(object):
         pose_array_msg.header.frame_id = ref_frame
 
         for i in range(self.header.item_num):
-            item = self.payload[i * self.header.item_size:(i + 1) * self.header.item_size]
+            item = self.payload[
+                i * self.header.item_size : (i + 1) * self.header.item_size
+            ]
             pose_msg = self._decode_to_pose_msg(item)
             if pose_msg is None:
                 return None
@@ -122,7 +142,9 @@ class Datagram(object):
         :param item: str String of bytes
         """
         if len(item) != 32:
-            rospy.logerr('XSensInterface: Payload pose data size is not 32: {}'.format(len(item)))
+            rospy.logerr(
+                "XSensInterface: Payload pose data size is not 32: {}".format(len(item))
+            )
             return None
         # segment_id = common.byte_to_uint32(item[:4])
         x = common.byte_to_float(item[4:8])
@@ -141,13 +163,13 @@ class Datagram(object):
 
 class XsensInterface(object):
     def __init__(
-            self,
-            udp_ip,
-            udp_port,
-            ref_frame,
-            scaling=1.0,
-            buffer_size=4096,
-            **kwargs  # DO NOT REMOVE
+        self,
+        udp_ip,
+        udp_port,
+        ref_frame,
+        scaling=1.0,
+        buffer_size=4096,
+        **kwargs  # DO NOT REMOVE
     ):
         super(XsensInterface, self).__init__()
 
@@ -156,26 +178,45 @@ class XsensInterface(object):
         self._buffer_size = buffer_size
 
         self._body_frames = {
-            'pelvis': 0,
-            'l5': 1, 'l3': 2,
-            't12': 3, 't8': 4,
-            'neck': 5, 'head': 6,
-            'right_shoulder': 7, 'right_upper_arm': 8, 'right_forearm': 9, 'right_hand': 10,
-            'left_shoulder': 11, 'left_upper_arm': 12, 'left_forearm': 13, 'left_hand': 14,
-            'right_upper_leg': 15, 'right_lower_leg': 16, 'right_foot': 17, 'right_toe': 18,
-            'left_upper_leg': 19, 'left_lower_leg': 20, 'left_foot': 21, 'left_toe': 22,
+            "pelvis": 0,
+            "l5": 1,
+            "l3": 2,
+            "t12": 3,
+            "t8": 4,
+            "neck": 5,
+            "head": 6,
+            "right_shoulder": 7,
+            "right_upper_arm": 8,
+            "right_forearm": 9,
+            "right_hand": 10,
+            "left_shoulder": 11,
+            "left_upper_arm": 12,
+            "left_forearm": 13,
+            "left_hand": 14,
+            "right_upper_leg": 15,
+            "right_lower_leg": 16,
+            "right_foot": 17,
+            "right_toe": 18,
+            "left_upper_leg": 19,
+            "left_lower_leg": 20,
+            "left_foot": 21,
+            "left_toe": 22,
         }
 
         ref_frame_lowercase = ref_frame.lower()
         if ref_frame_lowercase in self._body_frames:
             self.ref_frame = ref_frame_lowercase
             self.ref_frame_id = self._body_frames[ref_frame_lowercase]
-        elif ref_frame_lowercase == '' or ref_frame_lowercase == 'world':
-            rospy.logwarn('XSensInterface: Reference frame is the world frame')
-            self.ref_frame = 'world'
+        elif ref_frame_lowercase == "" or ref_frame_lowercase == "world":
+            rospy.logwarn("XSensInterface: Reference frame is the world frame")
+            self.ref_frame = "world"
             self.ref_frame_id = None
         else:
-            rospy.logwarn('XSensInterface: Using customized reference frame {}'.format(ref_frame_lowercase))
+            rospy.logwarn(
+                "XSensInterface: Using customized reference frame {}".format(
+                    ref_frame_lowercase
+                )
+            )
             self.ref_frame = ref_frame_lowercase
             self.ref_frame_id = None
 
@@ -195,13 +236,13 @@ class XsensInterface(object):
             return pose
 
     def get_datagram(self):
-        """[Main entrance function] Get poses from the datagram.
-
-        """
+        """[Main entrance function] Get poses from the datagram."""
         data, _ = self._sock.recvfrom(self._buffer_size)
         datagram = self._get_datagram(data)
         if datagram is not None:
-            pose_array_msg = datagram.decode_to_pose_array_msg(self.ref_frame, self.ref_frame_id)
+            pose_array_msg = datagram.decode_to_pose_array_msg(
+                self.ref_frame, self.ref_frame_id
+            )
             if pose_array_msg is None:
                 return False
             if datagram.is_object:
@@ -238,8 +279,9 @@ class XsensInterface(object):
 
         # all_poses should at least contain body segment poses
         segment_id = 0
-        assert len(self.body_segments_poses.poses) >= 23, \
-            rospy.logerr("XSensInterface: Body segments' number is less than 23")
+        assert len(self.body_segments_poses.poses) >= 23, rospy.logerr(
+            "XSensInterface: Body segments' number is less than 23"
+        )
         for p in self.body_segments_poses.poses:
             main_body_msg.poses.append(p)
             if segment_id == 4:  # T8
@@ -258,8 +300,14 @@ class XsensInterface(object):
             if segment_id == self.header.body_segments_num:
                 break
         assert len(main_body_msg.poses) == self.header.body_segments_num
-        return [self.body_segments_poses, main_body_msg], \
-               [base_pose_msg, left_tcp_msg, right_tcp_msg, left_sole_msg, right_sole_msg, head_msg]
+        return [self.body_segments_poses, main_body_msg], [
+            base_pose_msg,
+            left_tcp_msg,
+            right_tcp_msg,
+            left_sole_msg,
+            right_sole_msg,
+            head_msg,
+        ]
 
     def get_transform(self, base_frame, distal_frame):
         """Given both base frame and distal frame be two of the body frames, get the transform
@@ -277,10 +325,12 @@ class XsensInterface(object):
         distal_frame = distal_frame.lower()
         pose_msg.header = self.body_segments_poses.header
         if base_frame not in self._body_frames or distal_frame not in self._body_frames:
-            rospy.logerr('Base frame {} is not in known body frames'.format(base_frame))
+            rospy.logerr("Base frame {} is not in known body frames".format(base_frame))
             return None
         if distal_frame not in self._body_frames:
-            rospy.logerr('Distal frame {} is not in known body frames'.format(distal_frame))
+            rospy.logerr(
+                "Distal frame {} is not in known body frames".format(distal_frame)
+            )
             return None
         base_frame_id = self._body_frames[base_frame]
         distal_frame_id = self._body_frames[distal_frame]
@@ -298,7 +348,9 @@ class XsensInterface(object):
                 prop_1_msg.pose = self.body_segments_poses.poses[24]
                 return prop_1_msg
             except IndexError:
-                rospy.logwarn_once('XSensInterface: Prop number is not 0 but failed to get its pose')
+                rospy.logwarn_once(
+                    "XSensInterface: Prop number is not 0 but failed to get its pose"
+                )
                 return None
         else:
             return None
@@ -315,7 +367,11 @@ class XsensInterface(object):
             rospy.loginfo_once("XSensInterface: Finger data is not used")
             return None, None
         elif self.header.finger_segments_num != 40:
-            rospy.logwarn_once("XSensInterface: Finger segment # is not 40: {}".format(self.header.finger_segments_num))
+            rospy.logwarn_once(
+                "XSensInterface: Finger segment # is not 40: {}".format(
+                    self.header.finger_segments_num
+                )
+            )
             return None, None
 
         left_hand_js = sensor_msg.JointState()
@@ -328,10 +384,14 @@ class XsensInterface(object):
         base_num = self.header.body_segments_num + self.header.props_num
         for i in [1, 4, 8, 12, 16]:
             meta_id = base_num + i
-            left_hand_js.position.extend(self._get_finger_j1_j2(self.body_segments_poses.poses, meta_id))
+            left_hand_js.position.extend(
+                self._get_finger_j1_j2(self.body_segments_poses.poses, meta_id)
+            )
         for i in [1, 4, 8, 12, 16]:
             meta_id = base_num + 20 + i
-            right_hand_js.position.extend(self._get_finger_j1_j2(self.body_segments_poses.poses, meta_id))
+            right_hand_js.position.extend(
+                self._get_finger_j1_j2(self.body_segments_poses.poses, meta_id)
+            )
         return left_hand_js, right_hand_js
 
     @staticmethod
@@ -347,10 +407,14 @@ class XsensInterface(object):
         m_pose = poses[meta_id]
         pp_pose = poses[meta_id + 1]
         dp_pose = poses[meta_id + 2]
-        _, euler_angles = common.get_relative_rotation(m_pose.orientation, pp_pose.orientation)
+        _, euler_angles = common.get_relative_rotation(
+            m_pose.orientation, pp_pose.orientation
+        )
         # * -1 is to convert to walker conversion
         j1 = np.fabs(euler_angles[np.argmax(np.abs(euler_angles))])
-        _, euler_angles = common.get_relative_rotation(pp_pose.orientation, dp_pose.orientation)
+        _, euler_angles = common.get_relative_rotation(
+            pp_pose.orientation, dp_pose.orientation
+        )
         j2 = np.fabs(euler_angles[np.argmax(np.abs(euler_angles))])
         return [np.minimum(j1, upper) / upper, np.minimum(j2, upper) / upper]
 
@@ -362,11 +426,13 @@ class XsensInterface(object):
         :return: Header
         """
         if len(data) < 24:
-            rospy.logwarn('XSensInterface: Data length {} is less than 24'.format(len(data)))
+            rospy.logwarn(
+                "XSensInterface: Data length {} is less than 24".format(len(data))
+            )
             return None
         id_str = common.byte_to_str(data[0:6], 6)
         sample_counter = common.byte_to_uint32(data[6:10])
-        datagram_counter = struct.unpack('!B', data[10])
+        datagram_counter = struct.unpack("!B", data[10])
         item_number = common.byte_to_uint8(data[11])
         time_code = common.byte_to_uint32(data[12:16])
         character_id = common.byte_to_uint8(data[16])
@@ -375,8 +441,20 @@ class XsensInterface(object):
         finger_segments_num = common.byte_to_uint8(data[19])
         # 20 21 are reserved for future use
         payload_size = common.byte_to_uint16(data[22:24])
-        header = Header([id_str, sample_counter, datagram_counter, item_number, time_code, character_id,
-                         body_segments_num, props_num, finger_segments_num, payload_size])
+        header = Header(
+            [
+                id_str,
+                sample_counter,
+                datagram_counter,
+                item_number,
+                time_code,
+                character_id,
+                body_segments_num,
+                props_num,
+                finger_segments_num,
+                payload_size,
+            ]
+        )
         rospy.logdebug(header.__repr__())
         return header
 

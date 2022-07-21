@@ -9,7 +9,6 @@ import rotools.sensing.core.interface as interface
 
 
 class SensingServer(object):
-
     def __init__(self, kwargs):
 
         super(SensingServer, self).__init__()
@@ -17,17 +16,23 @@ class SensingServer(object):
         self.interface = interface.SensingInterface(**kwargs)
 
         # Sensing services
-        self._srv_sense_pose = rospy.Service('sense_manipulation_poses', SenseManipulationPoses, self.sense_pose_handle)
+        self._srv_sense_pose = rospy.Service(
+            "sense_manipulation_poses", SenseManipulationPoses, self.sense_pose_handle
+        )
 
         # Information getters
 
         # General utilities
-        self._srv_visualize_pose = rospy.Service('visualize_pose', VisualizePose, self.visualize_pose_handle)
+        self._srv_visualize_pose = rospy.Service(
+            "visualize_pose", VisualizePose, self.visualize_pose_handle
+        )
 
     def sense_pose_handle(self, req):
         resp = SenseManipulationPosesResponse()
         try:
-            ok, poses, best_pose = self.interface.sense_manipulation_poses(req.device_names, req.algorithm_id)
+            ok, poses, best_pose = self.interface.sense_manipulation_poses(
+                req.device_names, req.algorithm_id
+            )
             if ok:
                 resp.result_status = resp.SUCCEEDED
                 resp.poses = poses

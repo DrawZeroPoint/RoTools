@@ -12,8 +12,9 @@ class CollisionAvoidance(RMPLeaf):
     Obstacle avoidance RMP leaf
     """
 
-    def __init__(self, name, parent, parent_param, c, R=1, epsilon=0.2,
-                 alpha=1e-5, eta=0):
+    def __init__(
+        self, name, parent, parent_param, c, R=1, epsilon=0.2, alpha=1e-5, eta=0
+    ):
 
         self.R = R
         self.alpha = alpha
@@ -33,32 +34,38 @@ class CollisionAvoidance(RMPLeaf):
 
             psi = lambda y: np.array(norm(y - c) / R - 1).reshape(-1, 1)
             J = lambda y: 1.0 / norm(y - c) * (y - c).T / R
-            J_dot = lambda y, y_dot: np.dot(
-                y_dot.T,
-                (-1 / norm(y - c) ** 3 * np.dot((y - c), (y - c).T)
-                 + 1 / norm(y - c) * np.eye(N))) / R
+            J_dot = (
+                lambda y, y_dot: np.dot(
+                    y_dot.T,
+                    (
+                        -1 / norm(y - c) ** 3 * np.dot((y - c), (y - c).T)
+                        + 1 / norm(y - c) * np.eye(N)
+                    ),
+                )
+                / R
+            )
 
         def RMP_func(x, x_dot):
             if x < 0:
                 w = 1e10
                 grad_w = 0
             else:
-                w = 1.0 / x ** 4
-                grad_w = -4.0 / x ** 5
+                w = 1.0 / x**4
+                grad_w = -4.0 / x**5
             u = epsilon + np.minimum(0, x_dot) * x_dot
             g = w * u
 
             grad_u = 2 * np.minimum(0, x_dot)
             grad_Phi = alpha * w * grad_w
-            xi = 0.5 * x_dot ** 2 * u * grad_w
+            xi = 0.5 * x_dot**2 * u * grad_w
 
             M = g + 0.5 * x_dot * w * grad_u
-            M = np.minimum(np.maximum(M, - 1e5), 1e5)
+            M = np.minimum(np.maximum(M, -1e5), 1e5)
 
             Bx_dot = eta * g * x_dot
 
-            f = - grad_Phi - xi - Bx_dot
-            f = np.minimum(np.maximum(f, - 1e10), 1e10)
+            f = -grad_Phi - xi - Bx_dot
+            f = np.minimum(np.maximum(f, -1e10), 1e10)
 
             return (f, M)
 
@@ -70,8 +77,17 @@ class CollisionAvoidanceDecentralized(RMPLeaf):
     Decentralized collision avoidance RMP leaf for the RMPForest
     """
 
-    def __init__(self, name, parent, parent_param, c=np.zeros(2), R=1, epsilon=1e-8,
-                 alpha=1e-5, eta=0):
+    def __init__(
+        self,
+        name,
+        parent,
+        parent_param,
+        c=np.zeros(2),
+        R=1,
+        epsilon=1e-8,
+        alpha=1e-5,
+        eta=0,
+    ):
 
         assert parent_param is not None
 
@@ -90,8 +106,8 @@ class CollisionAvoidanceDecentralized(RMPLeaf):
                 w = 1e10
                 grad_w = 0
             else:
-                w = 1.0 / x ** 4
-                grad_w = -4.0 / x ** 5
+                w = 1.0 / x**4
+                grad_w = -4.0 / x**5
             u = epsilon + np.minimum(0, x_dot) * x_dot
             g = w * u
 
@@ -100,12 +116,12 @@ class CollisionAvoidanceDecentralized(RMPLeaf):
             xi = 0.5 * x_dot * x_dot_real * u * grad_w
 
             M = g + 0.5 * x_dot * w * grad_u
-            M = np.minimum(np.maximum(M, - 1e5), 1e5)
+            M = np.minimum(np.maximum(M, -1e5), 1e5)
 
             Bx_dot = eta * g * x_dot
 
-            f = - grad_Phi - xi - Bx_dot
-            f = np.minimum(np.maximum(f, - 1e10), 1e10)
+            f = -grad_Phi - xi - Bx_dot
+            f = np.minimum(np.maximum(f, -1e10), 1e10)
 
             return f, M
 
@@ -116,14 +132,14 @@ class CollisionAvoidanceDecentralized(RMPLeaf):
         override pushforward() to update the curvature term
         """
         if self.verbose:
-            print('%s: pushforward' % self.name)
+            print("%s: pushforward" % self.name)
 
         if self.psi is not None and self.J is not None:
             self.x = self.psi(self.parent.x)
             self.x_dot = np.dot(self.J(self.parent.x), self.parent.x_dot)
             self.x_dot_real = np.dot(
-                self.J(self.parent.x),
-                self.parent.x_dot - self.parent_param.x_dot)
+                self.J(self.parent.x), self.parent.x_dot - self.parent_param.x_dot
+            )
 
     def eval_leaf(self):
         """
@@ -145,10 +161,16 @@ class CollisionAvoidanceDecentralized(RMPLeaf):
 
         self.psi = lambda y: np.array(norm(y - c) / R - 1).reshape(-1, 1)
         self.J = lambda y: 1.0 / norm(y - c) * (y - c).T / R
-        self.J_dot = lambda y, y_dot: np.dot(
-            y_dot.T,
-            (-1 / norm(y - c) ** 3 * np.dot((y - c), (y - c).T)
-             + 1 / norm(y - c) * np.eye(N))) / R
+        self.J_dot = (
+            lambda y, y_dot: np.dot(
+                y_dot.T,
+                (
+                    -1 / norm(y - c) ** 3 * np.dot((y - c), (y - c).T)
+                    + 1 / norm(y - c) * np.eye(N)
+                ),
+            )
+            / R
+        )
 
 
 class CollisionAvoidanceCentralized(RMPLeaf):
@@ -156,64 +178,77 @@ class CollisionAvoidanceCentralized(RMPLeaf):
     Centralized collision avoidance RMP leaf for a pair of robots
     """
 
-    def __init__(self, name, parent, R=1, epsilon=1e-8,
-                 alpha=1e-5, eta=0):
+    def __init__(self, name, parent, R=1, epsilon=1e-8, alpha=1e-5, eta=0):
 
         self.R = R
 
         def psi(y):
             N = int(y.size / 2)
-            y1 = y[: N]
+            y1 = y[:N]
             y2 = y[N:]
             return np.array(norm(y1 - y2) / R - 1).reshape(-1, 1)
 
         def J(y):
             N = int(y.size / 2)
-            y1 = y[: N]
+            y1 = y[:N]
             y2 = y[N:]
-            return np.concatenate((
-                1.0 / norm(y1 - y2) * (y1 - y2).T / R,
-                -1.0 / norm(y1 - y2) * (y1 - y2).T / R),
-                axis=1)
+            return np.concatenate(
+                (
+                    1.0 / norm(y1 - y2) * (y1 - y2).T / R,
+                    -1.0 / norm(y1 - y2) * (y1 - y2).T / R,
+                ),
+                axis=1,
+            )
 
         def J_dot(y, y_dot):
             N = int(y.size / 2)
-            y1 = y[: N]
+            y1 = y[:N]
             y2 = y[N:]
-            y1_dot = y_dot[: N]
+            y1_dot = y_dot[:N]
             y2_dot = y_dot[N:]
-            return np.concatenate((
-                np.dot(
-                    y1_dot.T,
-                    (-1 / norm(y1 - y2) ** 3 * np.dot((y1 - y2), (y1 - y2).T)
-                     + 1 / norm(y1 - y2) * np.eye(N))) / R,
-                np.dot(
-                    y2_dot.T,
-                    (-1 / norm(y1 - y2) ** 3 * np.dot((y1 - y2), (y1 - y2).T)
-                     + 1 / norm(y1 - y2) * np.eye(N))) / R),
-                axis=1)
+            return np.concatenate(
+                (
+                    np.dot(
+                        y1_dot.T,
+                        (
+                            -1 / norm(y1 - y2) ** 3 * np.dot((y1 - y2), (y1 - y2).T)
+                            + 1 / norm(y1 - y2) * np.eye(N)
+                        ),
+                    )
+                    / R,
+                    np.dot(
+                        y2_dot.T,
+                        (
+                            -1 / norm(y1 - y2) ** 3 * np.dot((y1 - y2), (y1 - y2).T)
+                            + 1 / norm(y1 - y2) * np.eye(N)
+                        ),
+                    )
+                    / R,
+                ),
+                axis=1,
+            )
 
         def RMP_func(x, x_dot):
             if x < 0:
                 w = 1e10
                 grad_w = 0
             else:
-                w = 1.0 / x ** 4
-                grad_w = -4.0 / x ** 5
+                w = 1.0 / x**4
+                grad_w = -4.0 / x**5
             u = epsilon + np.minimum(0, x_dot) * x_dot
             g = w * u
 
             grad_u = 2 * np.minimum(0, x_dot)
             grad_Phi = alpha * w * grad_w
-            xi = 0.5 * x_dot ** 2 * u * grad_w
+            xi = 0.5 * x_dot**2 * u * grad_w
 
             M = g + 0.5 * x_dot * w * grad_u
-            M = np.minimum(np.maximum(M, - 1e5), 1e5)
+            M = np.minimum(np.maximum(M, -1e5), 1e5)
 
             Bx_dot = eta * g * x_dot
 
-            f = - grad_Phi - xi - Bx_dot
-            f = np.minimum(np.maximum(f, - 1e10), 1e10)
+            f = -grad_Phi - xi - Bx_dot
+            f = np.minimum(np.maximum(f, -1e10), 1e10)
 
             return f, M
 
@@ -225,8 +260,19 @@ class GoalAttractorUni(RMPLeaf):
     Goal Attractor RMP leaf
     """
 
-    def __init__(self, name, parent, y_g, w_u=10, w_l=1, sigma=1,
-                 alpha=1, eta=2, gain=3, tol=0.005):
+    def __init__(
+        self,
+        name,
+        parent,
+        y_g,
+        w_u=10,
+        w_l=1,
+        sigma=1,
+        alpha=1,
+        eta=2,
+        gain=3,
+        tol=0.005,
+    ):
         """
 
         :param name:
@@ -250,10 +296,9 @@ class GoalAttractorUni(RMPLeaf):
         def RMP_func(x, x_dot):
             x_norm = norm(x)  # 2-norm ||x||
 
-            beta = np.exp(- x_norm ** 2 / 2 / (sigma ** 2))
+            beta = np.exp(-(x_norm**2) / 2 / (sigma**2))
             w = (w_u - w_l) * beta + w_l
-            s = (1 - np.exp(-2 * alpha * x_norm)) / (1 + np.exp(
-                -2 * alpha * x_norm))
+            s = (1 - np.exp(-2 * alpha * x_norm)) / (1 + np.exp(-2 * alpha * x_norm))
 
             G = w * np.eye(N)
             if x_norm > tol:
@@ -261,14 +306,15 @@ class GoalAttractorUni(RMPLeaf):
             else:
                 grad_Phi = 0
             Bx_dot = eta * w * x_dot  # equivalent to M and G, eta the damping factor
-            grad_w = - beta * (w_u - w_l) / sigma ** 2 * x
+            grad_w = -beta * (w_u - w_l) / sigma**2 * x
 
             x_dot_norm = norm(x_dot)
-            xi = -0.5 * (x_dot_norm ** 2 * grad_w - 2 *
-                         np.dot(np.dot(x_dot, x_dot.T), grad_w))
+            xi = -0.5 * (
+                x_dot_norm**2 * grad_w - 2 * np.dot(np.dot(x_dot, x_dot.T), grad_w)
+            )
 
             M = G
-            f = - grad_Phi - Bx_dot - xi
+            f = -grad_Phi - Bx_dot - xi
 
             return f, M
 
@@ -290,7 +336,9 @@ class FormationDecentralized(RMPLeaf):
     Decentralized formation control RMP leaf for the RMPForest
     """
 
-    def __init__(self, name, parent, parent_param, c=np.zeros(2), d=1, gain=1, eta=2, w=1):
+    def __init__(
+        self, name, parent, parent_param, c=np.zeros(2), d=1, gain=1, eta=2, w=1
+    ):
         assert parent_param is not None
         self.d = d
 
@@ -303,7 +351,7 @@ class FormationDecentralized(RMPLeaf):
             grad_Phi = gain * x * w
             Bx_dot = eta * w * x_dot
             M = G
-            f = - grad_Phi - Bx_dot
+            f = -grad_Phi - Bx_dot
 
             return f, M
 
@@ -327,8 +375,11 @@ class FormationDecentralized(RMPLeaf):
         self.J = lambda y: 1.0 / norm(y - c) * (y - c).T
         self.J_dot = lambda y, y_dot: np.dot(
             y_dot.T,
-            (-1 / norm(y - c) ** 3 * np.dot((y - c), (y - c).T)
-             + 1 / norm(y - c) * np.eye(N)))
+            (
+                -1 / norm(y - c) ** 3 * np.dot((y - c), (y - c).T)
+                + 1 / norm(y - c) * np.eye(N)
+            ),
+        )
 
 
 class FormationCentralized(RMPLeaf):
@@ -339,42 +390,51 @@ class FormationCentralized(RMPLeaf):
     def __init__(self, name, parent, d=1, gain=1, eta=2, w=1):
         def psi(y):
             N = int(y.size / 2)
-            y1 = y[: N]
+            y1 = y[:N]
             y2 = y[N:]
             return np.array(norm(y1 - y2) - d).reshape(-1, 1)
 
         def J(y):
             N = int(y.size / 2)
-            y1 = y[: N]
+            y1 = y[:N]
             y2 = y[N:]
-            return np.concatenate((
-                1.0 / norm(y1 - y2) * (y1 - y2).T,
-                -1.0 / norm(y1 - y2) * (y1 - y2).T),
-                axis=1)
+            return np.concatenate(
+                (1.0 / norm(y1 - y2) * (y1 - y2).T, -1.0 / norm(y1 - y2) * (y1 - y2).T),
+                axis=1,
+            )
 
         def J_dot(y, y_dot):
             N = int(y.size / 2)
-            y1 = y[: N]
+            y1 = y[:N]
             y2 = y[N:]
-            y1_dot = y_dot[: N]
+            y1_dot = y_dot[:N]
             y2_dot = y_dot[N:]
-            return np.concatenate((
-                np.dot(
-                    y1_dot.T,
-                    (-1 / norm(y1 - y2) ** 3 * np.dot((y1 - y2), (y1 - y2).T)
-                     + 1 / norm(y1 - y2) * np.eye(N))),
-                np.dot(
-                    y2_dot.T,
-                    (-1 / norm(y1 - y2) ** 3 * np.dot((y1 - y2), (y1 - y2).T)
-                     + 1 / norm(y1 - y2) * np.eye(N)))),
-                axis=1)
+            return np.concatenate(
+                (
+                    np.dot(
+                        y1_dot.T,
+                        (
+                            -1 / norm(y1 - y2) ** 3 * np.dot((y1 - y2), (y1 - y2).T)
+                            + 1 / norm(y1 - y2) * np.eye(N)
+                        ),
+                    ),
+                    np.dot(
+                        y2_dot.T,
+                        (
+                            -1 / norm(y1 - y2) ** 3 * np.dot((y1 - y2), (y1 - y2).T)
+                            + 1 / norm(y1 - y2) * np.eye(N)
+                        ),
+                    ),
+                ),
+                axis=1,
+            )
 
         def RMP_func(x, x_dot):
             G = w
             grad_Phi = gain * x * w
             Bx_dot = eta * w * x_dot
             M = G
-            f = - grad_Phi - Bx_dot
+            f = -grad_Phi - Bx_dot
 
             return (f, M)
 
@@ -395,7 +455,7 @@ class Damper(RMPLeaf):
             G = w
             Bx_dot = eta * w * x_dot
             M = G
-            f = - Bx_dot
+            f = -Bx_dot
 
             return f, M
 

@@ -210,7 +210,9 @@ class POEKinematicChain(Sized):
     @classmethod
     def from_parameters(cls, poe):
         """Construct Kinematic Chain from parameters."""
-        assert len(poe) == 2, print('POE params should contain home matrix and screw axes')
+        assert len(poe) == 2, print(
+            "POE params should contain home matrix and screw axes"
+        )
         home_matrix = poe[0]
         screw_axes = poe[1]
         kc = cls(home_matrix=home_matrix, screw_axes=screw_axes)

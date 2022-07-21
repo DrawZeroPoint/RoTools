@@ -43,6 +43,7 @@
 #include <cartesian_interface/ReachPoseAction.h>
 #include <trajectory_msgs/JointTrajectory.h>
 
+#include <roport/ExecuteAllLockedPoses.h>
 #include <roport/ExecuteAllPoses.h>
 #include <roport/ExecuteMirroredPose.h>
 
@@ -64,16 +65,29 @@ class CartesIOServer {
   tf2_ros::TransformListener tf_listener_;
 
   ros::ServiceServer execute_all_poses_srv_;
-  ros::ServiceServer execute_mirrored_pose_srv_;
+  ros::ServiceServer execute_all_locked_poses_srv_;
 
   using reachPoseActionClient = actionlib::SimpleActionClient<cartesian_interface::ReachPoseAction>;
   std::vector<std::shared_ptr<reachPoseActionClient>> control_clients_;
 
+  /**
+   * Move the groups to corresponding poses.
+   * @param req
+   * @param resp
+   * @return
+   */
   auto executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req, roport::ExecuteAllPoses::Response& resp) -> bool;
-  //  auto executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Request& req, roport::ExecuteMirroredPose::Response&
-  //  resp)
-  //      -> bool;
-  //
+
+  /**
+   * Move the groups to corresponding poses. If only one group is given, this is identical with executeAllPosesSrvCb,
+   * if multiple groups are given, the first group's pose will be the target, while other groups will move along with
+   * the first and keep their relative poses unchanged during the movement.
+   * @param req
+   * @param resp
+   * @return
+   */
+  auto executeAllLockedPosesSrvCb(roport::ExecuteAllLockedPoses::Request& req,
+                                  roport::ExecuteAllLockedPoses::Response& resp) -> bool;
 
   void buildActionGoal(const int& index,
                        const geometry_msgs::Pose& goal_pose,
@@ -84,12 +98,23 @@ class CartesIOServer {
   auto executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goals, double duration = 120)
       -> bool;
 
-  //  static void getMirroredTrajectory(MoveGroupInterface& move_group,
-  //                                    trajectory_msgs::JointTrajectory trajectory,
-  //                                    std::vector<double> mirror_vector,
-  //                                    trajectory_msgs::JointTrajectory& mirrored_trajectory);
-
   bool getTransform(const int& index, geometry_msgs::TransformStamped& transform);
+
+  /**
+   * Given the index of the group in group_names_, get current pose of that group's control frame wrt the reference
+   * frame.
+   * @param index Group index in group_names_.
+   * @param pose Pose of the control frame.
+   * @return True if succeed, false otherwise.
+   */
+  bool getCurrentPoseWithIndex(const int& index, geometry_msgs::Pose& pose);
+
+  void getGoalPoseWithReference(const int& ref_idx,
+                                const geometry_msgs::Pose& curr_ref_pose,
+                                const geometry_msgs::Pose& goal_ref_pose,
+                                const int& idx,
+                                const geometry_msgs::Pose& curr_pose,
+                                geometry_msgs::Pose& goal_pose);
 };
 
 }  // namespace roport

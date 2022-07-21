@@ -1,12 +1,12 @@
 class Object(object):
-    rootJointType = 'freeflyer'
+    rootJointType = "freeflyer"
     urdfSuffix = ""
     srdfSuffix = ""
 
     def __init__(self, object_name, pkg_name):
-        self.__setattr__('urdfName', object_name)
-        self.__setattr__('packageName', pkg_name)
-        self.__setattr__('meshPackageName', pkg_name)
+        self.__setattr__("urdfName", object_name)
+        self.__setattr__("packageName", pkg_name)
+        self.__setattr__("meshPackageName", pkg_name)
 
 
 class Environment(object):
@@ -14,21 +14,22 @@ class Environment(object):
     srdfSuffix = ""
 
     def __init__(self, env_name, pkg_name):
-        self.__setattr__('urdfName', env_name)
-        self.__setattr__('packageName', pkg_name)
-        self.__setattr__('meshPackageName', pkg_name)
+        self.__setattr__("urdfName", env_name)
+        self.__setattr__("packageName", pkg_name)
+        self.__setattr__("meshPackageName", pkg_name)
 
 
 class Model(object):
-
-    def __init__(self, name, pkg_name, urdf_name='', srdf_name='', surface='', handle=''):
+    def __init__(
+        self, name, pkg_name, urdf_name="", srdf_name="", surface="", handle=""
+    ):
         self._name = name
         self._pkg_name = pkg_name
-        if urdf_name == '':
+        if urdf_name == "":
             self._urdf_name = name
         else:
             self._urdf_name = urdf_name
-        if srdf_name == '':
+        if srdf_name == "":
             self._srdf_name = name
         else:
             self._srdf_name = srdf_name
@@ -61,8 +62,16 @@ class Model(object):
 
 
 class Gripper(object):
-
     def __init__(self, robot_model, name, fingers, finger_joints, joint_values):
+        """
+
+        Args:
+            robot_model:
+            name:
+            fingers:
+            finger_joints:
+            joint_values:
+        """
         super(Gripper, self).__init__()
 
         self._dof = 2

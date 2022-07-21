@@ -12,7 +12,6 @@ import rotools.utility.common as common
 
 
 class Test(unittest.TestCase):
-
     def test_panda_model_fk(self):
         mdh, q_limits = panda_mdh_model()
         panda_mdh = serial_model.RobotModel.get_model_from_mdh(mdh, q_limits)
@@ -64,8 +63,12 @@ class Test(unittest.TestCase):
         ur10e_poe = serial_model.RobotModel.get_model_from_poe(poe)
         ur10e_poe.q_limits = q_limits
 
-        self.assertTrue(common.all_close(ur10e_mdh.poe.home_matrix, ur10e_poe.poe.home_matrix))
-        self.assertTrue(common.all_close(ur10e_mdh.poe.screw_axes, ur10e_poe.poe.screw_axes))
+        self.assertTrue(
+            common.all_close(ur10e_mdh.poe.home_matrix, ur10e_poe.poe.home_matrix)
+        )
+        self.assertTrue(
+            common.all_close(ur10e_mdh.poe.screw_axes, ur10e_poe.poe.screw_axes)
+        )
 
     def test_panda_model_mdh_to_poe(self):
         mdh, q_limits = panda_mdh_model()
@@ -74,14 +77,22 @@ class Test(unittest.TestCase):
         poe, q_limits = panda_poe_model()
         panda_poe = serial_model.RobotModel.get_model_from_poe(poe)
 
-        self.assertTrue(common.all_close(panda_mdh.poe.home_matrix, panda_poe.poe.home_matrix))
-        self.assertTrue(common.all_close(panda_mdh.poe.screw_axes, panda_poe.poe.screw_axes))
+        self.assertTrue(
+            common.all_close(panda_mdh.poe.home_matrix, panda_poe.poe.home_matrix)
+        )
+        self.assertTrue(
+            common.all_close(panda_mdh.poe.screw_axes, panda_poe.poe.screw_axes)
+        )
 
     def test_ur10e_model_jacobian_space(self):
         poe, q_limits = ur10e_poe_model()
         ur10e_poe = serial_model.RobotModel.get_model_from_poe(poe, q_limits)
 
-        self.assertTrue(common.all_close(ur10e_poe.poe.screw_axes, ur10e_poe.jacobian_space(ur10e_poe.q0)))
+        self.assertTrue(
+            common.all_close(
+                ur10e_poe.poe.screw_axes, ur10e_poe.jacobian_space(ur10e_poe.q0)
+            )
+        )
         ur10e_poe.jacobian_space(ur10e_poe.random_valid_q())
 
     # def test_create_walker_arm_model(self):
@@ -136,5 +147,5 @@ class Test(unittest.TestCase):
     #     print(l1_to_l6)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

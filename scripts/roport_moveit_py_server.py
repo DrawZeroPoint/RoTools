@@ -9,19 +9,19 @@ from rotools.utility.common import get_param, pretty_print_configs
 
 if __name__ == "__main__":
     try:
-        rospy.init_node('roport_moveit_py_server')
+        rospy.init_node("roport_moveit_py_server")
         # You only need to modify the config to apply this to new robots
-        group_names = get_param('~group_names')
+        group_names = get_param("~group_names")
         assert group_names is not None
-        ee_links = get_param('~ee_links')
+        ee_links = get_param("~ee_links")
         # Will be the base frame of the planning group if not given
-        ref_frames = get_param('~ref_frames')
+        ref_frames = get_param("~ref_frames")
         configs = {
-            'robot_description': 'robot_description',
-            'ns': '',
-            'group_names': group_names,
-            'ee_links': ee_links,
-            'ref_frames': ref_frames,
+            "robot_description": "robot_description",
+            "ns": "",
+            "group_names": group_names,
+            "ee_links": ee_links,
+            "ref_frames": ref_frames,
         }
         pretty_print_configs(configs)
         server = MoveItServer(configs)

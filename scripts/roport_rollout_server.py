@@ -11,13 +11,15 @@ import numpy as np
 
 from rotools.utility import common
 
-root_dir = '/home/smart/data'
-print('Project root dir {}'.format(root_dir))
+root_dir = "/home/smart/data"
+print("Project root dir {}".format(root_dir))
 
 
-poses_pub = rospy.Publisher('/rollout', PoseArray, queue_size=1)
-left_pub = rospy.Publisher('/cartesian/left_hand/reference', PoseStamped, queue_size=1)
-right_pub = rospy.Publisher('/cartesian/right_hand/reference', PoseStamped, queue_size=1)
+poses_pub = rospy.Publisher("/rollout", PoseArray, queue_size=1)
+left_pub = rospy.Publisher("/cartesian/left_hand/reference", PoseStamped, queue_size=1)
+right_pub = rospy.Publisher(
+    "/cartesian/right_hand/reference", PoseStamped, queue_size=1
+)
 
 
 def publish_rollout(rollout, rate):
@@ -26,9 +28,9 @@ def publish_rollout(rollout, rate):
         pose_array = PoseArray()
         left_pose_stamped = PoseStamped()
         right_pose_stamped = PoseStamped()
-        pose_array.header.frame_id = 'map'
-        left_pose_stamped.header.frame_id = 'ci/torso'
-        right_pose_stamped.header.frame_id = 'ci/torso'
+        pose_array.header.frame_id = "map"
+        left_pose_stamped.header.frame_id = "ci/torso"
+        right_pose_stamped.header.frame_id = "ci/torso"
         left_p_quat = unit[0, :]
         right_p_quat = unit[1, :]
         left_pose = common.to_ros_pose(left_p_quat)
@@ -41,28 +43,28 @@ def publish_rollout(rollout, rate):
         left_pub.publish(left_pose_stamped)
         right_pub.publish(right_pose_stamped)
 
-        rospy.loginfo('Step: {}/{}'.format(i, n_rollout))
+        rospy.loginfo("Step: {}/{}".format(i, n_rollout))
         rospy.sleep(rospy.Duration.from_sec(1.0 / rate))
 
 
 @click.command()
-@click.option('-n', '--name', default='ctrl_rollout')
-@click.option('-r', '--rate', default=10.0)
+@click.option("-n", "--name", default="ctrl_rollout")
+@click.option("-r", "--rate", default=10.0)
 def run(name, rate):
-    rollout_path = os.path.join(root_dir, name + '.npy')
+    rollout_path = os.path.join(root_dir, name + ".npy")
     if not os.path.exists(rollout_path):
-        rospy.logerr('Rollout path {} is empty'.format(rollout_path))
+        rospy.logerr("Rollout path {} is empty".format(rollout_path))
         return
     rollout = np.load(rollout_path)
     if rollout.shape[-1] == 0:
-        rospy.logwarn('Rollout {} is empty'.format(rollout_path))
+        rospy.logwarn("Rollout {} is empty".format(rollout_path))
     else:
         publish_rollout(rollout, rate)
 
 
 if __name__ == "__main__":
     try:
-        rospy.init_node('rollout_visualization')
+        rospy.init_node("rollout_visualization")
         run()
         rospy.spin()
     except rospy.ROSInterruptException as e:

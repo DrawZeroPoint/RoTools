@@ -6,9 +6,7 @@ from dmp.srv import *
 
 
 class DMPInterface(object):
-    """
-
-    """
+    """ """
 
     def __init__(self, n_dim, k, **kwargs):
         """
@@ -23,9 +21,11 @@ class DMPInterface(object):
         self.dmp_list = None
         self.tau = None
 
-        self._set_client = rospy.ServiceProxy('/set_active_dmp', SetActiveDMP)
-        self._learning_client = rospy.ServiceProxy('/learn_dmp_from_demo', LearnDMPFromDemo)
-        self._get_plan_client = rospy.ServiceProxy('/get_dmp_plan', GetDMPPlan)
+        self._set_client = rospy.ServiceProxy("/set_active_dmp", SetActiveDMP)
+        self._learning_client = rospy.ServiceProxy(
+            "/learn_dmp_from_demo", LearnDMPFromDemo
+        )
+        self._get_plan_client = rospy.ServiceProxy("/get_dmp_plan", GetDMPPlan)
 
     def learning(self, demo):
         """
@@ -35,14 +35,17 @@ class DMPInterface(object):
         """
         req = LearnDMPFromDemoRequest()
         dmp_trajectory = DMPTraj()
-        points = demo['points']
+        points = demo["points"]
         for point in points:
             dmp_point = DMPPoint()
             dmp_point.positions = point[0]
             dmp_point.velocities = point[1]
-            assert len(dmp_point.positions) == self.n_dim and len(dmp_point.velocities) == self.n_dim
+            assert (
+                len(dmp_point.positions) == self.n_dim
+                and len(dmp_point.velocities) == self.n_dim
+            )
             dmp_trajectory.points.append(dmp_point)
-        dmp_trajectory.times = demo['times']
+        dmp_trajectory.times = demo["times"]
         req.demo = dmp_trajectory
 
         req.k_gains = [self.k] * self.n_dim
@@ -59,12 +62,21 @@ class DMPInterface(object):
         req.dmp_list = self.dmp_list
         resp = self._set_client.call(req)
         if resp.success:
-            rospy.loginfo('DMP set')
+            rospy.loginfo("DMP set")
         else:
-            rospy.logerr('DMP not set!')
+            rospy.logerr("DMP not set!")
 
-    def get_dmp_plan(self, x_0, x_dot_0, goal, goal_thresh=0.001,
-                     dt=1.0, t_0=0, seg_length=-1, integrate_iter=5):
+    def get_dmp_plan(
+        self,
+        x_0,
+        x_dot_0,
+        goal,
+        goal_thresh=0.001,
+        dt=1.0,
+        t_0=0,
+        seg_length=-1,
+        integrate_iter=5,
+    ):
         if self.tau is None:
             raise ValueError
         req = GetDMPPlanRequest()

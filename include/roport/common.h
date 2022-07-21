@@ -53,6 +53,14 @@ inline auto getParam(const ros::NodeHandle& node_handle,
   return true;
 }
 
+inline auto getIndex(const std::vector<std::string>& names, const std::string& target) -> int {
+  auto res = std::find(names.begin(), names.end(), target);
+  if (res != names.end()) {
+    return res - names.begin();
+  }
+  return -1;
+}
+
 inline void geometryPoseToEigenMatrix(const geometry_msgs::Pose& pose, Eigen::Matrix4d& mat) {
   mat = Eigen::Matrix4d::Identity();
 
@@ -136,6 +144,24 @@ inline void localAlignedPoseToGlobalPose(const geometry_msgs::Pose& pose_local_a
   eigenMatrixToGeometryPose(mat_global_to_target, pose_global_to_target);
 }
 
+inline void toGlobalPose(const int& goal_type,
+                         const geometry_msgs::Pose& current_pose,
+                         const geometry_msgs::Pose& cmd_pose,
+                         geometry_msgs::Pose& goal_pose) {
+  if (goal_type == 0) {
+    // The given pose is already in the reference frame
+    goal_pose = cmd_pose;
+  } else if (goal_type == 1) {
+    // The given pose is relative to the local aligned frame having the same orientation as the reference frame
+    localAlignedPoseToGlobalPose(cmd_pose, current_pose, goal_pose, true);
+  } else if (goal_type == 2) {
+    // The given pose is relative to the local frame
+    localPoseToGlobalPose(cmd_pose, current_pose, goal_pose);
+  } else {
+    throw std::invalid_argument("Goal type not supported");
+  }
+}
+
 inline auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
   if (pose.orientation.w == 0 && pose.orientation.x == 0 && pose.orientation.y == 0 && pose.orientation.z == 0) {
     ROS_ERROR("The pose is empty (all orientation coefficients are zero)");
@@ -147,6 +173,60 @@ inline auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
     return false;
   }
   return true;
+}
+
+/**
+ * Converting a quaternion representing a planar rotation to theta.
+ * @param quat Quaternion msg.
+ * @return theta.
+ */
+inline double quaternionToTheta(const geometry_msgs::Quaternion& quat) {
+  Eigen::Quaterniond quaternion(quat.w, quat.x, quat.y, quat.z);
+  Eigen::Rotation2Dd rot(quaternion.toRotationMatrix().topLeftCorner<2, 2>());
+  return rot.smallestPositiveAngle();
+}
+
+/**
+ * Pretty print a Eigen matrix. Its size, row number, and column number will also be displayed.
+ * @param mat A matrix with various shape to print.
+ * @param precision How many digits to keep after the decimal point.
+ */
+inline void prettyPrintEigenMatrix(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& mat,
+                                   const int& precision = 3) {
+  Eigen::IOFormat cleanFormat(precision, 0, ", ", "\n", "[", "]");
+  std::cout << "Matrix size: " << mat.size() << " rows: " << mat.rows() << " cols: " << mat.cols() << std::endl;
+  std::cout << mat.format(cleanFormat) << std::endl;
+}
+
+inline void getCartesianError(const Eigen::Vector3d& current_position,
+                              const Eigen::Quaterniond& current_orientation,
+                              const Eigen::Vector3d& goal_position,
+                              const Eigen::Quaterniond& goal_orientation,
+                              Eigen::Matrix<double, 6, 1>& error) {
+  error.head(3) << current_position - goal_position;
+
+  Eigen::Affine3d current_affine_transform;
+  current_affine_transform.translation() = current_position;
+  current_affine_transform.linear() = current_orientation.toRotationMatrix();
+
+  Eigen::Quaterniond regularized_current_orientation;
+  regularized_current_orientation.coeffs() << current_orientation.coeffs();
+  if (goal_orientation.coeffs().dot(current_orientation.coeffs()) < 0.) {
+    regularized_current_orientation.coeffs() << -current_orientation.coeffs();
+  }
+  Eigen::Quaterniond error_quaternion(regularized_current_orientation.inverse() * goal_orientation);
+  error.tail(3) << error_quaternion.x(), error_quaternion.y(), error_quaternion.z();
+  error.tail(3) << -current_affine_transform.linear() * error.tail(3);
+}
+
+inline void getCartesianError(const Eigen::Affine3d& current_transform,
+                              const Eigen::Affine3d& goal_transform,
+                              Eigen::Matrix<double, 6, 1>& error) {
+  Eigen::Vector3d current_position(current_transform.translation());
+  Eigen::Quaterniond current_orientation(current_transform.linear());
+  Eigen::Vector3d goal_position(goal_transform.translation());
+  Eigen::Quaterniond goal_orientation(goal_transform.linear());
+  getCartesianError(current_position, current_orientation, goal_position, goal_orientation, error);
 }
 
 /**

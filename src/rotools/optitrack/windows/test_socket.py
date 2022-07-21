@@ -1,12 +1,12 @@
 import socket
+
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind(('192.168.13.118', 6688))
+server.bind(("192.168.13.118", 6688))
 server.listen(5)
 
-print(u'waiting for connect...')
+print("waiting for connect...")
 connect, (host, port) = server.accept()
-print(u'the client %s:%s has connected.' % (host, port))
+print("the client %s:%s has connected." % (host, port))
 
 while True:
-    connect.sendall(b'your words has received.')
-
+    connect.sendall(b"your words has received.")

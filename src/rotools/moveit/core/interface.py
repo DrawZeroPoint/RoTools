@@ -8,30 +8,32 @@ try:
     import rospy
     import tf2_ros
     import tf2_geometry_msgs  # import this is mandatory to use PoseStamped msg
-
     import moveit_commander
 
-    import geometry_msgs.msg as GeometryMsg
-    import moveit_msgs.msg as MoveItMsg
-    import control_msgs.msg as ControlMsg
-    import trajectory_msgs.msg as TrajectoryMsg
-    import std_msgs.msg as StdMsg
-    import sensor_msgs.msg as SensorMsg
+    import geometry_msgs.msg as geo_msg
+    import moveit_msgs.msg as moveit_msg
+    import control_msgs.msg as ctrl_msg
+    import trajectory_msgs.msg as traj_msg
+    import std_msgs.msg as std_msg
+    import sensor_msgs.msg as sensor_msg
 except ImportError:
-    pass
+    rospy = None
+    tf2_ros = None
+    moveit_commander = None
+    geo_msg = None
+    moveit_msg = None
 
 from rotools.utility import common, transform
 
 
 class MoveGroupInterface(object):
-
     def __init__(
-            self,
-            robot_description,
-            ns,
-            group_names,
-            ref_frames=None,
-            ee_links=None,
+        self,
+        robot_description,
+        ns,
+        group_names,
+        ref_frames=None,
+        ee_links=None,
     ):
         super(MoveGroupInterface, self).__init__()
 
@@ -39,7 +41,11 @@ class MoveGroupInterface(object):
         self.commander = moveit_commander.RobotCommander(robot_description, ns)
 
         if not isinstance(group_names, list) and not isinstance(group_names, tuple):
-            raise TypeError('group_names should be list or tuple, but got {}'.format(type(group_names)))
+            raise TypeError(
+                "group_names should be list or tuple, but got {}".format(
+                    type(group_names)
+                )
+            )
 
         self.group_names = group_names
         self.group_num = len(self.group_names)
@@ -48,7 +54,7 @@ class MoveGroupInterface(object):
         # Get a set G of all groups of the robot, the used groups G' could be a subset of G
         all_group_names = self.commander.get_group_names()
         for name in self.group_names:
-            assert name in all_group_names, 'Group name {} does not exist'.format(name)
+            assert name in all_group_names, "Group name {} does not exist".format(name)
 
         self.move_groups = []
         for name in self.group_names:
@@ -105,7 +111,11 @@ class MoveGroupInterface(object):
         for i, name in enumerate(self.group_names):
             if name == group_name:
                 return self.move_groups[i]
-        raise IndexError('The group name {} is not in the known names {}'.format(group_name, self.group_names))
+        raise IndexError(
+            "The group name {} is not in the known names {}".format(
+                group_name, self.group_names
+            )
+        )
 
     def get_active_joint_names_of_all_groups(self):
         ret = []
@@ -127,10 +137,10 @@ class MoveGroupInterface(object):
             ret.append(group.get_current_joint_values())
         return ret
 
-    def get_joint_states_of_group(self, group_name, result_type='rad'):
+    def get_joint_states_of_group(self, group_name, result_type="rad"):
         group = self._get_group_by_name(group_name)
         j_values = group.get_current_joint_values()
-        if result_type == 'deg' or result_type == 'd':
+        if result_type == "deg" or result_type == "d":
             j_values = np.rad2deg(j_values)
         return j_values
 
@@ -159,15 +169,15 @@ class MoveGroupInterface(object):
 
     @staticmethod
     def get_prepare_pose(pose, is_absolute, shift):
-        """Given a target pose of the end-effector, get the prepare pose
+        """Given a target pose of the end-effector, get the prepare-pose
          for the robot to make the eef move to the target pose.
 
         :param pose: target pose of the end-effector in base reference frame
         :param is_absolute: if true, the shift vector is wrt the base frame, else wrt the target pose frame
         :param shift: shift vector pointing from the target pose to prepare pose, in meters
         """
-        assert isinstance(pose, GeometryMsg.Pose), print("Pose format error")
-        assert isinstance(shift, GeometryMsg.Point), print("Shift format error")
+        assert isinstance(pose, geo_msg.Pose), print("Pose format error")
+        assert isinstance(shift, geo_msg.Point), print("Shift format error")
         sd_shift = np.array([shift.x, shift.y, shift.z])
         if not is_absolute:
             q = pose.orientation
@@ -176,8 +186,8 @@ class MoveGroupInterface(object):
         return True, common.offset_ros_pose(pose, sd_shift)
 
     def get_transformed_pose(self, pose, source_frame, target_frame):
-        assert isinstance(pose, GeometryMsg.Pose), print("Pose format error")
-        pose_stamped = GeometryMsg.PoseStamped()
+        assert isinstance(pose, geo_msg.Pose), print("Pose format error")
+        pose_stamped = geo_msg.PoseStamped()
         pose_stamped.pose = pose
         # pose_stamped.header.stamp = rospy.Time.now()
         pose_stamped.header.frame_id = source_frame
@@ -185,7 +195,11 @@ class MoveGroupInterface(object):
             transformed_pose = self._tf_buffer.transform(pose_stamped, target_frame)
             print(transformed_pose.pose)
             return True, transformed_pose.pose
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+        except (
+            tf2_ros.LookupException,
+            tf2_ros.ConnectivityException,
+            tf2_ros.ExtrapolationException,
+        ):
             rospy.logerr("Get transformed pose failed to do the transform")
             return False, None
 
@@ -247,7 +261,7 @@ class MoveGroupInterface(object):
             group.stop()
         return True
 
-    def _execute_group_pose(self, group_name, goal, tolerance=0.01, constraint=''):
+    def _execute_group_pose(self, group_name, goal, tolerance=0.01, constraint=""):
         """Make the planning group's eef move to given goal pose.
 
         :param group_name: str Planning group name
@@ -274,7 +288,9 @@ class MoveGroupInterface(object):
         group.clear_path_constraints()
         return self._wait_pose_goal_execution(group_name, goal, tolerance)
 
-    def _relative_pose_to_absolute_pose(self, group_name, relative_pose, init_pose=None):
+    def _relative_pose_to_absolute_pose(
+        self, group_name, relative_pose, init_pose=None
+    ):
         """Convert a relative pose in local base frame to global base frame.
 
         :param group_name: str Planning group name
@@ -294,7 +310,9 @@ class MoveGroupInterface(object):
         eef_local_mat = np.dot(np.linalg.inv(local_base_mat), current_pose_mat)  # T_le
         relative_pose_mat = common.sd_pose(relative_pose)  # T_ll'
         # T_be' = T_bl * T_ll' * T_l'e, note that T_l'e == T_le
-        absolute_pose_mat = np.dot(np.dot(local_base_mat, relative_pose_mat), eef_local_mat)
+        absolute_pose_mat = np.dot(
+            np.dot(local_base_mat, relative_pose_mat), eef_local_mat
+        )
         return common.to_ros_pose(absolute_pose_mat)
 
     def _eef_pose_to_absolute_pose(self, group_name, relative_pose, init_pose=None):
@@ -311,10 +329,12 @@ class MoveGroupInterface(object):
             current_pose = init_pose
         current_pose_mat = common.sd_pose(current_pose)
         relative_pose_mat = common.sd_pose(relative_pose)
-        absolute_pose_mat = np.dot(current_pose_mat, relative_pose_mat)  # T_b1 * T_12 = T_b2
+        absolute_pose_mat = np.dot(
+            current_pose_mat, relative_pose_mat
+        )  # T_b1 * T_12 = T_b2
         return common.to_ros_pose(absolute_pose_mat)
 
-    def group_goto_pose_goal_abs(self, group_name, goal, tolerance=0.01, constraint=''):
+    def group_goto_pose_goal_abs(self, group_name, goal, tolerance=0.01, constraint=""):
         """Move group to the goal pose wrt the global base frame
 
         :param group_name: Controlled group name
@@ -323,16 +343,18 @@ class MoveGroupInterface(object):
         :param constraint: str, path constraint.
         :return: whether goal reached
         """
-        if isinstance(goal, GeometryMsg.PoseStamped):
+        if isinstance(goal, geo_msg.PoseStamped):
             goal_pose = goal.pose
-        elif isinstance(goal, GeometryMsg.Pose):
+        elif isinstance(goal, geo_msg.Pose):
             goal_pose = goal
         else:
-            raise NotImplementedError('Goal of type {} is not defined'.format(type(goal)))
+            raise NotImplementedError(
+                "Goal of type {} is not defined".format(type(goal))
+            )
 
         return self._execute_group_pose(group_name, goal_pose, tolerance, constraint)
 
-    def group_goto_pose_goal_rel(self, group_name, goal, tolerance=0.01, constraint=''):
+    def group_goto_pose_goal_rel(self, group_name, goal, tolerance=0.01, constraint=""):
         """Move group to the goal pose wrt the local base frame
 
         :param group_name: Controlled group name
@@ -341,17 +363,19 @@ class MoveGroupInterface(object):
         :param constraint: str, path constraint.
         :return: whether goal reached
         """
-        if isinstance(goal, GeometryMsg.PoseStamped):
+        if isinstance(goal, geo_msg.PoseStamped):
             goal_pose = goal.pose
-        elif isinstance(goal, GeometryMsg.Pose):
+        elif isinstance(goal, geo_msg.Pose):
             goal_pose = goal
         else:
-            raise NotImplementedError('Goal of type {} is not defined'.format(type(goal)))
+            raise NotImplementedError(
+                "Goal of type {} is not defined".format(type(goal))
+            )
 
         abs_goal = self._relative_pose_to_absolute_pose(group_name, goal_pose)
         return self._execute_group_pose(group_name, abs_goal, tolerance, constraint)
 
-    def group_goto_pose_goal_eef(self, group_name, goal, tolerance=0.01, constraint=''):
+    def group_goto_pose_goal_eef(self, group_name, goal, tolerance=0.01, constraint=""):
         """Move group to the goal pose wrt the eef frame
 
         :param group_name: str Planning group name.
@@ -360,9 +384,9 @@ class MoveGroupInterface(object):
         :param constraint: str, path constraint.
         :return:
         """
-        if isinstance(goal, GeometryMsg.PoseStamped):
+        if isinstance(goal, geo_msg.PoseStamped):
             goal_pose = goal.pose
-        elif isinstance(goal, GeometryMsg.Pose):
+        elif isinstance(goal, geo_msg.Pose):
             goal_pose = goal
         else:
             raise NotImplementedError
@@ -428,7 +452,9 @@ class MoveGroupInterface(object):
         current_pose_mat = common.sd_pose(current_pose)
         relative_pose_mat = transform.identity_matrix()
         relative_pose_mat[0:3, 3] = common.sd_position(relative_position)
-        absolute_pose_mat = np.dot(current_pose_mat, relative_pose_mat)  # T_b1 * T_12 = T_b2
+        absolute_pose_mat = np.dot(
+            current_pose_mat, relative_pose_mat
+        )  # T_b1 * T_12 = T_b2
         absolute_position = absolute_pose_mat[0:3, 3]
         return absolute_position
 
@@ -451,7 +477,7 @@ class MoveGroupInterface(object):
         """
         group = self._get_group_by_name(group_name)
         # 0,1,2,3,4,5 for x y z roll pitch yaw
-        axis_list = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
+        axis_list = ["x", "y", "z", "roll", "pitch", "yaw"]
         axis_id = -1
         for i, a in enumerate(axis_list):
             if a == axis:
@@ -495,12 +521,16 @@ class MoveGroupInterface(object):
         velocity_scale = original_stamp / stamp
         acceleration_scale = velocity_scale
         curr_state = self.commander.get_current_state()
-        updated_plan = group.retime_trajectory(curr_state, plan, velocity_scale, acceleration_scale)
+        updated_plan = group.retime_trajectory(
+            curr_state, plan, velocity_scale, acceleration_scale
+        )
         # for i in range(points_num):
         #     plan.joint_trajectory.points[i].time_from_start = rospy.Duration.from_sec(t * (i + 1))
         return updated_plan
 
-    def _build_cartesian_path_for_group(self, group_name, poses, stamp=None, allow_collisions=True):
+    def _build_cartesian_path_for_group(
+        self, group_name, poses, stamp=None, allow_collisions=True
+    ):
         """Given waypoints in a list of geometry_msgs.Pose, plan a Cartesian path that
         goes through all waypoints.
 
@@ -510,13 +540,17 @@ class MoveGroupInterface(object):
         :param allow_collisions: If true, allow collision along the path
         """
         group = self._get_group_by_name(group_name)
-        if isinstance(poses, GeometryMsg.PoseArray):
+        if isinstance(poses, geo_msg.PoseArray):
             poses = poses.poses
-        plan, fraction = group.compute_cartesian_path(poses, eef_step=0.01, jump_threshold=0,
-                                                      avoid_collisions=not allow_collisions)
+        plan, fraction = group.compute_cartesian_path(
+            poses,
+            eef_step=0.01,
+            jump_threshold=0,
+            avoid_collisions=not allow_collisions,
+        )
         # move_group_interface.h  L754
         if fraction < 0:
-            rospy.logwarn('Path fraction less than 0.')
+            rospy.logwarn("Path fraction less than 0.")
         if stamp:
             plan = self._update_plan_time_stamps(group, plan, stamp)
         return plan
@@ -571,8 +605,10 @@ class MoveGroupInterface(object):
     #             return False
     #     return True
 
-    def all_goto_pose_goals_abs(self, group_names, goals, tolerance, stamps=None, allow_collision=True):
-        if isinstance(goals, GeometryMsg.PoseArray):
+    def all_goto_pose_goals_abs(
+        self, group_names, goals, tolerance, stamps=None, allow_collision=True
+    ):
+        if isinstance(goals, geo_msg.PoseArray):
             goals = goals.poses
         assert len(goals) == self.group_num
         for i, goal in enumerate(goals):
@@ -581,13 +617,17 @@ class MoveGroupInterface(object):
                 stamp = stamps[i] if stamps else None
             except IndexError:
                 stamp = None
-            plan = self._build_cartesian_path_for_group(group_name, [goal], stamp, allow_collision)
+            plan = self._build_cartesian_path_for_group(
+                group_name, [goal], stamp, allow_collision
+            )
             if not self._execute_group_plan(group_name, plan):
                 return False
         return True
 
-    def all_goto_pose_goals_rel(self, group_names, goals, tolerance, stamps=None, allow_collision=True):
-        if isinstance(goals, GeometryMsg.PoseArray):
+    def all_goto_pose_goals_rel(
+        self, group_names, goals, tolerance, stamps=None, allow_collision=True
+    ):
+        if isinstance(goals, geo_msg.PoseArray):
             goals = goals.poses
         assert len(goals) == self.group_num
         for i, goal in enumerate(goals):
@@ -597,13 +637,17 @@ class MoveGroupInterface(object):
             except IndexError:
                 stamp = None
             goal = self._relative_pose_to_absolute_pose(group_name, goal)
-            plan = self._build_cartesian_path_for_group(group_name, [goal], stamp, allow_collision)
+            plan = self._build_cartesian_path_for_group(
+                group_name, [goal], stamp, allow_collision
+            )
             if not self._execute_group_plan(group_name, plan, wait=True):
                 return False
         return True
 
-    def all_goto_pose_goals_eef(self, group_names, goals, tolerance, stamps=None, allow_collision=True):
-        if isinstance(goals, GeometryMsg.PoseArray):
+    def all_goto_pose_goals_eef(
+        self, group_names, goals, tolerance, stamps=None, allow_collision=True
+    ):
+        if isinstance(goals, geo_msg.PoseArray):
             goals = goals.poses
         assert len(goals) == self.group_num
         for i, goal in enumerate(goals):
@@ -613,27 +657,33 @@ class MoveGroupInterface(object):
             except IndexError:
                 stamp = None
             goal = self._eef_pose_to_absolute_pose(group_name, goal)
-            plan = self._build_cartesian_path_for_group(group_name, [goal], stamp, allow_collision)
+            plan = self._build_cartesian_path_for_group(
+                group_name, [goal], stamp, allow_collision
+            )
             if not self._execute_group_plan(group_name, plan, wait=True):
                 return False
         return True
 
-    def add_box(self, group_name, box_name, box_pose, box_size, is_absolute, auto_suffix=False):
+    def add_box(
+        self, group_name, box_name, box_pose, box_size, is_absolute, auto_suffix=False
+    ):
         group = self._get_group_by_name(group_name)
-        box_pose_stamped = GeometryMsg.PoseStamped()
+        box_pose_stamped = geo_msg.PoseStamped()
         box_pose_stamped.pose = box_pose
         if is_absolute:
             box_pose_stamped.header.frame_id = group.get_planning_frame()
         else:
             box_pose_stamped.header.frame_id = group.get_end_effector_link()
-        if box_name == '':
-            box_name = 'box'
+        if box_name == "":
+            box_name = "box"
         if auto_suffix:
             box_name += str(self._obj_suffix)
             self._obj_suffix += 1
-        assert isinstance(box_size, GeometryMsg.Point)
+        assert isinstance(box_size, geo_msg.Point)
         # size must be iterable
-        self.scene.add_box(box_name, box_pose_stamped, size=(box_size.x, box_size.y, box_size.z))
+        self.scene.add_box(
+            box_name, box_pose_stamped, size=(box_size.x, box_size.y, box_size.z)
+        )
 
         start = rospy.get_time()
         seconds = rospy.get_time()
@@ -645,13 +695,22 @@ class MoveGroupInterface(object):
         return False
 
     def attach_box(self, group_name, eef_group_name, box_name, box_pose, box_size):
-        ok = self.add_box(group_name, box_name, box_pose, box_size, is_absolute=True, auto_suffix=False)
+        ok = self.add_box(
+            group_name,
+            box_name,
+            box_pose,
+            box_size,
+            is_absolute=True,
+            auto_suffix=False,
+        )
         if not ok:
             return False
         group = self._get_group_by_name(group_name)
         grasping_group = eef_group_name
         touch_links = self.commander.get_link_names(group=grasping_group)
-        self.scene.attach_box(group.get_end_effector_link(), box_name, touch_links=touch_links)
+        self.scene.attach_box(
+            group.get_end_effector_link(), box_name, touch_links=touch_links
+        )
         return True
 
     def detach_object(self, group_name, obj_name):
@@ -668,21 +727,27 @@ class MoveGroupInterface(object):
                     self.scene.remove_world_object(name)
         return True
 
-    def add_plane(self, group_name, plane_name, plane_pose, plane_normal, auto_suffix=False):
+    def add_plane(
+        self, group_name, plane_name, plane_pose, plane_normal, auto_suffix=False
+    ):
         group = self._get_group_by_name(group_name)
-        if plane_name == '':
-            plane_name = 'plane'
+        if plane_name == "":
+            plane_name = "plane"
         if auto_suffix:
             plane_name += str(self._obj_suffix)
             self._obj_suffix += 1
-        plane_pose_stamped = GeometryMsg.PoseStamped()
+        plane_pose_stamped = geo_msg.PoseStamped()
         plane_pose_stamped.pose = plane_pose
         plane_pose_stamped.header.frame_id = group.get_planning_frame()
-        self.scene.add_plane(plane_name, plane_pose_stamped, normal=(plane_normal.x, plane_normal.y, plane_normal.z))
+        self.scene.add_plane(
+            plane_name,
+            plane_pose_stamped,
+            normal=(plane_normal.x, plane_normal.y, plane_normal.z),
+        )
         return True
 
     @staticmethod
-    def get_group_orientation_constraints(group, constraint=''):
+    def get_group_orientation_constraints(group, constraint=""):
         """Generate an orientation constraint object for a given planning group based on
         the constraint descriptors.
 
@@ -691,26 +756,26 @@ class MoveGroupInterface(object):
         :return: moveit_msgs.Constraints
         """
         ref_pose = group.get_current_pose().pose
-        constraints = MoveItMsg.Constraints()
+        constraints = moveit_msg.Constraints()
 
-        oc = MoveItMsg.OrientationConstraint()
+        oc = moveit_msg.OrientationConstraint()
         oc.orientation.x = ref_pose.orientation.x
         oc.orientation.y = ref_pose.orientation.y
         oc.orientation.z = ref_pose.orientation.z
         oc.orientation.w = ref_pose.orientation.w
 
         no_constraint = math.pi * 4
-        if 'r' in constraint:
+        if "r" in constraint:
             oc.absolute_x_axis_tolerance = 0.2  # roll
         else:
             oc.absolute_x_axis_tolerance = no_constraint
 
-        if 'p' in constraint:
+        if "p" in constraint:
             oc.absolute_y_axis_tolerance = 0.2  # pitch
         else:
             oc.absolute_y_axis_tolerance = no_constraint
 
-        if 'y' in constraint:
+        if "y" in constraint:
             oc.absolute_z_axis_tolerance = 0.2  # yaw
         else:
             oc.absolute_z_axis_tolerance = no_constraint

@@ -12,7 +12,7 @@ try:
     import moveit_msgs.msg as moveit_msg
     import trajectory_msgs.msg as traj_msg
 except ImportError:
-    print('Failed to load rospy, maybe in a virtual env without sourcing setup.bash')
+    print("Failed to load rospy, maybe in a virtual env without sourcing setup.bash")
     rospy = None
     geo_msg = None
     moveit_msg = None
@@ -23,30 +23,38 @@ from rotools.utility import transform, robotics
 
 def print_debug(content):
     """Print information with green."""
-    print(''.join(['\033[1m\033[92m', content, '\033[0m']))
+    print("".join(["\033[1m\033[92m", content, "\033[0m"]))
 
 
 def print_info(content):
     """Print information with sky blue."""
-    print(''.join(['\033[1m\033[94m', content, '\033[0m']))
+    print("".join(["\033[1m\033[94m", content, "\033[0m"]))
 
 
 def print_warn(content):
     """Print warning with yellow."""
-    print(''.join(['\033[1m\033[93m[Deprecated, use print_warning instead] ', content, '\033[0m']))
+    print(
+        "".join(
+            [
+                "\033[1m\033[93m[Deprecated, use print_warning instead] ",
+                content,
+                "\033[0m",
+            ]
+        )
+    )
 
 
 def print_warning(content):
     """Print a warning with yellow."""
-    print(''.join(['\033[1m\033[93m', content, '\033[0m']))
+    print("".join(["\033[1m\033[93m", content, "\033[0m"]))
 
 
 def print_error(content):
     """Print error with red."""
-    print(''.join(['\033[1m\033[91m', content, '\033[0m']))
+    print("".join(["\033[1m\033[91m", content, "\033[0m"]))
 
 
-def all_close(values_a, values_b, tolerance=1.e-8):
+def all_close(values_a, values_b, tolerance=1.0e-8):
     """Test if a series of values are all within a tolerance of their counterparts in another series.
 
     Args:
@@ -61,7 +69,7 @@ def all_close(values_a, values_b, tolerance=1.e-8):
         NotImplementedError if the input type is not supported.
     """
     if tolerance <= 0:
-        raise ValueError('Given tolerance {} should be larger than 0'.format(tolerance))
+        raise ValueError("Given tolerance {} should be larger than 0".format(tolerance))
     return np.allclose(to_list(values_a), to_list(values_b), atol=tolerance)
 
 
@@ -77,8 +85,15 @@ def to_list(values):
     if isinstance(values, geo_msg.PoseStamped):
         output = to_list(values.pose)
     elif isinstance(values, geo_msg.Pose):
-        output = [values.position.x, values.position.y, values.position.z, values.orientation.x, values.orientation.y,
-                  values.orientation.z, values.orientation.w]
+        output = [
+            values.position.x,
+            values.position.y,
+            values.position.z,
+            values.orientation.x,
+            values.orientation.y,
+            values.orientation.z,
+            values.orientation.w,
+        ]
     elif isinstance(values, geo_msg.Quaternion):
         output = [values.x, values.y, values.z, values.w]
     elif isinstance(values, list) or isinstance(values, tuple):
@@ -86,7 +101,9 @@ def to_list(values):
     elif isinstance(values, np.ndarray):
         output = values.tolist()
     else:
-        raise NotImplementedError('Type {} cannot be converted to list'.format(type(values)))
+        raise NotImplementedError(
+            "Type {} cannot be converted to list".format(type(values))
+        )
     return output
 
 
@@ -115,7 +132,7 @@ def offset_ros_pose(pose, offset):
         output.header = pose.header
         output.pose = offset_ros_pose(pose.pose, offset)
     else:
-        raise NotImplementedError('Type {} is not supported'.format(type(pose)))
+        raise NotImplementedError("Type {} is not supported".format(type(pose)))
     return output
 
 
@@ -234,7 +251,7 @@ def to_ros_pose(pose, w_first=False):
         raise NotImplementedError
 
 
-def to_ros_pose_stamped(pose, frame_id='', w_first=False):
+def to_ros_pose_stamped(pose, frame_id="", w_first=False):
     """Convert a pose to PoseStamped.
 
     Args:
@@ -326,7 +343,9 @@ def sd_orientation(orientation):
     elif isinstance(orientation, list):
         return sd_orientation(np.array(orientation))
     elif isinstance(orientation, geo_msg.Quaternion):
-        return sd_orientation(np.array([orientation.x, orientation.y, orientation.z, orientation.w]))
+        return sd_orientation(
+            np.array([orientation.x, orientation.y, orientation.z, orientation.w])
+        )
     else:
         raise NotImplementedError
 
@@ -349,10 +368,14 @@ def to_orientation_matrix(orientation):
             return transform.quaternion_matrix(orientation)[:3, :3]
         else:
             raise NotImplementedError
-    elif (isinstance(orientation, list) or isinstance(orientation, tuple)) and len(orientation) == 4:
+    elif (isinstance(orientation, list) or isinstance(orientation, tuple)) and len(
+        orientation
+    ) == 4:
         return to_orientation_matrix(np.array(orientation))
     elif isinstance(orientation, geo_msg.Quaternion):
-        return to_orientation_matrix(np.array([orientation.x, orientation.y, orientation.z, orientation.w]))
+        return to_orientation_matrix(
+            np.array([orientation.x, orientation.y, orientation.z, orientation.w])
+        )
     else:
         raise NotImplementedError
 
@@ -376,7 +399,7 @@ def to_ros_orientation(ori, check=False, w_first=False):
         msg = geo_msg.Quaternion()
         if ori.shape == (4, 4):
             if check and not robotics.test_if_SE3(ori):
-                raise ValueError('The input SE(3) matrix is illegal:\n{}'.format(ori))
+                raise ValueError("The input SE(3) matrix is illegal:\n{}".format(ori))
             q = transform.quaternion_from_matrix(ori)
             msg.x = q[0]
             msg.y = q[1]
@@ -385,13 +408,17 @@ def to_ros_orientation(ori, check=False, w_first=False):
             return msg
         elif ori.shape == (3, 3):
             if check and not robotics.test_if_SO3(ori):
-                raise ValueError('The input SO(3) matrix is illegal:\n{}'.format(ori))
+                raise ValueError("The input SO(3) matrix is illegal:\n{}".format(ori))
             i = transform.identity_matrix()
             i[:3, :3] = ori
             return to_ros_orientation(i)
         elif ori.size == 4:
-            if check and not np.allclose(np.linalg.norm(ori), 1.):
-                raise ValueError('The input norm is not close to 1: {}'.format(ori, np.linalg.norm(ori)))
+            if check and not np.allclose(np.linalg.norm(ori), 1.0):
+                raise ValueError(
+                    "The input norm is not close to 1: {}".format(
+                        ori, np.linalg.norm(ori)
+                    )
+                )
             if w_first:
                 msg.w = ori[0]
                 msg.x = ori[1]
@@ -403,7 +430,7 @@ def to_ros_orientation(ori, check=False, w_first=False):
                 msg.z = ori[2]
                 msg.w = ori[3]
             return msg
-        elif ori.shape == (9, ):
+        elif ori.shape == (9,):
             return to_ros_orientation(np.reshape(ori, (3, 3)), check, w_first)
         else:
             raise NotImplementedError
@@ -499,7 +526,8 @@ def local_pose_to_global_pose(local_to_target, global_to_local):
     if type(local_to_target) != type(global_to_local):
         print_warn(
             "Local to target pose type {} is not the same as global to local pose {}".format(
-                type(local_to_target), type(global_to_local))
+                type(local_to_target), type(global_to_local)
+            )
         )
     sd_local_to_target = sd_pose(local_to_target)
     sd_global_to_local = sd_pose(global_to_local)
@@ -530,7 +558,8 @@ def local_aligned_pose_to_global_pose(local_aligned_to_target, global_to_local):
     if type(local_aligned_to_target) != type(global_to_local):
         print_warn(
             "Local aligned to target pose type {} is not the same as global to local pose {}".format(
-                type(local_aligned_to_target), type(global_to_local))
+                type(local_aligned_to_target), type(global_to_local)
+            )
         )
     sd_local_aligned_to_target = sd_pose(local_aligned_to_target)
     sd_global_to_local_aligned = sd_pose(global_to_local)
@@ -539,7 +568,9 @@ def local_aligned_pose_to_global_pose(local_aligned_to_target, global_to_local):
     if isinstance(local_aligned_to_target, geo_msg.Pose):
         return to_ros_pose(sd_global_to_target)
     elif isinstance(local_aligned_to_target, geo_msg.PoseStamped):
-        return to_ros_pose_stamped(sd_global_to_target, local_aligned_to_target.header.frame_id)
+        return to_ros_pose_stamped(
+            sd_global_to_target, local_aligned_to_target.header.frame_id
+        )
     else:
         raise NotImplementedError
 
@@ -578,14 +609,14 @@ def get_path(param_name, value=None):
     """
     path = get_param(param_name, value)
     if path is None:
-        raise FileNotFoundError('Failed to get the path from {}'.format(param_name))
-    if path.startswith('/'):
+        raise FileNotFoundError("Failed to get the path from {}".format(param_name))
+    if path.startswith("/"):
         abs_path = path
     else:
-        abs_path = os.path.join(os.path.join(os.path.expanduser('~'), path))
+        abs_path = os.path.join(os.path.join(os.path.expanduser("~"), path))
     if os.path.exists(abs_path):
         return abs_path
-    raise FileNotFoundError('Path {} does not exist'.format(abs_path))
+    raise FileNotFoundError("Path {} does not exist".format(abs_path))
 
 
 def pretty_print_configs(configs):
@@ -600,32 +631,40 @@ def pretty_print_configs(configs):
     max_key_len = 0
     max_value_len = 0
     for key, value in configs.items():
-        key_str = '{}'.format(key)
+        key_str = "{}".format(key)
         if len(key_str) > max_key_len:
             max_key_len = len(key_str)
         if isinstance(value, list) or isinstance(value, tuple):
             for i in value:
-                i_str = '{}'.format(i)
+                i_str = "{}".format(i)
                 if len(i_str) > max_value_len:
                     max_value_len = len(i_str)
         else:
-            value_str = '{}'.format(value)
+            value_str = "{}".format(value)
             if len(value_str) > max_value_len:
                 max_value_len = len(value_str)
 
-    print_info("\n{}{}{}".format('=' * (max_key_len + 1), " ROPORT CONFIGS ", '=' * (max_value_len - 15)))
+    print_info(
+        "\n{}{}{}".format(
+            "=" * (max_key_len + 1), " ROPORT CONFIGS ", "=" * (max_value_len - 15)
+        )
+    )
     for key, value in configs.items():
-        key_msg = '{message: <{width}}'.format(message=key, width=max_key_len)
-        empty_key_msg = '{message: <{width}}'.format(message='', width=max_key_len)
+        key_msg = "{message: <{width}}".format(message=key, width=max_key_len)
+        empty_key_msg = "{message: <{width}}".format(message="", width=max_key_len)
         if isinstance(value, list) or isinstance(value, tuple):
             for i, i_v in enumerate(value):
                 if i == 0:
-                    print_info('{}: {}'.format(key_msg, i_v))
+                    print_info("{}: {}".format(key_msg, i_v))
                 else:
-                    print_info('{}: {}'.format(empty_key_msg, i_v))
+                    print_info("{}: {}".format(empty_key_msg, i_v))
         else:
-            print_info('{}: {}'.format(key_msg, value))
-    print_info("{}{}{}\n".format('=' * (max_key_len + 1), " END OF CONFIGS ", '=' * (max_value_len - 15)))
+            print_info("{}: {}".format(key_msg, value))
+    print_info(
+        "{}{}{}\n".format(
+            "=" * (max_key_len + 1), " END OF CONFIGS ", "=" * (max_value_len - 15)
+        )
+    )
 
 
 def encode_image_to_b64(image):
@@ -635,10 +674,10 @@ def encode_image_to_b64(image):
                   be 8UC3 (bgr) or 16UC1 (depth)
     :return: b64_image_str
     """
-    _, img_buffer = cv2.imencode('.png', image)
+    _, img_buffer = cv2.imencode(".png", image)
     encoded_buffer = base64.b64encode(img_buffer)
     # cf. https://code-examples.net/en/q/238024b
-    return encoded_buffer.decode('utf-8')
+    return encoded_buffer.decode("utf-8")
 
 
 def decode_b64_to_image(b64_str, is_bgr=True):
@@ -658,9 +697,13 @@ def decode_b64_to_image(b64_str, is_bgr=True):
         img = base64.b64decode(b64_str)
         # imdecode use the same flag as imread. cf. https://docs.opencv.org/3.4/d8/d6a/group__imgcodecs__flags.html
         if is_bgr:
-            return True, cv2.imdecode(np.frombuffer(img, dtype=np.uint8), cv2.IMREAD_COLOR)
+            return True, cv2.imdecode(
+                np.frombuffer(img, dtype=np.uint8), cv2.IMREAD_COLOR
+            )
         else:
-            return True, cv2.imdecode(np.frombuffer(img, dtype=np.uint8), cv2.IMREAD_ANYDEPTH)
+            return True, cv2.imdecode(
+                np.frombuffer(img, dtype=np.uint8), cv2.IMREAD_ANYDEPTH
+            )
     except cv2.error:
         return False, None
 
@@ -690,29 +733,29 @@ def post_http_requests(url, payload, headers=None, params=None):
 
 
 def byte_to_str(data, n):
-    fmt = '!{}c'.format(n)
+    fmt = "!{}c".format(n)
     char_array = struct.unpack(fmt, data)
-    str_out = ''
+    str_out = ""
     for c in char_array:
-        s = c.decode('utf-8')
+        s = c.decode("utf-8")
         str_out += s
     return str_out
 
 
 def byte_to_float(data):
-    return struct.unpack('!f', data)[0]
+    return struct.unpack("!f", data)[0]
 
 
 def byte_to_uint32(data):
-    return struct.unpack('!I', data)[0]
+    return struct.unpack("!I", data)[0]
 
 
 def byte_to_uint16(data):
-    return struct.unpack('!H', data)[0]
+    return struct.unpack("!H", data)[0]
 
 
 def byte_to_uint8(data):
-    return struct.unpack('!B', data)[0]
+    return struct.unpack("!B", data)[0]
 
 
 def is_ip_valid(ip):
@@ -727,10 +770,10 @@ def is_ip_valid(ip):
     if not isinstance(ip, str):
         print_error("IP is not a string")
         return False
-    if len(ip.split('.')) != 4:
+    if len(ip.split(".")) != 4:
         print_error("IP {} is illegal".format(ip))
         return False
-    if ':' in ip:
+    if ":" in ip:
         print_error("IP {} should not contain port number".format(ip))
         return False
     return True
@@ -765,14 +808,17 @@ def play_hint_sound(enable):
         # TODO check playsound could work on Python 3
         from playsound import playsound
         import os.path as osp
-        misc_dir = osp.dirname(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__)))))
+
+        misc_dir = osp.dirname(
+            osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))
+        )
         if enable:
-            misc_path = osp.join(misc_dir, 'misc/audio/Sophia_function_activated.mp3')
+            misc_path = osp.join(misc_dir, "misc/audio/Sophia_function_activated.mp3")
         else:
-            misc_path = osp.join(misc_dir, 'misc/audio/Sophia_function_deactivated.mp3')
+            misc_path = osp.join(misc_dir, "misc/audio/Sophia_function_deactivated.mp3")
         playsound(misc_path)  # Not support block=True on Ubuntu
     except ImportError as e:
-        rospy.logdebug('Sound not played due to missing dependence: {}'.format(e))
+        rospy.logdebug("Sound not played due to missing dependence: {}".format(e))
 
 
 def wait_for_service(srv, time=0.2):
@@ -804,10 +850,14 @@ def create_publishers(namespace, topic_ids, topic_types, queue_size=1):
     if isinstance(topic_ids, list):
         publishers = dict()
         for topic_id, topic_type in zip(topic_ids, topic_types):
-            publishers[topic_id] = create_publishers(namespace, topic_id, topic_type, queue_size)
+            publishers[topic_id] = create_publishers(
+                namespace, topic_id, topic_type, queue_size
+            )
         return publishers
     else:
-        return rospy.Publisher(namespace + '/' + topic_ids, topic_types, queue_size=queue_size)
+        return rospy.Publisher(
+            namespace + "/" + topic_ids, topic_types, queue_size=queue_size
+        )
 
 
 def create_service_proxies(namespace, service_ids, service_types):
@@ -827,9 +877,11 @@ def create_service_proxies(namespace, service_ids, service_types):
     if isinstance(service_ids, list):
         service_proxies = dict()
         for service_id, service_type in zip(service_ids, service_types):
-            service_proxies[service_id] = create_service_proxies(namespace, service_id, service_type)
+            service_proxies[service_id] = create_service_proxies(
+                namespace, service_id, service_type
+            )
         return service_proxies
     else:
-        service_id = namespace + '/' + service_ids
+        service_id = namespace + "/" + service_ids
         wait_for_service(service_id)
         return rospy.ServiceProxy(service_id, service_types)

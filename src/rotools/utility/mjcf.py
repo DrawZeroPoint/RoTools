@@ -123,7 +123,8 @@ TEXTURE_FILES = {
 }
 
 TEXTURES = {
-    texture_name: os.path.join("textures", texture_file) for (texture_name, texture_file) in TEXTURE_FILES.items()
+    texture_name: os.path.join("textures", texture_file)
+    for (texture_name, texture_file) in TEXTURE_FILES.items()
 }
 
 ALL_TEXTURES = TEXTURES.keys()
@@ -360,18 +361,29 @@ def get_size(size, size_max, size_min, default_max, default_min):
     """
     if len(default_max) != len(default_min):
         raise ValueError(
-            "default_max = {} and default_min = {}".format(str(default_max), str(default_min))
+            "default_max = {} and default_min = {}".format(
+                str(default_max), str(default_min)
+            )
             + " have different lengths"
         )
     if size is not None:
         if (size_max is not None) or (size_min is not None):
-            raise ValueError("size = {} overrides size_max = {}, size_min = {}".format(size, size_max, size_min))
+            raise ValueError(
+                "size = {} overrides size_max = {}, size_min = {}".format(
+                    size, size_max, size_min
+                )
+            )
     else:
         if size_max is None:
             size_max = default_max
         if size_min is None:
             size_min = default_min
-        size = np.array([np.random.uniform(size_min[i], size_max[i]) for i in range(len(default_max))])
+        size = np.array(
+            [
+                np.random.uniform(size_min[i], size_max[i])
+                for i in range(len(default_max))
+            ]
+        )
     return np.array(size)
 
 
@@ -405,11 +417,11 @@ def add_to_dict(dic, fill_in_defaults=True, default_value=None, **kwargs):
 
 
 def add_prefix(
-        root,
-        prefix,
-        tags="default",
-        attribs="default",
-        exclude=None,
+    root,
+    prefix,
+    tags="default",
+    attribs="default",
+    exclude=None,
 ):
     """
     Find all element(s) matching the requested @tag, and appends @prefix to all @attributes if they exist.
@@ -431,12 +443,18 @@ def add_prefix(
     attribs = {attribs} if type(attribs) is str else set(attribs)
 
     # Check the current element for matching conditions
-    if (tags == "default" or root.tag in tags) and (exclude is None or not exclude(root)):
+    if (tags == "default" or root.tag in tags) and (
+        exclude is None or not exclude(root)
+    ):
         for attrib in attribs:
             v = root.get(attrib, None)
             # Only add prefix if the attribute exist, the current attribute doesn't already begin with prefix,
             # and the @exclude filter is either None or returns False
-            if v is not None and not v.startswith(prefix) and (exclude is None or not exclude(v)):
+            if (
+                v is not None
+                and not v.startswith(prefix)
+                and (exclude is None or not exclude(v))
+            ):
                 root.set(attrib, prefix + v)
     # Continue recursively searching through the element tree
     for r in root:
@@ -456,7 +474,11 @@ def recolor_collision_geoms(root, rgba, exclude=None):
             return True if we should exclude the given element / attribute from having its collision geom impacted.
     """
     # Check this body
-    if root.tag == "geom" and root.get("group") in {None, "0"} and (exclude is None or not exclude(root)):
+    if (
+        root.tag == "geom"
+        and root.get("group") in {None, "0"}
+        and (exclude is None or not exclude(root))
+    ):
         root.set("rgba", array_to_string(rgba))
         root.attrib.pop("material", None)
 
@@ -548,7 +570,10 @@ def sort_elements(root, parent=None, element_filter=None, _elements_dict=None):
     # Loop through all possible subtrees for this XML recursively
     for r in root:
         _elements_dict = sort_elements(
-            root=r, parent=root, element_filter=element_filter, _elements_dict=_elements_dict
+            root=r,
+            parent=root,
+            element_filter=element_filter,
+            _elements_dict=_elements_dict,
         )
 
     return _elements_dict
@@ -616,14 +641,20 @@ def find_elements(root, tags, attribs=None, return_first=True):
     # Continue recursively searching through the element tree
     for r in root:
         if return_first:
-            elements = find_elements(tags=tags, attribs=attribs, root=r, return_first=return_first)
+            elements = find_elements(
+                tags=tags, attribs=attribs, root=r, return_first=return_first
+            )
             if elements is not None:
                 return elements
         else:
-            found_elements = find_elements(tags=tags, attribs=attribs, root=r, return_first=return_first)
+            found_elements = find_elements(
+                tags=tags, attribs=attribs, root=r, return_first=return_first
+            )
             pre_elements = deepcopy(elements)
             if found_elements:
-                elements += found_elements if type(found_elements) is list else [found_elements]
+                elements += (
+                    found_elements if type(found_elements) is list else [found_elements]
+                )
 
     return elements if elements else None
 
@@ -674,9 +705,14 @@ def get_ids(sim, elements, element_type="geom", inplace=False):
     elif isinstance(elements, dict):
         # Iterate over each element in dict and recursively repeat
         for name, ele in elements:
-            elements[name] = get_ids(sim=sim, elements=ele, element_type=element_type, inplace=True)
+            elements[name] = get_ids(
+                sim=sim, elements=ele, element_type=element_type, inplace=True
+            )
     else:  # We assume this is an iterable array
         assert isinstance(elements, Iterable), "Elements must be iterable for get_id!"
-        elements = [get_ids(sim=sim, elements=ele, element_type=element_type, inplace=True) for ele in elements]
+        elements = [
+            get_ids(sim=sim, elements=ele, element_type=element_type, inplace=True)
+            for ele in elements
+        ]
 
     return elements

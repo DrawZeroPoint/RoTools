@@ -54,36 +54,44 @@ def receive_from_optitrack(rbd_dict, connection):
     while True:
         in_socket = connection.data_socket
         data, addr = in_socket.recvfrom(recv_buffer_size)
-        packet_size = int.from_bytes(data[2:4], byteorder='little')
-        offset_tmp, mocap_data = connection.unpack_mocap_data(data[offset:], packet_size, major, minor)
+        packet_size = int.from_bytes(data[2:4], byteorder="little")
+        offset_tmp, mocap_data = connection.unpack_mocap_data(
+            data[offset:], packet_size, major, minor
+        )
         data_rbd = mocap_data.rigid_body_data
         data_rbd = data_rbd.get_as_string()
-        data_rbd = data_rbd.encode('utf-8')
-        rbd_dict['data_rbd'] = data_rbd
+        data_rbd = data_rbd.encode("utf-8")
+        rbd_dict["data_rbd"] = data_rbd
 
 
 def send_to_ubuntu(server, rbd_dict, connection):
     while True:
         try:
-            data_rbd = rbd_dict['data_rbd']
+            data_rbd = rbd_dict["data_rbd"]
             connection.sendall(data_rbd)
             rec = connection.recv(64)
         except KeyError:
-            print('Rigid body dict has no data_rbd key, maybe optitrack stream is not alive')
-            time.sleep(1.)
+            print(
+                "Rigid body dict has no data_rbd key, maybe optitrack stream is not alive"
+            )
+            time.sleep(1.0)
         except ConnectionError:
-            print('The connection has lost, waiting for reconnection ...')
+            print("The connection has lost, waiting for reconnection ...")
             connection, (host, port) = server.accept()
 
 
 if __name__ == "__main__":
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(('192.168.13.118', 6688))
+    server.bind(("192.168.13.118", 6688))
     server.listen(5)
     connect, (host, port) = server.accept()
-    print(u'the client %s:%s has connected.' % (host, port))
+    print("the client %s:%s has connected." % (host, port))
 
-    optionsDict = {"clientAddress": "127.0.0.1", "serverAddress": "127.0.0.1", "use_multicast": True}
+    optionsDict = {
+        "clientAddress": "127.0.0.1",
+        "serverAddress": "127.0.0.1",
+        "use_multicast": True,
+    }
 
     # This will create a new NatNet client
     optionsDict = my_parse_args(sys.argv, optionsDict)
@@ -111,8 +119,21 @@ if __name__ == "__main__":
 
     with Manager() as manager:
         dict_share = manager.dict()
-        optitrack_stream_process = Process(target=receive_from_optitrack, args=(dict_share, streaming_client,))
-        send2client_process = Process(target=send_to_ubuntu, args=(server, dict_share, connect,))
+        optitrack_stream_process = Process(
+            target=receive_from_optitrack,
+            args=(
+                dict_share,
+                streaming_client,
+            ),
+        )
+        send2client_process = Process(
+            target=send_to_ubuntu,
+            args=(
+                server,
+                dict_share,
+                connect,
+            ),
+        )
         optitrack_stream_process.start()
         send2client_process.start()
         optitrack_stream_process.join()
