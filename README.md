@@ -3,6 +3,7 @@
 <img alt="logo" height="120" src="misc/image/ms-icon-310x310.png" width="120"/>
 
 <p align="left">
+<a href="https://github.com/DrawZeroPoint/RoTools/LICENSE"><img alt="LICENSE" src="https://img.shields.io/badge/License-BSD--2--Clause-informational"></a>
 <a href="https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/DrawZeroPoint/RoTools/actions/workflows/ci.yml/badge.svg?branch=master"></a>
 <a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 </p>
