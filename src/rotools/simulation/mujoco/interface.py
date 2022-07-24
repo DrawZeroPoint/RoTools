@@ -86,6 +86,7 @@ class MuJoCoInterface(Thread):
         self._actuated_joint_geoms = {}
         self._mimic_joint_names = []
         self.actuator_names = []
+        self.site_names = []
 
         # We consider the ctrl range of the actuator could be different with that of the joint.
         self._actuator_ctrl_ranges = {}
@@ -101,6 +102,8 @@ class MuJoCoInterface(Thread):
                 rospy.loginfo("Robot name: {}".format(self.robot_name))
             else:
                 raise ValueError("Cannot find body in the kinematic tree")
+            sites = find_elements(kinematics_root, "site", return_first=False)
+            self._get_site_info(sites)
         else:
             self.robot_name = None
             kinematics_root = None
@@ -366,6 +369,11 @@ class MuJoCoInterface(Thread):
                 else:
                     rospy.logwarn("Cannot find parent for site {}".format(site_name))
 
+    def _get_site_info(self, sites):
+        for site in sites:
+            site_name = site.attrib["name"]
+            self.site_names.append(site_name)
+
     def _get_robot_states(self):
         """Get robot joint states for each step.
 
@@ -554,12 +562,15 @@ class MuJoCoInterface(Thread):
             return None
         try:
             target_site = self._data.site(site_name)
-            print(target_site.xpos, target_site.xmat)
             xpos = target_site.xpos
             xquat = to_ros_orientation(target_site.xmat)
             return to_ros_pose(to_list(xpos) + to_list(xquat))
         except KeyError:
-            rospy.logerr("Site {} is not exist".format(site_name))
+            rospy.logerr(
+                "Site '{}' does not exist, available sites are: {}".format(
+                    site_name, self.site_names
+                )
+            )
             return None
 
     def _get_body_pose(self, body_name):
@@ -571,7 +582,7 @@ class MuJoCoInterface(Thread):
             xquat = target_body.xquat
             return to_ros_pose(to_list(xpos) + to_list(xquat), w_first=True)
         except KeyError:
-            rospy.logerr("Body {} is not exist".format(body_name))
+            rospy.logerr("Body '{}' does not exist".format(body_name))
             return None
 
     def set_joint_command(self, cmd):

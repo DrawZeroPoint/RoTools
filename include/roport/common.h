@@ -61,6 +61,23 @@ inline auto getIndex(const std::vector<std::string>& names, const std::string& t
   return -1;
 }
 
+inline void geometryPoseToEigen(const geometry_msgs::Pose& pose, Eigen::Vector3d& trans, Eigen::Quaterniond& quat) {
+  trans << pose.position.x, pose.position.y, pose.position.z;
+  quat.coeffs() << pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w;
+}
+
+inline void eigenToGeometryPose(const Eigen::Vector3d& trans,
+                                const Eigen::Quaterniond& quat,
+                                geometry_msgs::Pose& pose) {
+  pose.position.x = trans[0];
+  pose.position.y = trans[1];
+  pose.position.z = trans[2];
+  pose.orientation.x = quat.x();
+  pose.orientation.y = quat.y();
+  pose.orientation.z = quat.z();
+  pose.orientation.w = quat.w();
+}
+
 inline void geometryPoseToEigenMatrix(const geometry_msgs::Pose& pose, Eigen::Matrix4d& mat) {
   mat = Eigen::Matrix4d::Identity();
 
