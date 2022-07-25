@@ -32,23 +32,20 @@
 
 #include <Eigen/Eigen>
 
-#if __cplusplus >= 201703L
+#if __has_include(<filesystem>)
 #include <filesystem>
-#else
+namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
 #include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#else
+error "Missing the <filesystem> header."
 #endif
 #include <utility>
 
 #include <geometry_msgs/PoseStamped.h>
 
 namespace roport {
-
-#if __cplusplus >= 201703L
-namespace fs = std::filesystem;
-#else
-namespace fs = std::experimental::filesystem;
-#endif
-#include <utility>
 
 constexpr double kQuaternionOrientationTolerance = 0.01;
 constexpr double kTolerance = 0.01;
