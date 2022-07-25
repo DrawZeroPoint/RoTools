@@ -254,6 +254,10 @@ class MuJoCoInterface(Thread):
         """
         if actuators is not None:
             for actuator in actuators:
+                # We omit the wheel joints since they should not be controlled via joint_cmd,
+                # nor do we care their joint_states.
+                if "wheel" in actuator.attrib["joint"]:
+                    continue
                 self._actuated_joint_names.append(actuator.attrib["joint"])
                 self.actuator_names.append(actuator.attrib["name"])
                 self.control_types.append(control_type)
