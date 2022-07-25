@@ -32,12 +32,23 @@
 
 #include <Eigen/Eigen>
 
+#if __cplusplus >= 201703L
 #include <filesystem>
+#else
+#include <experimental/filesystem>
+#endif
 #include <utility>
 
 #include <geometry_msgs/PoseStamped.h>
 
 namespace roport {
+
+#if __cplusplus >= 201703L
+namespace fs = std::filesystem;
+#else
+namespace fs = std::experimental::filesystem;
+#endif
+#include <utility>
 
 constexpr double kQuaternionOrientationTolerance = 0.01;
 constexpr double kTolerance = 0.01;
@@ -301,7 +312,7 @@ inline void logWarningList(const T& list, const std::string& title = "List in fo
 }
 
 inline auto getFilePath(const std::string& raw_path, std::string& full_path) -> bool {
-  if (std::filesystem::exists(raw_path)) {
+  if (fs::exists(raw_path)) {
     full_path = raw_path;
     return true;
   } else {
@@ -309,8 +320,8 @@ inline auto getFilePath(const std::string& raw_path, std::string& full_path) -> 
     if (home_dir == NULL) {
       return false;
     }
-    std::filesystem::path path = std::filesystem::path(home_dir) / raw_path;
-    if (std::filesystem::exists(path)) {
+    fs::path path = fs::path(home_dir) / raw_path;
+    if (fs::exists(path)) {
       full_path = path;
       return true;
     } else {
