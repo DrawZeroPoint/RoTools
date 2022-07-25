@@ -31,6 +31,8 @@
 #include <ros/ros.h>
 
 #include <Eigen/Eigen>
+
+#include <filesystem>
 #include <utility>
 
 #include <geometry_msgs/PoseStamped.h>
@@ -295,6 +297,25 @@ inline void logWarningList(const T& list, const std::string& title = "List in fo
   ROS_WARN_STREAM(title << " In total " << list.size() << " values");
   for (size_t idx = 0; idx < list.size(); ++idx) {
     ROS_WARN_STREAM("# " << idx << " " << list[idx]);
+  }
+}
+
+inline auto getFilePath(const std::string& raw_path, std::string& full_path) -> bool {
+  if (std::filesystem::exists(raw_path)) {
+    full_path = raw_path;
+    return true;
+  } else {
+    auto home_dir = getenv("HOME");
+    if (home_dir == NULL) {
+      return false;
+    }
+    std::filesystem::path path = std::filesystem::path(home_dir) / raw_path;
+    if (std::filesystem::exists(path)) {
+      full_path = path;
+      return true;
+    } else {
+      return false;
+    }
   }
 }
 }  // namespace roport
