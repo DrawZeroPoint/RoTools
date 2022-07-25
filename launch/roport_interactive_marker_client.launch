@@ -1,0 +1,31 @@
+<launch>
+  <!-- This launch file is only for debugging -->
+  <param name="/use_sim_time" value="false"/>
+
+  <arg name="debug" default="false"/>
+
+  <rosparam param="marker_names">
+    ["left_ee", "right_ee"]
+  </rosparam>
+
+  <rosparam param="reference_frame_ids">
+    ["ci/summit_xls_base_footprint", "ci/summit_xls_base_footprint"]
+  </rosparam>
+
+  <rosparam param="target_frame_ids">
+    ["ci/panda_left_hand", "ci/panda_right_hand"]
+  </rosparam>
+
+  <rosparam param="scales">
+    [0.3, 0.3]
+  </rosparam>
+
+  <rosparam param="publish_topics">
+    ["left_ee/pose/desired", "right_ee/pose/desired"]
+  </rosparam>
+
+  <node unless="$(arg debug)" pkg="roport" type="roport_interactive_marker_client.py"
+        name="roport_interactive_marker_client" output="screen">
+  </node>
+
+</launch>
