@@ -341,6 +341,15 @@ class MuJoCoInterface(Thread):
                 self._actuator_force_ranges[name] = None
 
     def _get_effort_sensor_info(self, kinematics_root, sensors):
+        """Get effort_sensor_names.
+
+        Args:
+            kinematics_root: ET.Element The xml element tree to start recursively searching effort sensors.
+            sensors: list[ET.Element] Sensor elements.
+
+        Returns:
+            None
+        """
         if sensors is not None:
             for sensor in sensors:
                 site_name = sensor.attrib["site"]
@@ -359,11 +368,13 @@ class MuJoCoInterface(Thread):
                             index = self._actuated_joint_names.index(joint_name)
                             self.effort_sensor_names[index] = sensor.attrib["name"]
                         except ValueError:
-                            rospy.logwarn(
-                                "Sensor {} corresponds to non-actuated joint {}".format(
-                                    sensor.attrib["name"], joint_name
+                            # It's ok to define a sensor for the wheel whose joint is not in _actuated_joint_names
+                            if "wheel" not in sensor.attrib["name"]:
+                                rospy.logwarn(
+                                    "Sensor {} corresponds to non-actuated joint {}".format(
+                                        sensor.attrib["name"], joint_name
+                                    )
                                 )
-                            )
                     else:
                         rospy.logwarn(
                             "Sensor {} have no corresponding joint".format(
