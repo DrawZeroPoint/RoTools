@@ -4,14 +4,19 @@
 # device_names: Names of the devices to control
 # device_id [opt]: ID of the device to be controlled
 # enable: If enable/activate/start the device. For grippers, enable means close the gripper
+# enable_flags: Flags indicating whether the device is enabled.
 # value [opt]: The value used when enabling the target
+# values [opt]: The values used when enabling the devices.
 
 std_msgs/Header header
 string[] device_names
 uint8 device_id
 bool enable
+bool[] enable_flags
 float64 value
+float64[] values
 ---
 uint8 SUCCEEDED=0
 uint8 FAILED=1
 uint8 result_status
+string result_msg
