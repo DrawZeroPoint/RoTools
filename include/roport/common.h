@@ -217,12 +217,15 @@ inline double quaternionToTheta(const geometry_msgs::Quaternion& quat) {
  * Pretty print a Eigen matrix. Its size, row number, and column number will also be displayed.
  * @param mat A matrix with various shape to print.
  * @param precision How many digits to keep after the decimal point.
+ * @param title An optional title of the output.
  */
 inline void prettyPrintEigenMatrix(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& mat,
-                                   const int& precision = 3) {
+                                   const int& precision = 3,
+                                   const std::string& title = "") {
   Eigen::IOFormat cleanFormat(precision, 0, ", ", "\n", "[", "]");
-  std::cout << "Matrix size: " << mat.size() << " rows: " << mat.rows() << " cols: " << mat.cols() << std::endl;
-  std::cout << mat.format(cleanFormat) << std::endl;
+  ROS_INFO_STREAM("\n"
+                  << title << ": Matrix size: " << mat.size() << " rows: " << mat.rows() << " cols: " << mat.cols());
+  ROS_INFO_STREAM("\n" << mat.format(cleanFormat));
 }
 
 inline void getCartesianError(const Eigen::Vector3d& current_position,
