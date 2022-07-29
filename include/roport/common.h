@@ -329,6 +329,61 @@ inline auto getFilePath(const std::string& raw_path, std::string& full_path) -> 
     }
   }
 }
+
+/**
+ * Get the null space projector of the secondary task with the jacobian of the primary task.
+ * The yield projector is used for torque level control.
+ * @param jacobian Jacobian matrix.
+ * @retval ns Null space projector matrix.
+ * @param e Threshold
+ * @sa On continuous null space projections for torque-based, hierarchical, multi-objective manipulation eq. 8 - eq. 10
+ * @li https://ieeexplore.ieee.org/document/6224571
+ */
+inline void getNullSpaceProjector(const Eigen::MatrixXd& jacobian, Eigen::MatrixXd& ns, const double& e = 0.001) {
+  auto n = jacobian.cols();
+  Eigen::JacobiSVD<Eigen::MatrixXd> svd(jacobian, Eigen::ComputeFullU | Eigen::ComputeFullV);
+  Eigen::JacobiSVD<Eigen::MatrixXd>::SingularValuesType sing_vals_ = svd.singularValues();
+  Eigen::MatrixXd A = Eigen::MatrixXd::Zero(n, n);
+
+  for (int i = 0; i < sing_vals_.size(); i++) {
+    if (sing_vals_(i) < e) {
+      A(i, i) = 0;
+    } else {
+      A(i, i) = sing_vals_(i);
+    }
+  }
+
+  Eigen::MatrixXd I = Eigen::MatrixXd::Identity(n, n);
+  ns = I - svd.matrixV() * A * svd.matrixV().transpose();
+}
+
+inline void clamp(const Eigen::VectorXd& input,
+                  const Eigen::VectorXd& upper,
+                  const Eigen::VectorXd& lower,
+                  Eigen::VectorXd& output) {
+  output.resize(input.size());
+  for (size_t i = 0; i < input.size(); i++) {
+    if (input(i) > upper(i)) {
+      output(i) = upper(i);
+    } else if (input(i) < lower(i)) {
+      output(i) = lower(i);
+    } else {
+      output(i) = input(i);
+    }
+  }
+}
+
+inline void saturate(const Eigen::VectorXd& input,
+                     const Eigen::VectorXd& reference,
+                     const Eigen::VectorXd& delta_upper,
+                     const Eigen::VectorXd& delta_lower,
+                     Eigen::VectorXd& output) {
+  output.resize(input.size());
+  for (size_t i = 0; i < input.size(); i++) {
+    double delta = input[i] - reference[i];
+    output[i] = reference[i] + std::max(std::min(delta, delta_upper[i]), delta_lower[i]);
+  }
+}
 }  // namespace roport
 
 #endif  // ROPORT_COMMON_H
