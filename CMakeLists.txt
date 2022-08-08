@@ -105,6 +105,7 @@ add_service_files(
   ExecuteAttachCollisionBox.srv
   ExecuteBinaryAction.srv
   ExecuteDetachCollision.srv
+        ExecuteDualArmPose.srv
   ExecuteEllipticalTrajectory.srv
   ExecuteFrankaGripperGrasp.srv
   ExecuteGroupJointStates.srv
