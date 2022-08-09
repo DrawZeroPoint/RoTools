@@ -15,6 +15,7 @@
 #include <roport/ExecuteBinaryAction.h>
 #include <roport/ExecuteDetachCollision.h>
 #include <roport/ExecuteDualArmPose.h>
+#include <roport/ExecuteDualArmPoseTorsoJointPosition.h>
 #include <roport/ExecuteFrankaGripperGrasp.h>
 #include <roport/ExecuteGroupJointStates.h>
 #include <roport/ExecuteGroupNamedStates.h>
@@ -332,6 +333,53 @@ class ExecuteDetachCollision : public RosServiceNode<roport::ExecuteDetachCollis
 
             getInput<double>("tolerance", request.tolerance);
             getInput<std::string>("constraint", request.constraint);
+        }
+
+    };
+
+    class ExecuteDualArmPoseTorsoJointPosition : public RosServiceNode<roport::ExecuteDualArmPoseTorsoJointPosition> {
+    public:
+        ExecuteDualArmPoseTorsoJointPosition(const ros::NodeHandle &node_handle, const std::string &name,
+                           const BT::NodeConfiguration &cfg) : RosServiceNode<roport::ExecuteDualArmPoseTorsoJointPosition>(node_handle,
+                                                                                                          name, cfg) {}
+
+        static auto providedPorts() -> BT::PortsList {
+            return {
+                    InputPort<Header>("header"), InputPort<std::string>("group_name"), InputPort<int>("goal_type"),
+                    InputPort<Pose>("left_goal"),
+                    InputPort<Pose>("right_goal"), InputPort<double>("run_time"), InputPort<double>("tolerance"),
+                    InputPort<std::string>("constraint"), InputPort<JointState>("torso_goal_state"),
+                    InputPort<double>("torso_speed_ratio"),
+            };
+        }
+
+        void onSendRequest(RequestType &request) override {
+            getInput<std::string>("group_name", request.group_name);
+
+            int goal_type;
+            getInput<int>("goal_type", goal_type);
+            request.goal_type = goal_type;
+
+            Pose left_goal{};
+            getInput<Pose>("left_goal", left_goal);
+            request.left_goal = left_goal.toROS();
+
+            Pose right_goal{};
+            getInput<Pose>("right_goal", right_goal);
+            request.right_goal = right_goal.toROS();
+
+            getInput<double>("run_time", request.run_time);
+
+            getInput<double>("tolerance", request.tolerance);
+            getInput<std::string>("constraint", request.constraint);
+
+            double torso_speed_ratio = 0.1;
+            getInput<double>("torso_speed_ratio", torso_speed_ratio);
+            request.torso_speed_ratio = torso_speed_ratio;
+
+            JointState torso_goal_state{};
+            getInput<JointState>("torso_goal_state", torso_goal_state);
+            request.torso_goal_state = torso_goal_state.toROS();
         }
 
     };

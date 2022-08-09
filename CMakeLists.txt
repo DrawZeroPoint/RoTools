@@ -106,6 +106,7 @@ add_service_files(
   ExecuteBinaryAction.srv
   ExecuteDetachCollision.srv
         ExecuteDualArmPose.srv
+        ExecuteDualArmPoseTorsoJointPosition.srv
   ExecuteEllipticalTrajectory.srv
   ExecuteFrankaGripperGrasp.srv
   ExecuteGroupJointStates.srv
