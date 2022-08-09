@@ -846,6 +846,8 @@ auto main(int argc, char** argv) -> int {
   BT::registerRosService<bt::ExecuteAttachCollisionBox>(factory, "ExecuteAttachCollisionBox", node_handle);
   BT::registerRosService<bt::ExecuteBinaryAction>(factory, "ExecuteBinaryAction", node_handle);
   BT::registerRosService<bt::ExecuteDetachCollision>(factory, "ExecuteDetachCollision", node_handle);
+  BT::registerRosService<bt::ExecuteDualArmPose>(factory,"ExecuteDualArmPose",node_handle);
+  BT::registerRosService<bt::ExecuteDualArmPoseTorsoJointPosition>(factory,"ExecuteDualArmPoseTorsoJointPosition",node_handle);
   BT::registerRosService<bt::ExecuteFrankaGripperGrasp>(factory, "ExecuteFrankaGripperGrasp", node_handle);
   BT::registerRosService<bt::ExecuteGroupAngularJointStates>(factory, "ExecuteGroupAngularJointStates", node_handle);
   BT::registerRosService<bt::ExecuteGroupLinearJointStates>(factory, "ExecuteGroupLinearJointStates", node_handle);
