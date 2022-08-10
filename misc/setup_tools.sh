@@ -82,7 +82,7 @@ install_hpp() {
     PYVER=36
     PYCODE=3.6
   else
-    echo_failure "Only Ubuntu 20.04 and 18.04 are supported for ROS installation"
+    echo_failure "Only Ubuntu 20.04 and 18.04 are supported for HPP installation"
     return
   fi
 
@@ -113,7 +113,7 @@ install_pinocchio() {
   elif [ $(lsb_release -sc) == bionic ]; then
     PYCODE=3.6
   else
-    echo_failure "Only Ubuntu 20.04 and 18.04 are supported for ROS installation"
+    echo_failure "Only Ubuntu 20.04 and 18.04 are supported for Pinocchio installation"
     return
   fi
 
@@ -134,6 +134,37 @@ install_pinocchio() {
   echo "export CMAKE_PREFIX_PATH=/usr/local:\$CMAKE_PREFIX_PATH" >>~/.bashrc
 
   echo_success "Successfully installed pinocchio"
+}
+
+install_ocs2() {
+  echo_warning "Installing OCS2 ..."
+
+  if [ $(lsb_release -sc) == focal ]; then
+    PYCODE=3.8
+  else
+    echo_failure "Only Ubuntu 20.04 is supported for OCS2 installation"
+    return
+  fi
+
+  sudo apt-get update
+  sudo apt-get install -y libglpk-dev ros-noetic-pybind11-catkin python3-catkin-tools doxygen doxygen-latex \
+    liburdfdom-dev liboctomap-dev libassimp-dev ros-noetic-rqt-multiplot python3-sphinx checkinstall ros-noetic-grid-map-msgs
+
+  cd ~
+  git clone https://github.com/raisimTech/raisimLib.git
+  cd raisimLib/
+  mkdir build && cd build
+  cmake .. -DRAISIM_EXAMPLE=ON -DRAISIM_PY=ON -DPYTHON_EXECUTABLE=/usr/bin/python3
+  # Rename the pkg to 'raisim' when checkinstall
+  make -j4 && sudo checkinstall
+
+  cd ~/catkin_ws/src/
+  git clone https://github.com/leggedrobotics/ocs2.git
+  git clone https://github.com/leggedrobotics/ocs2_robotic_assets.git
+  cd ~/catkin_ws
+  catkin_make -DCMAKE_BUILD_TYPE=RelWithDebInfo
+
+  echo_success "Successfully installed OCS2"
 }
 
 install_sublime_text() {
@@ -160,18 +191,19 @@ install_jetbrains_toolbox() {
 }
 
 help() {
-   # Display Help
-   echo "===== RoTools Setup Tools Usage Guide ====="
-   echo "Syntax: setup_tools.sh [option]"
-   echo "options:"
-   echo "no option    Install all packages, recommended for new machine."
-   echo "-h | --help  Print this Help."
-   echo "--ros        Install ROS only."
-   echo "--cio        Install CartesIO only."
-   echo "--hpp        Install HPP only."
-   echo "--pin        Install pinocchio only."
-   echo "--sub        Install Sublime Text only."
-   echo "--jet        Install JetBrains Toolbox only."
+  # Display Help
+  echo "===== RoTools Setup Tools Usage Guide ====="
+  echo "Syntax: setup_tools.sh [option]"
+  echo "options:"
+  echo "no option    Install all packages, recommended for new machine."
+  echo "-h | --help  Print this Help."
+  echo "--ros        Install ROS only."
+  echo "--cio        Install CartesIO only."
+  echo "--hpp        Install HPP only."
+  echo "--pin        Install pinocchio only."
+  echo "--ocs2       Install OCS2 only."
+  echo "--sub        Install Sublime Text only."
+  echo "--jet        Install JetBrains Toolbox only."
 }
 
 sudo apt-get update
@@ -182,6 +214,7 @@ if [ $# -eq 0 ]; then
   install_cartesio
   install_hpp
   install_pinocchio
+  install_ocs2
   install_sublime_text
   install_jetbrains_toolbox
 else
@@ -205,6 +238,12 @@ else
   --pin)
     install_hpp
     install_pinocchio
+    exit
+    ;;
+  --ocs2)
+    install_hpp
+    install_pinocchio
+    install_ocs2
     exit
     ;;
   --sub)
