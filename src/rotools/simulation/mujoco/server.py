@@ -134,7 +134,7 @@ class MuJoCoServer(object):
             return
         if not cmd.name:
             rospy.logwarn_throttle(
-                3, "Sending joint command with no name is highly discouraged"
+                3, "Sending joint command without names is highly discouraged!"
             )
             if len(cmd.position) != self.interface.n_actuator:
                 rospy.logerr(

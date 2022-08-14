@@ -612,6 +612,8 @@ class MuJoCoInterface(Thread):
         Raises:
             TypeError if the class member control_type is not valid.
         """
+        if self._data is None:
+            return None
         if not cmd.name:
             for i, actuator_name in enumerate(self.actuator_names):
                 actuator = self._data.actuator(actuator_name)
