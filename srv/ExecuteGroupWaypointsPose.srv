@@ -1,0 +1,30 @@
+# For each group, given its name, waypoints_pose, waypoints_velocity(array of reach velocity for each waypoint pose), stamps (time to reach each waypoint pose),
+# and the tolerance for terminate the movement, move the group to the waypoints according to the given stamps.
+
+# The waypoints and stamps should be given in the same order as the number of waypoints.
+
+# Execute the cartesian trajectory with pose waypoints information.
+
+# Requests
+# group_name: The group providing the reference frame
+# goal_type: GLOBAL: Absolute pose wrt the base frame (robot base)
+#            LOCAL_ALIGNED: Relative pose wrt the base frame transferred to current eef base position
+#            LOCAL: pose wrt the eef frame
+# waypoints_pose: Waypoint pose for the group to visit
+# waypoints_velocity: Waypoint velocity for the group when it reach the given corresponding waypoint pose
+# stamps: Time interval for reaching each pose, in seconds
+
+std_msgs/Header header
+string group_name
+uint8 GLOBAL=0
+uint8 LOCAL_ALIGNED=1
+uint8 LOCAL=2
+uint8 goal_type
+geometry_msgs/PoseArray waypoints_pose
+PoseVelocity[] waypoints_velocity
+float64[] stamps
+
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

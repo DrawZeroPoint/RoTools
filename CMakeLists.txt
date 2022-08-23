@@ -86,6 +86,7 @@ add_message_files(
   BehaviorTree.msg
   NodeParameter.msg
   NodeStatus.msg
+        PoseVelocity.msg
   StatusChange.msg
   StatusChangeLog.msg
   TreeNode.msg
@@ -115,6 +116,7 @@ add_service_files(
   ExecuteGroupPose.srv
   ExecuteGroupPosition.srv
   ExecuteGroupShift.srv
+        ExecuteGroupWaypointsPose.srv
   ExecuteJointPosition.srv
   ExecuteManipulationPlanning.srv
   ExecuteMirroredPose.srv
@@ -173,7 +175,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS ${ROS_DEPENDENCIES}
+  CATKIN_DEPENDS ${ROS_DEPENDENCIES} message_generation roscpp rospy message_runtime
 )
 
 add_subdirectory(src/lib/ruckig)

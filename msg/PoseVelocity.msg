@@ -1,0 +1,6 @@
+float64 translation_x_vel
+float64 translation_y_vel
+float64 translation_z_vel
+float64 euler_x_vel
+float64 euler_y_vel
+float64 euler_z_vel

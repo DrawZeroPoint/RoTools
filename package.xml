@@ -40,5 +40,6 @@
   <exec_depend>franka_core_msgs</exec_depend>
 
   <exec_depend>message_runtime</exec_depend>
+  <exec_depend>message_generation</exec_depend>
 
 </package>
