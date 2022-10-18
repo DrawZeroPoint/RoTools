@@ -1,0 +1,13 @@
+<launch>
+  <!-- This launch file is only for debugging -->
+
+  <node pkg="roport" type="roport_trigger_client.py" name="roport_trigger_client" output="screen">
+    <rosparam param="codes">
+      [0, 1]
+    </rosparam>
+    <rosparam param="cmds">
+      ["curi_sim_mujoco_wbc.sh 1", "curi_sim_mujoco_wbc.sh"]
+    </rosparam>
+  </node>
+
+</launch>
