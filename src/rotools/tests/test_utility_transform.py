@@ -145,6 +145,21 @@ class Test(unittest.TestCase):
         q = transform.quaternion_from_matrix(transform.euler_matrix(np.pi, 0, 0))  # 180
         self.assertTrue(common.all_close(q, [1.0, 0.0, 0.0, 0.0]))
 
+    def test_ax_from_transform(self):
+        pose = [0.0, 0.0, -0.70710678, 0.70710678]
+        az = transform.euler_from_quaternion(pose, "szyx")[0]
+        print("az", az, np.rad2deg(az))
+        self.assertFalse(np.allclose(270, np.rad2deg(az)))
+        self.assertTrue(np.allclose(-90, np.rad2deg(az)))
+        pose = [0.0, 0.0, 0.92387953, 0.38268343]
+        az = transform.euler_from_quaternion(pose, "szyx")[0]
+        print("az", az, np.rad2deg(az))
+        self.assertTrue(np.allclose(135, np.rad2deg(az)))
+        pose = [0.000000e00, 0.000000e00, 1.000000e00, 6.123234e-17]
+        az = transform.euler_from_quaternion(pose, "szyx")[0]
+        print("az", az, np.rad2deg(az))
+        self.assertTrue(np.allclose(180, np.rad2deg(az)))
+
 
 if __name__ == "__main__":
     unittest.main()
