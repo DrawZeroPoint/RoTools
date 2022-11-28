@@ -1,3 +1,47 @@
 site_name: RoTools Docs
 theme:
   name: material
+
+  logo: assets/logo.png
+
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+    - search.highlight
+
+extra_css:
+  - stylesheets/extra.css
+
+
+plugins:
+  - search
+  - mkdocstrings
+
+repo_url: https://github.com/DrawZeroPoint/RoTools
+
+# Footer
+copyright: Copyright &copy; 2020 - 2022 Zhipeng Dong
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/DrawZeroPoint
