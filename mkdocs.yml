@@ -34,7 +34,11 @@ extra_css:
 
 plugins:
   - search
-  - mkdocstrings
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
 
 repo_url: https://github.com/DrawZeroPoint/RoTools
 
@@ -45,3 +49,22 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/DrawZeroPoint
+
+# Page tree
+nav:
+  - Home: index.md
+  - Reference:
+      - reference/index.md
+      - common: reference/common.md
+#  - Getting started:
+#    - Installation: getting-started.md
+#    - Creating your site: creating-your-site.md
+#    - Publishing your site: publishing-your-site.md
+#    - Customization: customization.md
+#    - Browser support: browser-support.md
+#    - Philosophy: philosophy.md
+#    - Alternatives: alternatives.md
+#    - License: license.md
+#    - Changelog:
+#      - changelog/index.md
+#      - How to upgrade: upgrade.md
