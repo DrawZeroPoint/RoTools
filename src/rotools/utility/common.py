@@ -150,8 +150,8 @@ def sd_pose(pose, check=False):
     """Standardize the input pose to the 4x4 homogeneous transformation matrix SE(3).
 
     Args:
-        pose: ndarray/ Values denoting a pose/transformation.
-        check: bool If true, will check if the input is legal.
+        pose (ndarray/list/Pose/PoseStamped): Values denoting a pose/transformation.
+        check (bool): bool If true, will check if the input is legal.
 
     Returns:
         SE(3)
@@ -202,8 +202,8 @@ def to_ros_pose(pose, w_first=False):
     """Convert the input pose to ROS geometry msg pose
 
     Args:
-        pose: ndarray/list/tuple Input pose.
-        w_first: bool If true, will consider the w lies in the first place.
+        pose (ndarray/list/tuple): Input pose.
+        w_first (bool): If true, will consider the w lies in the first place.
 
     Returns:
         geometry_msgs.Pose
