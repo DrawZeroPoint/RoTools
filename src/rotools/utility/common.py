@@ -21,37 +21,55 @@ except ImportError:
 from rotools.utility import transform, robotics
 
 
+def _preprocess_print(*args):
+    """Preprocess the input for colorful printing.
+
+    Args:
+        args (Any/None): One or more any type arguments to print.
+
+    Returns:
+        str Msg to print.
+    """
+    str_args = ""
+    for a in args:
+        if isinstance(a, np.ndarray):
+            str_args += "\n" + np.array2string(a, separator=", ")
+        else:
+            str_args += " " + str(a)
+    separate_with_newline = str_args.split("\n")
+    extra_whitespaces_removed = []
+    for b in separate_with_newline:
+        extra_whitespaces_removed.append(" ".join(b.split()))
+    return "\n".join(extra_whitespaces_removed)
+
+
+def print_success(*args):
+    """Print success information with green."""
+    print("".join(["\033[1m\033[92m", _preprocess_print(*args), "\033[0m"]))
+
+
+def print_info(*args):
+    """Print general information with sky blue."""
+    print("".join(["\033[1m\033[94m", _preprocess_print(*args), "\033[0m"]))
+
+
+def print_warning(*args):
+    """Print warnings with yellow."""
+    print("".join(["\033[1m\033[93m", _preprocess_print(*args), "\033[0m"]))
+
+
+def print_error(*args):
+    """Print errors with red."""
+    print("".join(["\033[1m\033[91m", _preprocess_print(*args), "\033[0m"]))
+
+
 def print_debug(content):
-    """Print information with green."""
-    print("".join(["\033[1m\033[92m", content, "\033[0m"]))
-
-
-def print_info(content):
-    """Print information with sky blue."""
-    print("".join(["\033[1m\033[94m", content, "\033[0m"]))
+    """Print debug information with green."""
+    print_success(content)
 
 
 def print_warn(content):
-    """Print warning with yellow."""
-    print(
-        "".join(
-            [
-                "\033[1m\033[93m[Deprecated, use print_warning instead] ",
-                content,
-                "\033[0m",
-            ]
-        )
-    )
-
-
-def print_warning(content):
-    """Print a warning with yellow."""
-    print("".join(["\033[1m\033[93m", content, "\033[0m"]))
-
-
-def print_error(content):
-    """Print error with red."""
-    print("".join(["\033[1m\033[91m", content, "\033[0m"]))
+    print_warning(content)
 
 
 def all_close(values_a, values_b, tolerance=1.0e-8):
