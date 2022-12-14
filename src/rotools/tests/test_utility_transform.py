@@ -160,6 +160,60 @@ class Test(unittest.TestCase):
         print("az", az, np.rad2deg(az))
         self.assertTrue(np.allclose(180, np.rad2deg(az)))
 
+    def test_involutory_transform(self):
+        """https://en.wikipedia.org/wiki/Involutory_matrix"""
+        camera_to_world_T = np.array(
+            [
+                [0, -1, 0, 0],
+                [-1, 0, 0, 0],
+                [0, 0, -1, 1],
+                [0, 0, 0, 1],
+            ],
+            dtype=float,
+        )
+        world_to_camera_T = np.array(
+            [
+                [0, -1, 0, 0],
+                [-1, 0, 0, 0],
+                [0, 0, -1, 1],
+                [0, 0, 0, 1],
+            ],
+            dtype=float,
+        )
+        self.assertTrue(
+            np.allclose(camera_to_world_T, np.linalg.inv(world_to_camera_T))
+        )
+        common.print_info(np.dot(camera_to_world_T, world_to_camera_T))
+
+        sqrt_2_2 = np.sqrt(2.0) / 2
+        camera_to_world_T = np.array(
+            [
+                [-sqrt_2_2, -sqrt_2_2, 0, 0],
+                [-sqrt_2_2, sqrt_2_2, 0, 0],
+                [0, 0, -1, 1],
+                [0, 0, 0, 1],
+            ],
+            dtype=float,
+        )
+        world_to_camera_T = np.array(
+            [
+                [-sqrt_2_2, -sqrt_2_2, 0, 0],
+                [-sqrt_2_2, sqrt_2_2, 0, 0],
+                [0, 0, -1, 1],
+                [0, 0, 0, 1],
+            ],
+            dtype=float,
+        )
+        self.assertTrue(
+            np.allclose(camera_to_world_T, np.linalg.inv(world_to_camera_T))
+        )
+        common.print_info(np.dot(camera_to_world_T, world_to_camera_T))
+
+        camera_to_world_T = transform.euler_matrix(np.pi / 2, np.pi, np.pi / 2, "sxyz")
+        world_to_camera_T = np.linalg.inv(camera_to_world_T)
+        common.print_info(camera_to_world_T, world_to_camera_T)
+        common.print_info(np.dot(camera_to_world_T, world_to_camera_T))
+
 
 if __name__ == "__main__":
     unittest.main()
