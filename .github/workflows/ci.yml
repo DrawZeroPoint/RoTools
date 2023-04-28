@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ros_distro: [ melodic, noetic ]
+        ros_distro: [ noetic ]
     steps:
       - name: Prepare
         # Keep the compilation outputs persistent outside the docker container to use for the other steps
