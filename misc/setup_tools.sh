@@ -179,8 +179,6 @@ install_pinocchio() {
     echo "export LD_LIBRARY_PATH=/usr/local/lib:\$LD_LIBRARY_PATH" >>~/.bashrc
     echo "export PYTHONPATH=/usr/local/lib/python$PYCODE/site-packages:\$PYTHONPATH" >>~/.bashrc
     echo "export CMAKE_PREFIX_PATH=/usr/local:\$CMAKE_PREFIX_PATH" >>~/.bashrc
-  else
-    echo_success "pinocchio paths have already been set"
   fi
 
   print_divider "Successfully installed pinocchio" finished
@@ -206,7 +204,6 @@ install_ocs2() {
   cd raisimLib/
   mkdir build && cd build
   cmake .. -DRAISIM_EXAMPLE=ON -DRAISIM_PY=ON -DPYTHON_EXECUTABLE=/usr/bin/python3
-  # Rename the pkg to 'raisim' when checkinstall
   make -j4
 
   cd ~/catkin_ws/src/
@@ -296,7 +293,7 @@ if [ $# -eq 0 ]; then
   install_cartesio
   install_hpp
   install_pinocchio
-  install_ocs2
+#  install_ocs2  # Temporary suspend this due to comparability error
   install_python
   install_sublime_text
   install_jetbrains_toolbox
