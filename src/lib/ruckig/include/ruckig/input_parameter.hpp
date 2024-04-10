@@ -71,9 +71,7 @@ class InputParameter {
   }
 
 #if defined WITH_ONLINE_CLIENT
-  void reserve(size_t max_number_of_waypoints) {
-    intermediate_positions.reserve(max_number_of_waypoints);
-  }
+  void reserve(size_t max_number_of_waypoints) { intermediate_positions.reserve(max_number_of_waypoints); }
 #endif
 
  public:

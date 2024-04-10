@@ -94,9 +94,7 @@ class Trajectory {
 #endif
 
   //! Get the underlying profiles of the trajectory
-  Container<Vector<Profile>> get_profiles() const {
-    return profiles;
-  }
+  Container<Vector<Profile>> get_profiles() const { return profiles; }
 
   //! Get the kinematic state at a given time
 
@@ -208,19 +206,13 @@ class Trajectory {
   }
 
   //! Get the duration of the (synchronized) trajectory
-  double get_duration() const {
-    return duration;
-  }
+  double get_duration() const { return duration; }
 
   //! Get the durations when the intermediate waypoints are reached
-  Container<double> get_intermediate_durations() const {
-    return cumulative_times;
-  }
+  Container<double> get_intermediate_durations() const { return cumulative_times; }
 
   //! Get the minimum duration of each independent DoF
-  Vector<double> get_independent_min_durations() const {
-    return independent_min_durations;
-  }
+  Vector<double> get_independent_min_durations() const { return independent_min_durations; }
 
   //! Get the min/max values of the position for each DoF
   Vector<PositionExtrema> get_position_extrema() {
