@@ -14,7 +14,6 @@ class MoveItServer(object):
     """
 
     def __init__(self, kwargs):
-
         super(MoveItServer, self).__init__()
 
         self.interface = interface.MoveGroupInterface(**kwargs)

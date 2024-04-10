@@ -195,7 +195,6 @@ def my_parse_args(arg_list, args_dict):
 
 
 if __name__ == "__main__":
-
     optionsDict = {}
     optionsDict["clientAddress"] = "127.0.0.1"
     optionsDict["serverAddress"] = "127.0.0.1"

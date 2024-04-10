@@ -641,7 +641,7 @@ def pretty_print_configs(configs):
     """Print a dict of configurations in a visual friendly and organized way.
 
     Args:
-        configs: dict A dict of configures. The items could be string, number, or a list/tuple.
+        configs (dict): A dict of configures. The items could be string, number, or a list/tuple.
 
     Returns:
         None
