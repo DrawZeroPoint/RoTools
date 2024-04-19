@@ -31,11 +31,11 @@
 namespace roport {
 
 MsgConverter::MsgConverter(const ros::NodeHandle& node_handle, const ros::NodeHandle& pnh)
-    : nh_(node_handle), pnh_(pnh) {
+    : nh_(node_handle), pnh_(pnh), smooth_start_timeout_(20), smooth_start_error_(0.1) {
   if (!init()) {
     return;
   }
-  starts_.resize(enable_smooth_start_flags_.size());
+  start_time_.resize(enable_smooth_start_flags_.size());
 }
 
 auto MsgConverter::init() -> bool {
@@ -50,6 +50,17 @@ auto MsgConverter::init() -> bool {
     return false;
   }
   ROS_ASSERT(target_joint_groups.getType() == XmlRpc::XmlRpcValue::TypeArray);
+
+  XmlRpc::XmlRpcValue target_joint_to_inspect;
+  if (getParam("target_joint_to_inspect", target_joint_to_inspect)) {
+    ROS_ASSERT(target_joint_to_inspect.getType() == XmlRpc::XmlRpcValue::TypeArray);
+    for (int i = 0; i < target_joint_to_inspect.size(); i++) {
+      target_joint_to_inspect_.emplace_back(target_joint_to_inspect[i]);
+      ros::Publisher publisher =
+          nh_.advertise<std_msgs::Float32>("/" + std::string(target_joint_to_inspect[i]) + "/position", 1);
+      inspected_joint_value_publishers_.push_back(publisher);
+    }
+  }
 
   XmlRpc::XmlRpcValue source_js_topics;
   if (!getParam("source_js_topics", source_js_topics)) {
@@ -80,6 +91,16 @@ auto MsgConverter::init() -> bool {
     return false;
   }
   ROS_ASSERT(enable_smooth_start.getType() == XmlRpc::XmlRpcValue::TypeArray);
+
+  XmlRpc::XmlRpcValue smooth_start_timeout;
+  if (getParam("smooth_start_timeout", smooth_start_timeout)) {
+    smooth_start_timeout_ = int(smooth_start_timeout);
+  }
+
+  XmlRpc::XmlRpcValue smooth_start_error;
+  if (getParam("smooth_start_error", smooth_start_error)) {
+    smooth_start_error_ = double(smooth_start_error);
+  }
 
   XmlRpc::XmlRpcValue start_ref_topics;
   if (!getParam("start_ref_topics", start_ref_topics)) {
@@ -319,14 +340,14 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
 
   if (!optimizers_[group_id]->isInitialStateSet()) {
     optimizers_[group_id]->setInitialState(filtered_msg);
-    starts_[group_id] = std::chrono::steady_clock::now();
+    start_time_[group_id] = std::chrono::steady_clock::now();
     return;
   }
 
   std::vector<double> q_desired;
   optimizers_[group_id]->getTargetPosition(q_desired);
   size_t violated_i = 0;
-  double residual = 0.;
+  double residual = smooth_start_error_;
   if (roport::allClose<double>(filtered_msg.position, q_desired, violated_i, residual)) {
     finished_smooth_start_flags_[group_id] = true;
     ROS_INFO("Successfully moved group %d to the start position.", group_id);
@@ -334,11 +355,11 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
     ROS_WARN_THROTTLE(1, "Smoothly moving group %d to the start position ...", group_id);
   }
 
-  if (std::chrono::steady_clock::now() - starts_[group_id] > std::chrono::seconds(20)) {
+  if (std::chrono::steady_clock::now() - start_time_[group_id] > std::chrono::seconds(smooth_start_timeout_)) {
     finished_smooth_start_flags_[group_id] = true;
     const std::string& name = source_names[violated_i];
-    ROS_WARN("Unable to move group %d to the start position in 20 sec due to joint #%zu: %s. Residual %f. Aborted.",
-             group_id, violated_i, name.c_str(), residual);
+    ROS_WARN("Unable to move group %d to the start position in %li sec due to joint #%zu: %s. Residual %f. Aborted.",
+             group_id, smooth_start_timeout_, violated_i, name.c_str(), residual);
   }
 }
 
@@ -393,6 +414,12 @@ void MsgConverter::publishJointState(const sensor_msgs::JointState& src_msg,
       }
       if (src_msg.effort.size() == src_msg.position.size()) {
         tgt_msg.effort.push_back(src_msg.effort[result.second]);
+      }
+      auto target_name_in = findInVector<std::string>(target_joint_to_inspect_, target_names[i]);
+      if (target_name_in.first) {
+        std_msgs::Float32 tgt_position;
+        tgt_position.data = src_msg.position[result.second];
+        inspected_joint_value_publishers_[target_name_in.second].publish(tgt_position);
       }
     } else {
       ROS_ERROR_STREAM(prefix << "Source joint name " << source_names[i]
