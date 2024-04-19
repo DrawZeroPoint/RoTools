@@ -129,11 +129,11 @@ class MoveItServer(object):
         resp = GetGroupJointStatesResponse()
         try:
             joint_names = self.interface.get_active_joint_names_of_group(req.group_name)
-            joint_states = self.interface.get_joint_states_of_group(
+            joint_positions = self.interface.get_joint_states_of_group(
                 req.group_name, req.result_type
             )
             resp.joint_names = joint_names
-            resp.joint_states = joint_states
+            resp.joint_positions = joint_positions
             resp.result_status = resp.SUCCEEDED
         except IndexError:
             resp.result_status = resp.FAILED
