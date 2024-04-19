@@ -32,7 +32,6 @@ class EStop(object):
             self.listener = Listener(on_press=self._on_press)
             self.listener.start()  # start the thread and run subsequent codes
         else:
-            print_warn("{}".format(err))
             print_warn(
                 "To use keyboard interactions: sudo pip install pynput playsound"
             )
