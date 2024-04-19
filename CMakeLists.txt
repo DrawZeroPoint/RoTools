@@ -86,7 +86,7 @@ add_message_files(
   BehaviorTree.msg
   NodeParameter.msg
   NodeStatus.msg
-        PoseVelocity.msg
+  PoseVelocity.msg
   StatusChange.msg
   StatusChangeLog.msg
   TreeNode.msg
@@ -106,8 +106,8 @@ add_service_files(
   ExecuteAttachCollisionBox.srv
   ExecuteBinaryAction.srv
   ExecuteDetachCollision.srv
-        ExecuteDualArmPose.srv
-        ExecuteDualArmPoseTorsoJointPosition.srv
+  ExecuteDualArmPose.srv
+  ExecuteDualArmPoseTorsoJointPosition.srv
   ExecuteEllipticalTrajectory.srv
   ExecuteFrankaGripperGrasp.srv
   ExecuteGroupJointStates.srv
@@ -116,7 +116,7 @@ add_service_files(
   ExecuteGroupPose.srv
   ExecuteGroupPosition.srv
   ExecuteGroupShift.srv
-        ExecuteGroupWaypointsPose.srv
+  ExecuteGroupWaypointsPose.srv
   ExecuteJointPosition.srv
   ExecuteManipulationPlanning.srv
   ExecuteMirroredPose.srv
