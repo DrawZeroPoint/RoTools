@@ -50,20 +50,20 @@ else (${ubt_core_msgs_FOUND})
 endif (${ubt_core_msgs_FOUND})
 
 # Optionally locate Humanoid Path Planner
-find_library(HPP_CORE_LIB hpp-core HINTS /opt/openrobots/lib)
-if (HPP_CORE_LIB)
-  include_directories(/opt/openrobots/include)
-  message(STATUS "Found HPP_CORE_LIB ${HPP_CORE_LIB}")
-else ()
-  message(WARNING "Not Found HPP_CORE_LIB")
-endif ()
+# find_library(HPP_CORE_LIB hpp-core HINTS /opt/openrobots/lib)
+# if (HPP_CORE_LIB)
+#   include_directories(/opt/openrobots/include)
+#   message(STATUS "Found HPP_CORE_LIB ${HPP_CORE_LIB}")
+# else ()
+#   message(WARNING "Not Found HPP_CORE_LIB")
+# endif ()
 
-find_library(HPP_FCL_LIB hpp-fcl HINTS /opt/openrobots/lib)
-if (HPP_FCL_LIB)
-  message(STATUS "Found HPP_FCL_LIB ${HPP_FCL_LIB}")
-else ()
-  message(WARNING "Not Found HPP_FCL_LIB")
-endif ()
+# find_library(HPP_FCL_LIB hpp-fcl HINTS /opt/openrobots/lib)
+# if (HPP_FCL_LIB)
+#   message(STATUS "Found HPP_FCL_LIB ${HPP_FCL_LIB}")
+# else ()
+#   message(WARNING "Not Found HPP_FCL_LIB")
+# endif ()
 
 # Optionally locate CartesI/O
 find_library(CARTESIO_LIB CartesianInterface HINTS /opt/xbot/)
@@ -204,30 +204,30 @@ target_link_libraries(${PROJECT_NAME}
   rotools_ruckig
   )
 
-if (HPP_CORE_LIB AND HPP_FCL_LIB)
-  # These two definitions solve the pinocchio import issue
-  add_definitions(-DPINOCCHIO_WITH_HPP_FCL)
-  ADD_DEFINITIONS(-DBOOST_MPL_LIMIT_LIST_SIZE=30)
+# if (HPP_CORE_LIB AND HPP_FCL_LIB)
+#   # These two definitions solve the pinocchio import issue
+#   add_definitions(-DPINOCCHIO_WITH_HPP_FCL)
+#   ADD_DEFINITIONS(-DBOOST_MPL_LIMIT_LIST_SIZE=30)
 
-  include_directories(/opt/openrobots/include /usr/local/include)
+#   include_directories(/opt/openrobots/include /usr/local/include)
 
-  find_library(PINOCCHIO_LIBRARIES pinocchio HINTS /usr/local/lib)
-  find_library(OMNI_THREAD_LIB omnithread HINTS /opt/openrobots/lib)
-  find_library(OMNI_ORB4_LIB omniORB4 HINTS /opt/openrobots/lib)
+#   find_library(PINOCCHIO_LIBRARIES pinocchio HINTS /usr/local/lib)
+#   find_library(OMNI_THREAD_LIB omnithread HINTS /opt/openrobots/lib)
+#   find_library(OMNI_ORB4_LIB omniORB4 HINTS /opt/openrobots/lib)
 
-  add_library(${PROJECT_NAME}_HPP_ADDON
-    src/lib/hpp_interface.cpp
-    )
-  target_link_libraries(${PROJECT_NAME}_HPP_ADDON
-    ${catkin_LIBRARIES}
-    ${HPP_CORE_LIB}
-    ${HPP_FCL_LIB}
-    ${OMNI_THREAD_LIB}
-    ${OMNI_ORB4_LIB}
-    ${PINOCCHIO_LIBRARIES}
-    )
-  add_dependencies(${PROJECT_NAME}_HPP_ADDON ${PROJECT_NAME}_generate_messages_cpp)
-endif ()
+#   add_library(${PROJECT_NAME}_HPP_ADDON
+#     src/lib/hpp_interface.cpp
+#     )
+#   target_link_libraries(${PROJECT_NAME}_HPP_ADDON
+#     ${catkin_LIBRARIES}
+#     ${HPP_CORE_LIB}
+#     ${HPP_FCL_LIB}
+#     ${OMNI_THREAD_LIB}
+#     ${OMNI_ORB4_LIB}
+#     ${PINOCCHIO_LIBRARIES}
+#     )
+#   add_dependencies(${PROJECT_NAME}_HPP_ADDON ${PROJECT_NAME}_generate_messages_cpp)
+# endif ()
 
 if (CARTESIO_LIB)
   include_directories(/opt/xbot/include ${OpenSoT_INCLUDE_DIRS})
@@ -282,15 +282,15 @@ target_link_libraries(roport_msg_aggregator
   ${PROJECT_NAME}
   )
 
-if (HPP_CORE_LIB AND HPP_FCL_LIB)
-  add_executable(roport_hpp_interface src/roport_hpp_interface.cpp)
-  add_dependencies(roport_hpp_interface ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-  target_link_libraries(roport_hpp_interface
-    ${catkin_LIBRARIES}
-    ${PROJECT_NAME}
-    ${PROJECT_NAME}_HPP_ADDON
-    )
-endif ()
+# if (HPP_CORE_LIB AND HPP_FCL_LIB)
+#   add_executable(roport_hpp_interface src/roport_hpp_interface.cpp)
+#   add_dependencies(roport_hpp_interface ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#   target_link_libraries(roport_hpp_interface
+#     ${catkin_LIBRARIES}
+#     ${PROJECT_NAME}
+#     ${PROJECT_NAME}_HPP_ADDON
+#     )
+# endif ()
 
 if (CARTESIO_LIB)
   add_executable(roport_cartesio_server src/roport_cartesio_server.cpp)
