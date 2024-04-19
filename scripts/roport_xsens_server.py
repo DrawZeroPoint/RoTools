@@ -33,7 +33,7 @@ if __name__ == "__main__":
             configs["udp_ip"] = s.getsockname()[0]
             s.close()
 
-        if not is_ip_valid(configs["udp_ip"]) or not is_port_valid(configs["port"]):
+        if not is_ip_valid(configs["udp_ip"]) or not is_port_valid(configs["udp_port"]):
             exit(-1)
 
         pretty_print_configs(configs)
