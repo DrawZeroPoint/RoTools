@@ -773,6 +773,8 @@ def byte_to_uint16(data):
 
 
 def byte_to_uint8(data):
+    if isinstance(data, int):
+        return data
     return struct.unpack("!B", data)[0]
 
 
