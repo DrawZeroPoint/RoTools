@@ -432,7 +432,7 @@ class XsensInterface(object):
             return None
         id_str = common.byte_to_str(data[0:6], 6)
         sample_counter = common.byte_to_uint32(data[6:10])
-        datagram_counter = struct.unpack("!B", data[10])
+        datagram_counter = data[10]
         item_number = common.byte_to_uint8(data[11])
         time_code = common.byte_to_uint32(data[12:16])
         character_id = common.byte_to_uint8(data[16])
