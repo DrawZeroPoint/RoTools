@@ -373,7 +373,7 @@ if (CLANG_TOOLS)
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/*.cpp
     )
   file(GLOB_RECURSE HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/roport/*.h
     )
   add_format_target(rotools FILES ${CPP_SOURCES} ${HEADERS})
   add_tidy_target(rotools
