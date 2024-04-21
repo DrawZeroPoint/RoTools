@@ -1,17 +1,14 @@
-# Execute using franka gripper to finish a grasp movement
+# Execute the grasping of a Franka gripper
 
 # Requests
-# width: Goal grasp width within [0,0.08]
-# epsilon_inner: Allowed max grasp width error when the actual grasp width is smaller than the desired width, should be set as 0.08 if the grasp objest's width is not sure
-# epsilon_outer: Allowed max grasp width error when the actual grasp width is larger than the desired width, should be set as 0.08 if the grasp objest's width is not sure
-# speed: Speed of gripper, default 0.1
-# force: Grasp force within [0,70]
+# close_width_percentage: Should be within the range [0, 1]. 0 for fully open, 1 for fully close.
+#                         For the real gripper, fully open width is 0.08 m.
+# speed_percentage: Moving speed percentage of the finger regarding the maximum speed in range [0, 0.5] m/s
+# force_percentage: Grasping force percentage regarding the maximum force in range [0, 70] N.
 
-float64 width # [m]
-float64 epsilon_inner #[m]
-float64 epsilon_outer #[m]
-float64 speed # [m/s]
-float64 force # [N]
+float64 close_width_percentage
+float64 speed_percentage
+float64 force_percentage
 ---
 uint8 SUCCEEDED=0
 uint8 FAILED=1

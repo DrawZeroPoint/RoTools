@@ -399,11 +399,9 @@ class ExecuteFrankaGripperGrasp : public RosServiceNode<roport::ExecuteFrankaGri
   }
 
   void onSendRequest(RequestType& request) override {
-    getInput<double>("width", request.width);
-    getInput<double>("epsilon_inner", request.epsilon_inner);
-    getInput<double>("epsilon_outer", request.epsilon_outer);
-    getInput<double>("speed", request.speed);
-    getInput<double>("force", request.force);
+    getInput<double>("close_width_percentage", request.close_width_percentage);
+    getInput<double>("speed_percentage", request.speed_percentage);
+    getInput<double>("force_percentage", request.force_percentage);
   }
 };
 
