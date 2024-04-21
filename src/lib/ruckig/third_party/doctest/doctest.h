@@ -1469,7 +1469,7 @@ class ExceptionTranslator : public IExceptionTranslator  //! OCLINT destructor o
       res = m_translateFunction(ex);  //! OCLINT parameter reassignment
       return true;
     } catch (...) {
-    }                        //! OCLINT -  empty catch statement
+    }  //! OCLINT -  empty catch statement
 #endif                       // DOCTEST_CONFIG_NO_EXCEPTIONS
     static_cast<void>(res);  // to silence -Wunused-parameter
     return false;
@@ -6459,7 +6459,7 @@ int Context::run() {
 #ifndef DOCTEST_CONFIG_NO_EXCEPTIONS
         try {
 #endif  // DOCTEST_CONFIG_NO_EXCEPTIONS
-          // MSVC 2015 diagnoses fatalConditionHandler as unused (because reset() is a static method)
+        // MSVC 2015 diagnoses fatalConditionHandler as unused (because reset() is a static method)
           DOCTEST_MSVC_SUPPRESS_WARNING_WITH_PUSH(4101)  // unreferenced local variable
           FatalConditionHandler fatalConditionHandler;   // Handle signals
           // execute the test
