@@ -133,8 +133,8 @@ void MsgAggregator::highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg
   size_t position_dim = msg_1->position.size() + msg_2->position.size();
 
   if (name_dim != position_dim) {
-    ROS_ERROR_STREAM_ONCE(prefix << "High frequency names' size " << name_dim << " does not match "
-                                 << " position size " << position_dim);
+    ROS_ERROR_STREAM_ONCE(prefix << "High frequency names' size " << name_dim << " does not match " << " position size "
+                                 << position_dim);
     return;
   }
 
@@ -180,8 +180,8 @@ void MsgAggregator::highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg
   size_t position_dim = msg_1->position.size() + msg_2->position.size() + msg_3->position.size();
 
   if (name_dim != position_dim) {
-    ROS_ERROR_STREAM_ONCE(prefix << "High frequency names' size " << name_dim << " does not match "
-                                 << " position size " << position_dim);
+    ROS_ERROR_STREAM_ONCE(prefix << "High frequency names' size " << name_dim << " does not match " << " position size "
+                                 << position_dim);
     return;
   }
 

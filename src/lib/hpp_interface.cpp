@@ -174,8 +174,9 @@ auto PathPlanningInterface::setJointConfig(const sensor_msgs::JointState& msg,
   return valid;
 }
 
-auto PathPlanningInterface::setLocationConfig(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config)
-    -> bool {
+auto PathPlanningInterface::setLocationConfig(const geometry_msgs::Pose& msg,
+                                              const int& type,
+                                              Configuration_t& config) -> bool {
   if (!isPoseLegal(msg)) {
     return false;
   }

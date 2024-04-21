@@ -29,8 +29,8 @@
 #define SRC_MSG_CONVERTER_H
 
 #include <ros/ros.h>
-#include <std_msgs/Float32.h>
 #include <sensor_msgs/JointState.h>
+#include <std_msgs/Float32.h>
 
 #include "roport/online_trajectory_optimizer.h"
 #include "ruckig/ruckig.hpp"

@@ -49,8 +49,8 @@ class ControlServer {
   std::vector<std::shared_ptr<FJT_actionClient>> control_clients_;
 
   auto executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req, roport::ExecuteAllPoses::Response& resp) -> bool;
-  auto executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Request& req, roport::ExecuteMirroredPose::Response& resp)
-      -> bool;
+  auto executeMirroredPoseSrvCb(roport::ExecuteMirroredPose::Request& req,
+                                roport::ExecuteMirroredPose::Response& resp) -> bool;
 
   /**
    *
@@ -74,15 +74,17 @@ class ControlServer {
                                     double stamp,
                                     trajectory_msgs::JointTrajectory& traj_out);
 
-  auto executeTrajectories(const std::map<int, trajectory_msgs::JointTrajectory>& trajectories, double duration = 120)
-      -> bool;
+  auto executeTrajectories(const std::map<int, trajectory_msgs::JointTrajectory>& trajectories,
+                           double duration = 120) -> bool;
 
   void buildControllerGoal(int group_id,
                            const trajectory_msgs::JointTrajectory& trajectory,
                            control_msgs::FollowJointTrajectoryGoal& goal);
 
-  auto buildTolerance(int group_id, double position, double velocity, double acceleration)
-      -> std::vector<control_msgs::JointTolerance>;
+  auto buildTolerance(int group_id,
+                      double position,
+                      double velocity,
+                      double acceleration) -> std::vector<control_msgs::JointTolerance>;
 
   void relativePoseToAbsolutePose(const geometry_msgs::PoseStamped& transform_wrt_local_base,
                                   const geometry_msgs::PoseStamped& current_pose_wrt_base,

@@ -299,90 +299,92 @@ class ExecuteDetachCollision : public RosServiceNode<roport::ExecuteDetachCollis
   }
 };
 
-    class ExecuteDualArmPose : public RosServiceNode<roport::ExecuteDualArmPose> {
-    public:
-        ExecuteDualArmPose(const ros::NodeHandle &node_handle, const std::string &name,
-                           const BT::NodeConfiguration &cfg) : RosServiceNode<roport::ExecuteDualArmPose>(node_handle,
-                                                                                                          name, cfg) {}
+class ExecuteDualArmPose : public RosServiceNode<roport::ExecuteDualArmPose> {
+ public:
+  ExecuteDualArmPose(const ros::NodeHandle& node_handle, const std::string& name, const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteDualArmPose>(node_handle, name, cfg) {}
 
-        static auto providedPorts() -> BT::PortsList {
-            return {
-                    InputPort<Header>("header"), InputPort<std::string>("group_name"), InputPort<int>("goal_type"),
-                    InputPort<Pose>("left_goal"),
-                    InputPort<Pose>("right_goal"), InputPort<double>("run_time"), InputPort<double>("tolerance"),
-                    InputPort<std::string>("constraint"),
-            };
-        }
-
-        void onSendRequest(RequestType &request) override {
-            getInput<std::string>("group_name", request.group_name);
-
-            int goal_type;
-            getInput<int>("goal_type", goal_type);
-            request.goal_type = goal_type;
-
-            Pose left_goal{};
-            getInput<Pose>("left_goal", left_goal);
-            request.left_goal = left_goal.toROS();
-
-            Pose right_goal{};
-            getInput<Pose>("right_goal", right_goal);
-            request.right_goal = right_goal.toROS();
-
-            getInput<double>("run_time", request.run_time);
-
-            getInput<double>("tolerance", request.tolerance);
-            getInput<std::string>("constraint", request.constraint);
-        }
-
+  static auto providedPorts() -> BT::PortsList {
+    return {
+        InputPort<Header>("header"),    InputPort<std::string>("group_name"), InputPort<int>("goal_type"),
+        InputPort<Pose>("left_goal"),   InputPort<Pose>("right_goal"),        InputPort<double>("run_time"),
+        InputPort<double>("tolerance"), InputPort<std::string>("constraint"),
     };
+  }
 
-    class ExecuteDualArmPoseTorsoJointPosition : public RosServiceNode<roport::ExecuteDualArmPoseTorsoJointPosition> {
-    public:
-        ExecuteDualArmPoseTorsoJointPosition(const ros::NodeHandle &node_handle, const std::string &name,
-                           const BT::NodeConfiguration &cfg) : RosServiceNode<roport::ExecuteDualArmPoseTorsoJointPosition>(node_handle,
-                                                                                                          name, cfg) {}
+  void onSendRequest(RequestType& request) override {
+    getInput<std::string>("group_name", request.group_name);
 
-        static auto providedPorts() -> BT::PortsList {
-            return {
-                    InputPort<Header>("header"), InputPort<std::string>("group_name"), InputPort<int>("goal_type"),
-                    InputPort<Pose>("left_goal"),
-                    InputPort<Pose>("right_goal"), InputPort<double>("run_time"), InputPort<double>("tolerance"),
-                    InputPort<std::string>("constraint"), InputPort<JointState>("torso_goal_state"),
-                    InputPort<double>("torso_speed_ratio"),
-            };
-        }
+    int goal_type;
+    getInput<int>("goal_type", goal_type);
+    request.goal_type = goal_type;
 
-        void onSendRequest(RequestType &request) override {
-            getInput<std::string>("group_name", request.group_name);
+    Pose left_goal{};
+    getInput<Pose>("left_goal", left_goal);
+    request.left_goal = left_goal.toROS();
 
-            int goal_type;
-            getInput<int>("goal_type", goal_type);
-            request.goal_type = goal_type;
+    Pose right_goal{};
+    getInput<Pose>("right_goal", right_goal);
+    request.right_goal = right_goal.toROS();
 
-            Pose left_goal{};
-            getInput<Pose>("left_goal", left_goal);
-            request.left_goal = left_goal.toROS();
+    getInput<double>("run_time", request.run_time);
 
-            Pose right_goal{};
-            getInput<Pose>("right_goal", right_goal);
-            request.right_goal = right_goal.toROS();
+    getInput<double>("tolerance", request.tolerance);
+    getInput<std::string>("constraint", request.constraint);
+  }
+};
 
-            getInput<double>("run_time", request.run_time);
+class ExecuteDualArmPoseTorsoJointPosition : public RosServiceNode<roport::ExecuteDualArmPoseTorsoJointPosition> {
+ public:
+  ExecuteDualArmPoseTorsoJointPosition(const ros::NodeHandle& node_handle,
+                                       const std::string& name,
+                                       const BT::NodeConfiguration& cfg)
+      : RosServiceNode<roport::ExecuteDualArmPoseTorsoJointPosition>(node_handle, name, cfg) {}
 
-            getInput<double>("tolerance", request.tolerance);
-            getInput<std::string>("constraint", request.constraint);
-
-            double torso_speed_ratio = 0.1;
-            getInput<double>("torso_speed_ratio", torso_speed_ratio);
-            request.torso_speed_ratio = torso_speed_ratio;
-
-            JointState torso_goal_state{};
-            getInput<JointState>("torso_goal_state", torso_goal_state);
-            request.torso_goal_state = torso_goal_state.toROS();
-        }
-
+  static auto providedPorts() -> BT::PortsList {
+    return {
+        InputPort<Header>("header"),
+        InputPort<std::string>("group_name"),
+        InputPort<int>("goal_type"),
+        InputPort<Pose>("left_goal"),
+        InputPort<Pose>("right_goal"),
+        InputPort<double>("run_time"),
+        InputPort<double>("tolerance"),
+        InputPort<std::string>("constraint"),
+        InputPort<JointState>("torso_goal_state"),
+        InputPort<double>("torso_speed_ratio"),
     };
+  }
+
+  void onSendRequest(RequestType& request) override {
+    getInput<std::string>("group_name", request.group_name);
+
+    int goal_type;
+    getInput<int>("goal_type", goal_type);
+    request.goal_type = goal_type;
+
+    Pose left_goal{};
+    getInput<Pose>("left_goal", left_goal);
+    request.left_goal = left_goal.toROS();
+
+    Pose right_goal{};
+    getInput<Pose>("right_goal", right_goal);
+    request.right_goal = right_goal.toROS();
+
+    getInput<double>("run_time", request.run_time);
+
+    getInput<double>("tolerance", request.tolerance);
+    getInput<std::string>("constraint", request.constraint);
+
+    double torso_speed_ratio = 0.1;
+    getInput<double>("torso_speed_ratio", torso_speed_ratio);
+    request.torso_speed_ratio = torso_speed_ratio;
+
+    JointState torso_goal_state{};
+    getInput<JointState>("torso_goal_state", torso_goal_state);
+    request.torso_goal_state = torso_goal_state.toROS();
+  }
+};
 
 class ExecuteFrankaGripperGrasp : public RosServiceNode<roport::ExecuteFrankaGripperGrasp> {
  public:
@@ -844,8 +846,9 @@ auto main(int argc, char** argv) -> int {
   BT::registerRosService<bt::ExecuteAttachCollisionBox>(factory, "ExecuteAttachCollisionBox", node_handle);
   BT::registerRosService<bt::ExecuteBinaryAction>(factory, "ExecuteBinaryAction", node_handle);
   BT::registerRosService<bt::ExecuteDetachCollision>(factory, "ExecuteDetachCollision", node_handle);
-  BT::registerRosService<bt::ExecuteDualArmPose>(factory,"ExecuteDualArmPose",node_handle);
-  BT::registerRosService<bt::ExecuteDualArmPoseTorsoJointPosition>(factory,"ExecuteDualArmPoseTorsoJointPosition",node_handle);
+  BT::registerRosService<bt::ExecuteDualArmPose>(factory, "ExecuteDualArmPose", node_handle);
+  BT::registerRosService<bt::ExecuteDualArmPoseTorsoJointPosition>(factory, "ExecuteDualArmPoseTorsoJointPosition",
+                                                                   node_handle);
   BT::registerRosService<bt::ExecuteFrankaGripperGrasp>(factory, "ExecuteFrankaGripperGrasp", node_handle);
   BT::registerRosService<bt::ExecuteGroupAngularJointStates>(factory, "ExecuteGroupAngularJointStates", node_handle);
   BT::registerRosService<bt::ExecuteGroupLinearJointStates>(factory, "ExecuteGroupLinearJointStates", node_handle);

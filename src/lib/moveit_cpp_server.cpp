@@ -55,8 +55,8 @@ ControlServer::ControlServer(const ros::NodeHandle& node_handle, const ros::Node
       nh_.advertiseService("execute_mirrored_pose", &ControlServer::executeMirroredPoseSrvCb, this);
 }
 
-auto ControlServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req, roport::ExecuteAllPoses::Response& resp)
-    -> bool {
+auto ControlServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
+                                         roport::ExecuteAllPoses::Response& resp) -> bool {
   ROS_ASSERT(req.group_names.size() == req.goals.poses.size());
   std::map<int, trajectory_msgs::JointTrajectory> trajectories;
 
@@ -343,8 +343,10 @@ void ControlServer::buildControllerGoal(int group_id,
   goal.trajectory = trajectory;
 }
 
-auto ControlServer::buildTolerance(int group_id, double position, double velocity, double acceleration)
-    -> std::vector<control_msgs::JointTolerance> {
+auto ControlServer::buildTolerance(int group_id,
+                                   double position,
+                                   double velocity,
+                                   double acceleration) -> std::vector<control_msgs::JointTolerance> {
   control_msgs::JointTolerance joint_tolerance;
   joint_tolerance.position = position;
   joint_tolerance.velocity = velocity;
