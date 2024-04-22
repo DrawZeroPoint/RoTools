@@ -219,7 +219,7 @@ install_python() {
   print_divider "Installing Python packages" started
   sudo apt-get install patchelf
 
-  pip install -U mujoco
+  pip install -U mujoco imageio
 
   grep -q "RoTools/src" $HOME/.bashrc
   if [ $? -ne 0 ]; then
