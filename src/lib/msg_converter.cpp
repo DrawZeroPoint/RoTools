@@ -57,7 +57,7 @@ auto MsgConverter::init() -> bool {
     for (int i = 0; i < target_joint_to_inspect.size(); i++) {
       target_joint_to_inspect_.emplace_back(target_joint_to_inspect[i]);
       ros::Publisher publisher =
-          nh_.advertise<std_msgs::Float32>("/" + std::string(target_joint_to_inspect[i]) + "/position", 1);
+          nh_.advertise<std_msgs::Float32>("/" + std::string(target_joint_to_inspect[i]) + "/cmd/position", 1);
       inspected_joint_value_publishers_.push_back(publisher);
     }
   }
@@ -417,9 +417,12 @@ void MsgConverter::publishJointState(const sensor_msgs::JointState& src_msg,
       }
       auto target_name_in = findInVector<std::string>(target_joint_to_inspect_, target_names[i]);
       if (target_name_in.first) {
+        ROS_WARN_STREAM(target_names[i].c_str() << " is in the joints to inspect");
         std_msgs::Float32 tgt_position;
         tgt_position.data = src_msg.position[result.second];
         inspected_joint_value_publishers_[target_name_in.second].publish(tgt_position);
+      } else {
+        ROS_WARN_STREAM(target_names[i].c_str() << " does not match");
       }
     } else {
       ROS_ERROR_STREAM(prefix << "Source joint name " << source_names[i]
