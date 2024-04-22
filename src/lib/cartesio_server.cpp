@@ -207,8 +207,8 @@ void CartesIOServer::updateStamp(const double& stamp, cartesian_interface::Reach
   }
 }
 
-auto CartesIOServer::executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goals, double duration)
-    -> bool {
+auto CartesIOServer::executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goals,
+                                  double duration) -> bool {
   for (const auto& goal : goals) {
     control_clients_[goal.first]->sendGoal(goal.second.goal);
   }

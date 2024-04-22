@@ -57,11 +57,11 @@ class MuJoCoInterface(Thread):
         """Initialize the MuJoCoInterface.
 
         Args:
-            model_path: str Path to the XML file containing the whole model of the robot.
-            kinematics_path: str [Optional] Path to the XML file containing the kinematic tree of the robot.
-            actuator_path: str [Optional] Path to the XML file containing the actuator and sensor of the robot.
-            enable_viewer: bool If true, the MuJoCo Viewer will be displayed.
-            verbose: bool If true, detailed information will be shown.
+            model_path (str): Path to the XML file containing the whole model of the robot.
+            kinematics_path (str): [Optional] Path to the XML file containing the kinematic tree of the robot.
+            actuator_path (str): [Optional] Path to the XML file containing the actuator and sensor of the robot.
+            enable_viewer (bool): If true, the MuJoCo Viewer will be displayed.
+            verbose (bool): If true, detailed information will be shown.
             **kwargs: DO NOT REMOVE!
         """
         super(MuJoCoInterface, self).__init__()
@@ -567,9 +567,9 @@ class MuJoCoInterface(Thread):
         """Get the relative pose of a site with regard to the reference frame.
 
         Args:
-            site_name: str Name of the site.
-            ref_name: str Name of the reference body. If it is empty or None,
-                      the base body of the robot will be used.
+            site_name (str): Name of the site.
+            ref_name (str): Name of the reference body. If it is empty or None,
+                            the base body of the robot will be used.
 
         Returns:
             Pose/None

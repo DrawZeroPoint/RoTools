@@ -95,8 +95,8 @@ class CartesIOServer {
 
   static void updateStamp(const double& stamp, cartesian_interface::ReachPoseActionGoal& action_goal);
 
-  auto executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goals, double duration = 120)
-      -> bool;
+  auto executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goals,
+                    double duration = 120) -> bool;
 
   bool getTransform(const int& index, geometry_msgs::TransformStamped& transform);
 

@@ -135,8 +135,9 @@ class PathPlanningInterface {
    *                     Always be true for initial config, false for goal config.
    * @return The number of joints set.
    */
-  auto setJointConfig(const sensor_msgs::JointState& msg, hpp_core::Configuration_t& config, const bool& update_names)
-      -> size_t;
+  auto setJointConfig(const sensor_msgs::JointState& msg,
+                      hpp_core::Configuration_t& config,
+                      const bool& update_names) -> size_t;
 
   auto setLocationConfig(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config) -> bool;
 
@@ -153,8 +154,8 @@ class PathPlanningInterface {
 
   void resetInitialConfig();
 
-  auto executePathPlanningSrvCb(roport::ExecutePathPlanning::Request& req, roport::ExecutePathPlanning::Response& resp)
-      -> bool;
+  auto executePathPlanningSrvCb(roport::ExecutePathPlanning::Request& req,
+                                roport::ExecutePathPlanning::Response& resp) -> bool;
 
   /**
    * Extract joint command from the planning results: the configuration and velocity at time t.
