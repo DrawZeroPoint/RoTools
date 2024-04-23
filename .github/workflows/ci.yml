@@ -10,15 +10,6 @@ on:
       - master
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.x
-      - run: pip install mkdocs-material mkdocstrings mkdocstrings-python
-      - run: mkdocs gh-deploy --force
 
   Shell:
     runs-on: ubuntu-20.04
@@ -33,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ros_distro: [ melodic, noetic ]
+        ros_distro: [ noetic ]
     steps:
       - name: Prepare
         # Keep the compilation outputs persistent outside the docker container to use for the other steps

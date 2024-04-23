@@ -432,7 +432,6 @@ class NatNetClient:
 
     # Unpack a skeleton object from a data packet
     def __unpack_skeleton(self, data, major, minor):
-
         offset = 0
         new_id = int.from_bytes(data[offset : offset + 4], byteorder="little")
         offset += 4
@@ -679,7 +678,6 @@ class NatNetClient:
             offset += 4
             trace_mf("Device Count:", device_count)
             for i in range(0, device_count):
-
                 # ID
                 device_id = int.from_bytes(
                     data[offset : offset + 4], byteorder="little"

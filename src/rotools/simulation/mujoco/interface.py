@@ -57,11 +57,11 @@ class MuJoCoInterface(Thread):
         """Initialize the MuJoCoInterface.
 
         Args:
-            model_path: str Path to the XML file containing the whole model of the robot.
-            kinematics_path: str [Optional] Path to the XML file containing the kinematic tree of the robot.
-            actuator_path: str [Optional] Path to the XML file containing the actuator and sensor of the robot.
-            enable_viewer: bool If true, the MuJoCo Viewer will be displayed.
-            verbose: bool If true, detailed information will be shown.
+            model_path (str): Path to the XML file containing the whole model of the robot.
+            kinematics_path (str): [Optional] Path to the XML file containing the kinematic tree of the robot.
+            actuator_path (str): [Optional] Path to the XML file containing the actuator and sensor of the robot.
+            enable_viewer (bool): If true, the MuJoCo Viewer will be displayed.
+            verbose (bool): If true, detailed information will be shown.
             **kwargs: DO NOT REMOVE!
         """
         super(MuJoCoInterface, self).__init__()
@@ -92,6 +92,9 @@ class MuJoCoInterface(Thread):
         self._actuator_ctrl_ranges = {}
         self._actuator_force_ranges = {}
         self.control_types = []
+
+        # This variable is for replacing certain joints' command value with predefined constant
+        self._overwrite_commands = {}
 
         if os.path.exists(kinematics_path):
             kinematic_tree = ElementTree.parse(kinematics_path)
@@ -190,6 +193,17 @@ class MuJoCoInterface(Thread):
     @property
     def n_actuator(self):
         return self._actuator_num
+
+    def set_overwrite_commands(self, command_dict):
+        """Set the overwrite command dict.
+
+        Args:
+            command_dict (dict): A dict containing (joint_name, joint_command value) items.
+
+        Returns:
+            None
+        """
+        self._overwrite_commands = command_dict
 
     def run(self):
         # The model, data, and viewer must be initialized here.
@@ -553,9 +567,9 @@ class MuJoCoInterface(Thread):
         """Get the relative pose of a site with regard to the reference frame.
 
         Args:
-            site_name: str Name of the site.
-            ref_name: str Name of the reference body. If it is empty or None,
-                      the base body of the robot will be used.
+            site_name (str): Name of the site.
+            ref_name (str): Name of the reference body. If it is empty or None,
+                            the base body of the robot will be used.
 
         Returns:
             Pose/None
@@ -625,7 +639,8 @@ class MuJoCoInterface(Thread):
                     actuator.ctrl = cmd.effort[i]
                 else:
                     raise TypeError(
-                        "Unsupported control type {}. Valid types are 0, 1, 2".format(
+                        "Unsupported control type {}. Valid types are 0, 1, 2 "
+                        "for position, velocity, and effort control, respectively".format(
                             self.control_types[i]
                         )
                     )
@@ -634,21 +649,38 @@ class MuJoCoInterface(Thread):
             try:
                 i = self._actuated_joint_names.index(name)
                 actuator = self._data.actuator(self.actuator_names[i])
-                if self.control_types[i] == 0:
-                    actuator.ctrl = cmd.position[k]
-                elif self.control_types[i] == 1:
-                    actuator.ctrl = cmd.velocity[k]
-                elif self.control_types[i] == 2:
-                    actuator.ctrl = cmd.effort[k]
+                if name in self._overwrite_commands:
+                    cmd_value = self._overwrite_commands[name]
                 else:
-                    raise TypeError(
-                        "Unsupported control type {}. Valid types are 0, 1, 2".format(
-                            self.control_types[i]
+                    if self.control_types[i] == 0:
+                        cmd_value = cmd.position[k]
+                    elif self.control_types[i] == 1:
+                        cmd_value = cmd.velocity[k]
+                    elif self.control_types[i] == 2:
+                        cmd_value = cmd.effort[k]
+                    else:
+                        raise TypeError(
+                            "Unsupported control type {}. Valid types are 0, 1, 2 "
+                            "for position, velocity, and effort control, respectively".format(
+                                self.control_types[i]
+                            )
                         )
-                    )
+                actuator.ctrl = cmd_value
             except ValueError:
                 # We allow the name in cmd not present in _actuated_joint_names
                 pass
+
+        for name in self._overwrite_commands:
+            i = self._actuated_joint_names.index(name)
+            if 0 <= i < len(self.actuator_names):
+                actuator = self._data.actuator(self.actuator_names[i])
+                actuator.ctrl = self._overwrite_commands[name]
+            else:
+                rospy.logerr(
+                    "Actuator '{}' to have overwritten control does not exist".format(
+                        name
+                    )
+                )
 
     def set_base_command(self, vel, factor=1.4):
         """Set velocity commands to wheel of the base.

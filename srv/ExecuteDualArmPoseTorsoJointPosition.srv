@@ -1,0 +1,34 @@
+# Execute the pose goals for given planning groups (dual arm)
+
+# Requests
+# group_name: The group providing the reference frame
+# goal_type: BASE_ABS: pose wrt the global base frame (robot base)
+#            BASE_REL: pose wrt the base frame transferred to current eef base position
+#            EEF: pose wrt the eef frame
+# left_goal: Pose of the goal for left arm
+# right_goal: Pose of the goal for right arm
+# run_time: Expected time duration for executing the trajectory from robot current pose to goal pose
+# tolerance [opt]: Tolerance for considering the goal has been reached, default 0.01 m/rad
+# constraint: If 'r', 'p', or 'y' is given, the eef_frame should not rotate about itself along x-, y-, or z-axis.
+#             You can combine them like 'rp', 'ry', 'py', and 'rpy'. default ''
+# goal_state: Goal joint state
+# pos_tolerance [opt]: Position tolerance for considering the goal location has been reached, default 0.01 m
+# speed_ratio: a value within [0,1] to shape the maximum speed of robot moving to the goal_state
+
+std_msgs/Header header
+string group_name
+uint8 BASE_ABS=0
+uint8 BASE_REL=1
+uint8 EEF=2
+uint8 goal_type
+geometry_msgs/Pose left_goal
+geometry_msgs/Pose right_goal
+float64 run_time
+float64 tolerance
+string constraint
+sensor_msgs/JointState torso_goal_state
+float64 torso_speed_ratio
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status

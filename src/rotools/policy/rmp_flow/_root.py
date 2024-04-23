@@ -74,7 +74,6 @@ class RMPNode:
         M = np.zeros((max(self.x.shape), max(self.x.shape)), dtype="float64")
 
         for child in self.children:
-
             J_child = child.J(self.x)
             J_dot_child = child.J_dot(self.x, self.x_dot)
 

@@ -429,7 +429,7 @@ class TargetCalculator {
         } break;
         case ControlInterface::Velocity: {
           VelocityStep2 step2{
-              t_profile, p.v[0], p.a[0], p.vf, p.af, inp.max_acceleration[dof], inp_min_acceleration[dof],
+              t_profile,        p.v[0], p.a[0], p.vf, p.af, inp.max_acceleration[dof], inp_min_acceleration[dof],
               inp.max_jerk[dof]};
           found_time_synchronization = step2.get_profile(p);
         } break;

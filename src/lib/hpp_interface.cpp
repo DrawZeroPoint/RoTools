@@ -174,8 +174,9 @@ auto PathPlanningInterface::setJointConfig(const sensor_msgs::JointState& msg,
   return valid;
 }
 
-auto PathPlanningInterface::setLocationConfig(const geometry_msgs::Pose& msg, const int& type, Configuration_t& config)
-    -> bool {
+auto PathPlanningInterface::setLocationConfig(const geometry_msgs::Pose& msg,
+                                              const int& type,
+                                              Configuration_t& config) -> bool {
   if (!isPoseLegal(msg)) {
     return false;
   }
@@ -276,7 +277,7 @@ auto PathPlanningInterface::executePathPlanningSrvCb(roport::ExecutePathPlanning
     resp.result_status = resp.FAILED;
     return false;
   }
-  path_planning_solver_->addGoalConfig(std::make_shared<Configuration_t>(q_goal_));
+  path_planning_solver_->addGoalConfig(q_goal_);
 
   do {
     if (detectCollision(q_current_)) {
@@ -286,7 +287,7 @@ auto PathPlanningInterface::executePathPlanningSrvCb(roport::ExecutePathPlanning
     }
     ROS_INFO_STREAM("Curr: " << q_current_[0] << " " << q_current_[1] << " " << q_current_[2] << " " << q_current_[3]);
     ROS_INFO_STREAM("Goal: " << q_goal_[0] << " " << q_goal_[1] << " " << q_goal_[2] << " " << q_goal_[3]);
-    path_planning_solver_->initConfig(std::make_shared<Configuration_t>(q_current_));
+    path_planning_solver_->initConfig(q_current_);
     path_planning_solver_->solve();
 
     // Get the last path from paths, which is an optimized one

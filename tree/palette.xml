@@ -51,13 +51,43 @@
       <input_port name="service_name">Name of the service. Change this accordingly.</input_port>
       <input_port name="value" default="0">[Optional] The value used when enabling the target</input_port>
     </Action>
+    <Action ID="ExecuteDualArmPose">
+      <input_port name="left_goal" default="0 0 0 0 0 0 1">Pose of the goal for left arm</input_port>
+      <input_port name="right_goal" default="0 0 0 0 0 0 1">Pose of the goal for right arm</input_port>
+      <input_port name="run_time" default="5.0">Expected time duration for executing the trajectory from robot current
+        pose to goal pose, default 5.0s
+      </input_port>
+      <input_port name="goal_type" default="0">BASE_ABS(0): Absolute pose wrt the base frame (robot base); BASE_REL(1):
+        Relative pose wrt the base frame transferred to current eef base position; EEF(2): pose wrt the eef frame
+      </input_port>
+      <input_port name="group_name" default="curi_dual_arm">The group providing the reference frame</input_port>
+      <input_port name="service_name" default="execute_dual_arm_pose">DO NOT CHANGE</input_port>
+      <input_port name="tolerance" default="0.01">Tolerance for considering the goal has been reached, default 0.01
+        m/rad
+      </input_port>
+    </Action>
+    <Action ID="ExecuteDualArmPoseTorsoJointPosition">
+      <input_port name="left_goal" default="0 0 0 0 0 0 1">Pose of the goal for left arm</input_port>
+      <input_port name="right_goal" default="0 0 0 0 0 0 1">Pose of the goal for right arm</input_port>
+      <input_port name="run_time" default="5.0">Expected time duration for executing the trajectory from robot current
+        pose to goal pose, default 5.0s
+      </input_port>
+      <input_port name="goal_type" default="0">BASE_ABS(0): Absolute pose wrt the base frame (robot base); BASE_REL(1):
+        Relative pose wrt the base frame transferred to current eef base position; EEF(2): pose wrt the eef frame
+      </input_port>
+      <input_port name="group_name" default="curi_dual_arm">The group providing the reference frame</input_port>
+      <input_port name="service_name" default="/execute_dual_arm_pose_torso_joint_position">DO NOT CHANGE</input_port>
+      <input_port name="tolerance" default="0.01">Tolerance for considering the goal has been reached, default 0.01
+        m/rad
+      </input_port>
+      <input_port name="torso_goal_state"/>
+      <input_port name="torso_speed_ratio" default="0.1"/>
+    </Action>
     <Action ID="ExecuteFrankaGripperGrasp">
-      <input_port name="width" default="0.08">Grasp width of Gripper [m]</input_port>
-      <input_port name="epsilon_inner" default="0.005">If grasp an object without exact width, set as 0.08</input_port>
-      <input_port name="epsilon_outer" default="0.005">If grasp an object without exact width, set as 0.08</input_port>
+      <input_port name="close_width_percentage" default="0.0">In range [0, 1], 0 for fully open</input_port>
       <input_port name="service_name" default="execute_franka_gripper_grasp"/>
-      <input_port name="speed" default="0.1">Grasp speed</input_port>
-      <input_port name="force" default="3">Grasp force within [0,70]</input_port>
+      <input_port name="speed_percentage" default="1.0">In range [0, 1] regarding the maximum speed</input_port>
+      <input_port name="force_percentage" default="1.0">In range [0, 1] regarding the maximum force</input_port>
     </Action>
     <Action ID="ExecuteGroupAngularJointStates">
       <input_port name="goal" default="0 0 0 0 0 0 0">Joint positions in degrees. Separate with ' '</input_port>

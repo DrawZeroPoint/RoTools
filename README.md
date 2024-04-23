@@ -62,8 +62,8 @@ sensing, transformation calculation, simulation, and so forth.
 
 Recommended: Ubuntu 20.04 with ROS Noetic, Python 3.8.
 
-This software is continuously built using `catkin_make` and `catkin tools` on Ubuntu 18.04 and 20.04. However, the
-support of 18.04 is no longer maintained and will be dropped in the future.
+This software is continuously built using `catkin_make` and `catkin tools` on 20.04. 
+The support of 18.04 is no longer maintained.
 
 ## Supported Robots
 
@@ -73,190 +73,7 @@ agnostic to robot type and can be used to various types including robot arms and
 - Walker from UBTech
 - [CURI/Curiosity](https://github.com/DrawZeroPoint/curiosity) from CLOVER Lab CUHK
 
-## ROS
-
-The package has been developed targeting the following 2 ROS versions.
-
-### Noetic
-
-```shell script
-ROS_DISTRO=noetic
-
-sudo apt-get install ros-$ROS_DISTRO-behaviortree-cpp-v3 ros-$ROS_DISTRO-ros-control ros-$ROS_DISTRO-ros-controllers \
-ros-$ROS_DISTRO-webots-ros ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs ros-$ROS_DISTRO-trac-ik-lib \
-ros-$ROS_DISTRO-eigen-conversions
-```
-
-### Melodic
-
-```shell script
-ROS_DISTRO=melodic
-
-sudo apt-get install ros-$ROS_DISTRO-behaviortree-cpp-v3 ros-$ROS_DISTRO-ros-control ros-$ROS_DISTRO-ros-controllers \
-ros-$ROS_DISTRO-webots-ros ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs ros-$ROS_DISTRO-trac-ik-kinematics-plugin \
-ros-$ROS_DISTRO-eigen-conversions
-```
-
-## Python
-
-Run the following command to add `rotools` to your PYTHONPATH:
-
-### If you use Bash
-
-```shell
-echo "" >> ~/.bashrc
-echo "# RoTools" >> ~/.bashrc
-echo "export PYTHONPATH=$HOME/RoTools/src:\$PYTHONPATH" >> ~/.bashrc
-```
-
-### If you use Zsh
-
-```shell
-echo "" >> ~/.zshrc
-echo "# RoTools" >> ~/.zshrc
-echo "export PYTHONPATH=$HOME/RoTools/src:\$PYTHONPATH" >> ~/.zshrc
-```
-
-### Python Utilities
-
-Optionally, you can install the following Python packages to activate helper utilities.
-
-```shell
-sudo pip install playsound pynput requests
-```
-
-## Humanoid Path Planner
-
-If the HPP interface is needed, you can install HPP and Pinocchio by:
-
-1. Install [HPP](https://humanoid-path-planner.github.io/hpp-doc/download.html). It is recommended to install with
-   binary distributed with `robotpkg`. Here we provide a quick cheatsheet based on the official version:
-
-   <details>
-   <summary>Click to expand</summary>
-
-   ```shell
-   sudo tee /etc/apt/sources.list.d/robotpkg.list <<EOF
-   deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -sc) robotpkg
-   EOF
-   
-   curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key | sudo apt-key add -
-   
-   sudo apt update
-   
-   apt-cache search robotpkg-
-   
-   pyver=38  # Default python version in Ubuntu 20.04, change to 36 or 27 if needed
-   
-   sudo apt-get install robotpkg-py${pyver}-hpp-manipulation-corba robotpkg-py${pyver}-qt5-hpp-gepetto-viewer \
-   robotpkg-py${pyver}-hpp-tutorial robotpkg-py${pyver}-qt5-hpp-gui robotpkg-py${pyver}-qt5-hpp-plot \
-   robotpkg-py${pyver}-hpp-environments robotpkg-py${pyver}-eigenpy
-   ```
-
-   After the installation, add the following to your bashrc (change 3.8 if your version is different):
-
-   ```shell
-   echo "" >> ~/.bashrc
-   echo "# HPP" >> ~/.bashrc
-   echo "export PATH=/opt/openrobots/bin:\$PATH" >> ~/.bashrc
-   echo "export LD_LIBRARY_PATH=/opt/openrobots/lib:\$LD_LIBRARY_PATH" >> ~/.bashrc
-   echo "export PYTHONPATH=/opt/openrobots/lib/python3.8/site-packages:\$PYTHONPATH" >> ~/.bashrc
-   echo "export ROS_PACKAGE_PATH=/opt/openrobots/share:\$ROS_PACKAGE_PATH" >> ~/.bashrc
-   echo "export CMAKE_PREFIX_PATH=/opt/openrobots:\$CMAKE_PREFIX_PATH" >> ~/.bashrc
-   echo "export PKG_CONFIG_PATH=/opt/openrobots:\$PKG_CONFIG_PATH" >> ~/.bashrc
-   ```
-
-   </details>
-
-2. Install Pinocchio [from source](https://stack-of-tasks.github.io/pinocchio/download.html). Note that you need to
-   change the default option `BUILD_WITH_COLLISION_SUPPORT` from `OFF` to `ON`. We also provide the command history for
-   reference:
-
-   <details>
-   <summary>Click to expand</summary>
-
-   ```shell
-   cd ~
-   git clone --recursive https://github.com/stack-of-tasks/pinocchio
-   cd pinocchio/ && git checkout master
-   mkdir build && cd build
-   cmake -DBUILD_WITH_COLLISION_SUPPORT=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
-   make -j4
-   sudo make install
-   ```
-
-   After building, add the following to your bashrc (change 3.8 if your version is different):
-
-   ```shell
-   echo "" >> ~/.bashrc
-   echo "# pinocchio" >> ~/.bashrc
-   echo "export PATH=/usr/local/bin:\$PATH" >> ~/.bashrc
-   echo "export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:\$PKG_CONFIG_PATH" >>~/.bashrc
-   echo "export LD_LIBRARY_PATH=/usr/local/lib:\$LD_LIBRARY_PATH" >>~/.bashrc
-   echo "export PYTHONPATH=/usr/local/lib/python3.8/site-packages:\$PYTHONPATH" >>~/.bashrc
-   echo "export CMAKE_PREFIX_PATH=/usr/local:\$CMAKE_PREFIX_PATH" >>~/.bashrc
-   ```
-
-   </details>
-
-The HPP interface will not be built if `hpp-core`, `hpp-fcl`, and `hpp-manipulation` libraries were not found. You
-should have these libs if HPP is properly installed.
-
-## CartesI/O
-
-If tele-operation with CartesI/O is needed, you can install it via:
-
-<details>
-<summary>Click to expand</summary>
-
-Install the dependence (for MAT file I/O):
-
-```shell
-sudo apt-get install libmatio-dev
-```
-
-Go to https://github.com/ADVRHumanoids/XBotControl/releases, download the compressed file from the latest release
-according to your system. For 18.04, you should use `bionic`, while for 20.04, use `focal`.
-
-Extract the tar file and inside the folder, run `./install.sh`
-
-Add `source /opt/xbot/setup.sh` into your bashrc, this line should come after sourcing ROS.
-
-</details>
-
-## MuJoCo
-
-If simulation in MuJoCo is needed, you can install necessary software via:
-
-<details>
-<summary>Click to expand</summary>
-
-```diff
-+ Currently, we have shifted the Python backend for MuJoCo from `mujoco-py` 
-+ to the official Python binding `mujoco` >= 2.1.5. 
-```
-
-The official version could be easily install by (only support Python 3):
-
-```shell
-pip install mujoco
-```
-
-This version has the simulator along with it, so you may not need install that independently.
-
-If `mujoco-py` is still preferred, you can follow the instructions at https://github.com/openai/mujoco-py
-
-Some dependencies you may need:
-
-```shell
-sudo apt-get install patchelf
-
-pip install numpy --upgrade
-```
-
-</details>
-
-## Groot
+## Groot (optional)
 
 Groot is a Graphical Editor, written in C++ and Qt, to create BehaviorTrees. The [tree](tree) files should be better
 edited using this software.
@@ -285,25 +102,27 @@ Run the script in `Groot/build` to start it:
 
 # :zap: Install
 
-Clone the repo from GitHub to your $HOME folder:
+The installation of 'RoTools' with all its dependencies is extremely simple in only 2 steps:
 
-```shell
-cd ~ && git clone https://github.com/DrawZeroPoint/RoTools.git
-```
+1. Clone the repo from GitHub to your `$HOME` folder:
 
-Make a symlink under the ROS workspace (assume `~/catkin_ws` here). Note that the symlink trick enables flexible
-multiple ROS workspace support, such that you do not need to manage more than one RoTools package.
+   ```shell
+   cd ~ && git clone https://github.com/DrawZeroPoint/RoTools.git
+   ```
+   
+2. Install prerequisites with [setup_tools.sh](misc/setup_tools.sh). **Rerun the script is safe**.
 
-```shell
-cd ~/RoTools
-./make_symlink.sh
-```
+   ```shell
+   cd ~/RoTools/misc && ./setup_tools.sh
+   ```
+   
+   > By default, the script will install ROS, CartesI/O, pinocchio, hpp, ocs2, MuJoCo, and two tools: sublime text and 
+   > JetBrains toolbox to your computer. This is extremely helpful for a brand new machine. You can also install
+   > install some of them based on what you need, please see the script or use setup_tools.sh --help for details.
 
-Then, you can build your ROS packages:
-
-```shell
-cd ~/catkin_ws && catkin_make  # We also support catkin build
-```
+   > Note that in the above process, a symlink for RoTools will be created under the ROS workspace 
+   > (assume '~/catkin_ws' here). The symlink trick allows flexible support for multiple ROS workspaces, 
+   > so you do not need to manage more than one RoTools package.
 
 # :running: Use with MoveIt!
 

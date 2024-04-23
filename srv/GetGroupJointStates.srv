@@ -5,4 +5,10 @@ uint8 SUCCEEDED=0
 uint8 FAILED=1
 uint8 result_status
 string[] joint_names
+
+# joint_states is deprecated, use joint_positions instead
 float32[] joint_states
+
+float32[] joint_positions  # unit: rad
+float32[] joint_velocities  # unit: rad/s
+float32[] joint_efforts  # unit: Nm, the measured link-side joint torque signals

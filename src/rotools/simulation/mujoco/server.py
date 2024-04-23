@@ -107,6 +107,10 @@ class MuJoCoServer(object):
             kwargs["base_length"] if "base_length" in kwargs.keys() else None
         )
 
+        # Set joint overwrite command if available
+        if kwargs["overwrite_commands"]:
+            self.interface.set_overwrite_commands(kwargs["overwrite_commands"])
+
     def publish_handle(self, _):
         joint_state_msg = self.interface.get_joint_states()
         if joint_state_msg:
@@ -138,7 +142,8 @@ class MuJoCoServer(object):
             )
             if len(cmd.position) != self.interface.n_actuator:
                 rospy.logerr(
-                    "Joint command size {} and actuator number {} mismatch, omitted.".format(
+                    "Given no joint names defined, and the joint command size {} does not match actuator number {}, "
+                    "we cannot take in the joint command.".format(
                         len(cmd.position), self.interface.n_actuator
                     )
                 )

@@ -76,7 +76,6 @@ def test_hash2(test_name, test_hash_str, test_object, run_test=True):
         ret_value = K_FAIL
         out_str2 = "%sERROR: test_object was None" % indent_string
     else:
-
         if str(type(test_object)) != "NoneType":
             obj_out_str = test_object.get_as_string()
             obj_out_hash_str = hashlib.sha1(obj_out_str.encode()).hexdigest()

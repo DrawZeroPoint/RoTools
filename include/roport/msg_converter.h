@@ -30,6 +30,7 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
+#include <std_msgs/Float64.h>
 
 #include "roport/online_trajectory_optimizer.h"
 #include "ruckig/ruckig.hpp"
@@ -69,8 +70,15 @@ class MsgConverter {
   std::vector<ros::Subscriber> subscribers_;
   std::vector<rotools::RuckigOptimizer*> optimizers_;
 
+  std::vector<std::string> target_joint_to_inspect_;
+  std::vector<ros::Publisher> inspected_joint_value_publishers_;
+
   std::vector<bool> enable_smooth_start_flags_;
   std::vector<bool> finished_smooth_start_flags_;
+
+  long smooth_start_timeout_;
+  double smooth_start_error_;
+
   std::vector<ros::Subscriber> start_ref_subscribers_;
 
   std::map<MsgTypes, std::string> msg_type_map_ = {
@@ -79,7 +87,7 @@ class MsgConverter {
       {kFrankaCoreMsgsJointCommand, "franka_core_msgs/JointCommand"},
   };
 
-  std::vector<std::chrono::steady_clock::time_point> starts_;
+  std::vector<std::chrono::steady_clock::time_point> start_time_;
 
   auto getParam(const std::string& param_name, XmlRpc::XmlRpcValue& param_value) -> bool {
     if (!pnh_.getParam(param_name, param_value)) {
@@ -220,8 +228,8 @@ class MsgConverter {
    * @tparam T Type of the element in the vector.
    * @param vec_of_elements Vector to find the element from.
    * @param element The element to find.
-   * @return bool: Represents if element is present in vector or not.
-   *         int: Represents the index of element in vector if its found else -1.
+   * @return A pair of <bool, int>. The bool represents if element is present in vector or not.
+   *         The int represents the index of element in vector if its found else -1.
    */
   template <typename T>
   auto findInVector(const std::vector<T>& vec_of_elements, const T& element) -> std::pair<bool, int> {

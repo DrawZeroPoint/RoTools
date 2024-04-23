@@ -15,7 +15,6 @@ class CollisionAvoidance(RMPLeaf):
     def __init__(
         self, name, parent, parent_param, c, R=1, epsilon=0.2, alpha=1e-5, eta=0
     ):
-
         self.R = R
         self.alpha = alpha
         self.eta = eta
@@ -88,7 +87,6 @@ class CollisionAvoidanceDecentralized(RMPLeaf):
         alpha=1e-5,
         eta=0,
     ):
-
         assert parent_param is not None
 
         self.R = R
@@ -179,7 +177,6 @@ class CollisionAvoidanceCentralized(RMPLeaf):
     """
 
     def __init__(self, name, parent, R=1, epsilon=1e-8, alpha=1e-5, eta=0):
-
         self.R = R
 
         def psi(y):

@@ -10,7 +10,6 @@ import rotools.sensing.core.interface as interface
 
 class SensingServer(object):
     def __init__(self, kwargs):
-
         super(SensingServer, self).__init__()
 
         self.interface = interface.SensingInterface(**kwargs)
