@@ -30,7 +30,7 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
-#include <std_msgs/Float32.h>
+#include <std_msgs/Float64.h>
 
 #include "roport/online_trajectory_optimizer.h"
 #include "ruckig/ruckig.hpp"

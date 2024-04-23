@@ -57,7 +57,7 @@ auto MsgConverter::init() -> bool {
     for (int i = 0; i < target_joint_to_inspect.size(); i++) {
       target_joint_to_inspect_.emplace_back(target_joint_to_inspect[i]);
       ros::Publisher publisher =
-          nh_.advertise<std_msgs::Float32>("/" + std::string(target_joint_to_inspect[i]) + "/cmd/position", 1);
+          nh_.advertise<std_msgs::Float64>("/" + std::string(target_joint_to_inspect[i]) + "/cmd/position", 1);
       inspected_joint_value_publishers_.push_back(publisher);
     }
   }
@@ -358,8 +358,9 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
   if (std::chrono::steady_clock::now() - start_time_[group_id] > std::chrono::seconds(smooth_start_timeout_)) {
     finished_smooth_start_flags_[group_id] = true;
     const std::string& name = source_names[violated_i];
-    ROS_WARN("Unable to move group %d to the start position in %li sec due to joint #%zu: %s. Residual %f. Aborted.",
-             group_id, smooth_start_timeout_, violated_i, name.c_str(), residual);
+    ROS_WARN(
+        "Unable to move group %d to the start position in %li secs due to %s. Residual: %.3f (Allowed: %.3f). Aborted",
+        group_id, smooth_start_timeout_, name.c_str(), residual, smooth_start_error_);
   }
 }
 
@@ -417,12 +418,10 @@ void MsgConverter::publishJointState(const sensor_msgs::JointState& src_msg,
       }
       auto target_name_in = findInVector<std::string>(target_joint_to_inspect_, target_names[i]);
       if (target_name_in.first) {
-        ROS_WARN_STREAM(target_names[i].c_str() << " is in the joints to inspect");
-        std_msgs::Float32 tgt_position;
-        tgt_position.data = src_msg.position[result.second];
-        inspected_joint_value_publishers_[target_name_in.second].publish(tgt_position);
-      } else {
-        ROS_WARN_STREAM(target_names[i].c_str() << " does not match");
+        std_msgs::Float64 position_value;
+        position_value.data = src_msg.position[result.second];
+        ROS_DEBUG("Inspecting: %s, position cmd value: %.4f", target_names[i].c_str(), position_value.data);
+        inspected_joint_value_publishers_[target_name_in.second].publish(position_value);
       }
     } else {
       ROS_ERROR_STREAM(prefix << "Source joint name " << source_names[i]
