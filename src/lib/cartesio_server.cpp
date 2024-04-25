@@ -49,11 +49,13 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
   }
 
   // Initialize controller action clients, one for each group
-  const double kTimeout = 3.;
+  XmlRpc::XmlRpcValue timeout;
+  getParam(nh_, pnh_, "timeout", timeout);
+
   for (auto& group_name : group_names_) {
     std::string action_name = "cartesian/" + group_name + "/reach";
     auto client = std::make_shared<reachPoseActionClient>(action_name);
-    if (!client->waitForServer(ros::Duration(kTimeout))) {
+    if (!client->waitForServer(ros::Duration(double(timeout)))) {
       throw std::runtime_error("RoPort: Action server " + action_name + " unavailable");
     }
     control_clients_.push_back(client);
