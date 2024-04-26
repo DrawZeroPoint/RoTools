@@ -44,6 +44,7 @@ error "Missing the <filesystem> header."
 #include <utility>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Transform.h>
 
 namespace roport {
 
@@ -102,8 +103,22 @@ inline void geometryPoseToEigenMatrix(const geometry_msgs::Pose& pose, Eigen::Ma
   mat.topRightCorner(3, 1) = t_eigen;
 }
 
-inline void geometryPoseToEigenMatrix(const geometry_msgs::PoseStamped& pose, Eigen::Matrix4d& mat) {
+inline void geometryPoseStampedToEigenMatrix(const geometry_msgs::PoseStamped& pose, Eigen::Matrix4d& mat) {
   geometryPoseToEigenMatrix(pose.pose, mat);
+}
+
+inline void geometryTransformToEigenMatrix(const geometry_msgs::Transform& t, Eigen::Matrix4d& mat) {
+  mat = Eigen::Matrix4d::Identity();
+
+  Eigen::Quaterniond orientation;
+  orientation.coeffs() << t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w;
+  Eigen::Quaterniond orientation_n = orientation.normalized();
+  Eigen::Matrix3d rotation_matrix = orientation_n.toRotationMatrix();
+  mat.topLeftCorner(3, 3) = rotation_matrix;
+
+  Eigen::Vector3d t_eigen;
+  t_eigen << t.translation.x, t.translation.y, t.translation.z;
+  mat.topRightCorner(3, 1) = t_eigen;
 }
 
 inline void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::Pose& pose) {
