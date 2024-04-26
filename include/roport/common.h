@@ -29,8 +29,8 @@
 #define ROPORT_COMMON_H
 
 #include <ros/ros.h>
-
 #include <Eigen/Eigen>
+#include <cmath>
 
 #if __has_include(<filesystem>)
 #include <filesystem>
@@ -316,6 +316,60 @@ inline auto allClose(std::vector<T> first, std::vector<T> second, size_t& violat
     }
   }
   return true;
+}
+
+///
+/// \brief Compute the minimal angle between q1 and q2.
+/// github.com/stack-of-tasks/pinocchio/blob/c2ad2c60eecc04555e265a8f80a9765d3b84f5f1/src/math/quaternion.hpp#L35
+///
+/// \param[in] q1 input quaternion.
+/// \param[in] q2 input quaternion.
+///
+/// \return angle between the two quaternions
+///
+inline double angleBetweenQuaternions(const Eigen::Quaterniond& q1, const Eigen::Quaterniond& q2) {
+  const double inner_prod = q1.dot(q2);
+  double theta = std::acos(inner_prod);
+  if (inner_prod < 0) {
+    theta = M_PI - theta;
+  }
+  return theta;
+}
+
+inline bool allClose(geometry_msgs::Pose first,
+                     geometry_msgs::Pose second,
+                     double& position_residual,
+                     double& orientation_residual,
+                     double position_tolerance = 0.01,
+                     double orientation_tolerance = 0.1) {
+  bool is_all_close = true;
+  position_residual = 0;
+  orientation_residual = 0;
+
+  if (fabs(first.position.x - second.position.x) > position_tolerance) {
+    is_all_close = false;
+  }
+  position_residual += fabs(first.position.x - second.position.x);
+
+  if (fabs(first.position.y - second.position.y) > position_tolerance) {
+    is_all_close = false;
+  }
+  position_residual += fabs(first.position.y - second.position.y);
+
+  if (fabs(first.position.z - second.position.z) > position_tolerance) {
+    is_all_close = false;
+  }
+  position_residual += fabs(first.position.z - second.position.z);
+
+  Eigen::Quaterniond q1, q2;
+  q1.coeffs() << first.orientation.x, first.orientation.y, first.orientation.z, first.orientation.w;
+  q2.coeffs() << second.orientation.x, second.orientation.y, second.orientation.z, second.orientation.w;
+  auto theta = angleBetweenQuaternions(q1, q2);
+  if (fabs(theta) > orientation_residual) {
+    is_all_close = false;
+  }
+  orientation_residual += fabs(theta);
+  return is_all_close;
 }
 
 template <typename T>
