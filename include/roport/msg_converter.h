@@ -158,14 +158,14 @@ class MsgConverter {
    * @param msg Source joint state msg.
    * @param source_topic Topic name of the source joint state msg.
    * @param reference_topic Topic name of the reference msg indicating the robot's instantaneous configuration.
-   * @param oto Online trajectory optimizer.
+   * @param optimizer Online trajectory optimizer.
    * @retval smoothed_msg Smoothed joint state msg.
    * @return True if smoothed msg is retrieved, false otherwise.
    */
   auto smoothJointState(const sensor_msgs::JointState& msg,
                         const std::string& source_topic,
                         const std::string& reference_topic,
-                        rotools::RuckigOptimizer* oto,
+                        rotools::RuckigOptimizer* optimizer,
                         sensor_msgs::JointState& smoothed_msg) -> bool;
 
   /**

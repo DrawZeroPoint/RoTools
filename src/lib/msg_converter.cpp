@@ -302,10 +302,10 @@ auto MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
 auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
                                     const std::string& source_topic,
                                     const std::string& reference_topic,
-                                    rotools::RuckigOptimizer* oto,
+                                    rotools::RuckigOptimizer* optimizer,
                                     sensor_msgs::JointState& smoothed_msg) -> bool {
-  oto->setTargetState(msg);
-  if (!oto->isInitialStateSet()) {
+  optimizer->setTargetState(msg);
+  if (!optimizer->isInitialStateSet()) {
     ROS_WARN_STREAM_ONCE(prefix << "Source topic " << source_topic << "'s reference topic " << reference_topic
                                 << " has not been published (print only once)");
     return false;
@@ -316,7 +316,7 @@ auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
 
   std::vector<double> q_cmd;
   std::vector<double> dq_cmd;
-  if (!oto->update(q_cmd, dq_cmd)) {
+  if (!optimizer->update(q_cmd, dq_cmd)) {
     return false;
   }
   smoothed_msg.position = q_cmd;
