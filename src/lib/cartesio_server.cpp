@@ -20,7 +20,8 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
   }
   for (int i = 0; i < group_names.size(); i++) {
     ROS_ASSERT(group_names[i].getType() == XmlRpc::XmlRpcValue::TypeString);
-    group_names_.push_back(group_names[i]);
+    group_names_.push_back(std::string(group_names[i]));
+    ROS_INFO("CartesIOServer: Added group '%s'", std::string(group_names[i]).c_str());
   }
 
   XmlRpc::XmlRpcValue controlled_frames;
@@ -48,14 +49,16 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
     ROS_INFO_STREAM("listening the transform " << reference_frames_[i] << " -> " << controlled_frames_[i]);
   }
 
-  // Initialize controller action clients, one for each group
   XmlRpc::XmlRpcValue timeout;
   getParam(nh_, pnh_, "timeout", timeout);
+  ROS_ASSERT(timeout.getType() == XmlRpc::XmlRpcValue::TypeInt);
+  ROS_INFO("Wait for server launching timeout: '%i's", int(timeout));
 
-  for (auto& group_name : group_names_) {
+  // Initialize controller action clients, one for each group
+  for (const auto& group_name : group_names_) {
     std::string action_name = "cartesian/" + group_name + "/reach";
     auto client = std::make_shared<reachPoseActionClient>(action_name);
-    if (!client->waitForServer(ros::Duration(double(timeout)))) {
+    if (!client->waitForServer(ros::Duration(int(timeout)))) {
       throw std::runtime_error("RoPort: Action server " + action_name + " unavailable");
     }
     control_clients_.push_back(client);
