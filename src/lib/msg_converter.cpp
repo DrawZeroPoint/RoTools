@@ -346,9 +346,9 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
 
   std::vector<double> q_desired;
   optimizers_[group_id]->getTargetPosition(q_desired);
-  size_t violated_i = 0;
-  double max_residual = 0;
-  if (roport::allClose<double>(filtered_msg.position, q_desired, violated_i, residual, smooth_start_error_)) {
+  std::vector<double> violated_ids;
+  std::vector<double> residuals;
+  if (roport::allClose<double>(filtered_msg.position, q_desired, violated_ids, residuals, smooth_start_error_)) {
     finished_smooth_start_flags_[group_id] = true;
     ROS_INFO("Successfully moved group %d to the start position.", group_id);
   } else {
@@ -357,10 +357,12 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
 
   if (std::chrono::steady_clock::now() - start_time_[group_id] > std::chrono::seconds(smooth_start_timeout_)) {
     finished_smooth_start_flags_[group_id] = true;
-    const std::string& name = source_names[violated_i];
-    ROS_WARN(
-        "Unable to move group %d to the start position in %li secs due to %s. Residual: %.3f (Allowed: %.3f). Aborted",
-        group_id, smooth_start_timeout_, name.c_str(), residual, smooth_start_error_);
+    ROS_WARN("Unable to move group %d to the start position in %li secs due to:", group_id, smooth_start_timeout_);
+    for (size_t i = 0; i < violated_ids.size(); ++i) {
+      size_t violated_i = static_cast<size_t>(violated_ids[i]);
+      const std::string& name = source_names[violated_i];
+      ROS_WARN("%s: %.3f (Allowed: %.3f)", name.c_str(), residuals[i], smooth_start_error_);
+    }
   }
 }
 
