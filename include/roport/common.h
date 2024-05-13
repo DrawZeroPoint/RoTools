@@ -288,6 +288,7 @@ template <typename T>
 inline auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, T tol = kTolerance)
     -> bool {
   if (tol <= 0) {
+    std::cerr << "Tolerance should be positive" << std::endl;
     tol = kTolerance;
   }
   for (size_t i = 0; i < first.size(); ++i) {

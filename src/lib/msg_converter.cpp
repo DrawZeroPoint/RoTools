@@ -347,8 +347,8 @@ void MsgConverter::smoothStartCb(const sensor_msgs::JointState::ConstPtr& msg,
   std::vector<double> q_desired;
   optimizers_[group_id]->getTargetPosition(q_desired);
   size_t violated_i = 0;
-  double residual = smooth_start_error_;
-  if (roport::allClose<double>(filtered_msg.position, q_desired, violated_i, residual)) {
+  double max_residual = 0;
+  if (roport::allClose<double>(filtered_msg.position, q_desired, violated_i, residual, smooth_start_error_)) {
     finished_smooth_start_flags_[group_id] = true;
     ROS_INFO("Successfully moved group %d to the start position.", group_id);
   } else {
