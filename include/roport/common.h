@@ -288,6 +288,7 @@ template <typename T>
 inline auto allClose(std::vector<T> first, std::vector<T> second, size_t& violated_i, T& residual, T tol = kTolerance)
     -> bool {
   if (tol <= 0) {
+    std::cerr << "Tolerance should be positive" << std::endl;
     tol = kTolerance;
   }
   for (size_t i = 0; i < first.size(); ++i) {
@@ -299,6 +300,37 @@ inline auto allClose(std::vector<T> first, std::vector<T> second, size_t& violat
     }
   }
   return true;
+}
+
+/**
+ * Judge if all corresponding elements in the two given vectors are close to each other under the tolerance.
+ * @tparam T Value type.
+ * @param first The first vector.
+ * @param second The second vector.
+ * @param violated_i The vector containing indexes of the first element that violate the tolerance.
+ * @param residual The vector containing residuals of the violation.
+ * @param tol Tolerance.
+ * @return True if close.
+ */
+template <typename T>
+inline auto allClose(std::vector<T> first, std::vector<T> second, std::vector<T>& violated_i, std::vector<T>& residual, T& tol = kTolerance)
+    -> bool {
+  if (tol <= 0) {
+    tol = kTolerance;
+    std::cerr << "Tolerance should be positive, using the default: " << kTolerance << std::endl;
+  }
+
+  bool is_all_close = true;
+  for (size_t i = 0; i < first.size(); ++i) {
+    auto error = fabs(first[i] - second[i]);
+    residual.push_back(error);
+
+    if (error > tol) {
+      violated_i.push_back(i);
+      is_all_close = false;
+    }
+  }
+  return is_all_close;
 }
 
 template <typename T>
