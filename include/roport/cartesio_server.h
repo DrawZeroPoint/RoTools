@@ -46,6 +46,7 @@
 #include <roport/ExecuteAllLockedPoses.h>
 #include <roport/ExecuteAllPoses.h>
 #include <roport/ExecuteMirroredPose.h>
+#include <roport/ExecuteGroupPose.h>
 
 namespace roport {
 class CartesIOServer {
@@ -61,8 +62,12 @@ class CartesIOServer {
   std::vector<std::string> controlled_frames_;
   std::vector<std::string> reference_frames_;
 
+  std::vector<geometry_msgs::Pose> homing_poses_;
+
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
+
+  ros::ServiceServer execute_group_homing_srv_;
 
   ros::ServiceServer execute_all_poses_srv_;
   ros::ServiceServer execute_all_locked_poses_srv_;
@@ -89,6 +94,8 @@ class CartesIOServer {
   auto executeAllLockedPosesSrvCb(roport::ExecuteAllLockedPoses::Request& req,
                                   roport::ExecuteAllLockedPoses::Response& resp) -> bool;
 
+  auto executeHomingSrvCb(roport::ExecuteGroupPose::Request& req, roport::ExecuteGroupPose::Response& resp) -> bool;
+
   void buildActionGoal(const int& index,
                        const geometry_msgs::Pose& goal_pose,
                        cartesian_interface::ReachPoseActionGoal& action_goal);
@@ -96,7 +103,7 @@ class CartesIOServer {
   static void updateStamp(const double& stamp, cartesian_interface::ReachPoseActionGoal& action_goal);
 
   auto executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goals,
-                    double duration = 120) -> bool;
+                    double duration = 120.0) -> bool;
 
   bool getTransform(const int& index, geometry_msgs::TransformStamped& transform);
 

@@ -46,13 +46,33 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
   for (int i = 0; i < reference_frames.size(); i++) {
     ROS_ASSERT(reference_frames[i].getType() == XmlRpc::XmlRpcValue::TypeString);
     reference_frames_.push_back(reference_frames[i]);
-    ROS_INFO_STREAM("listening the transform " << reference_frames_[i] << " -> " << controlled_frames_[i]);
+    ROS_INFO_STREAM("Listening the transform " << reference_frames_[i] << " -> " << controlled_frames_[i]);
   }
 
+  XmlRpc::XmlRpcValue homing_poses;
+  if (getParam(nh_, pnh_, "homing_poses", homing_poses)) {
+    ROS_ASSERT(homing_poses.getType() == XmlRpc::XmlRpcValue::TypeArray);
+    ROS_ASSERT(homing_poses.size() == group_names_.size());
+    for (int i = 0; i < homing_poses.size(); ++i) {
+      ROS_ASSERT(homing_poses[i].getType() == XmlRpc::XmlRpcValue::TypeArray);
+      ROS_ASSERT(homing_poses[i].size() == 7);
+      geometry_msgs::Pose pose;
+      pose.position.x = homing_poses[i][0];
+      pose.position.y = homing_poses[i][1];
+      pose.position.z = homing_poses[i][2];
+      pose.orientation.x = homing_poses[i][3];
+      pose.orientation.y = homing_poses[i][4];
+      pose.orientation.z = homing_poses[i][5];
+      pose.orientation.w = homing_poses[i][6];
+      homing_poses_.push_back(pose);
+    }
+  }
+
+  // Timeout for waiting CartesI/O action servers to launch
   XmlRpc::XmlRpcValue timeout;
   getParam(nh_, pnh_, "timeout", timeout);
   ROS_ASSERT(timeout.getType() == XmlRpc::XmlRpcValue::TypeInt);
-  ROS_INFO("Wait for server launching timeout: '%i's", int(timeout));
+  ROS_INFO("Server launching timeout: %is", int(timeout));
 
   // Initialize controller action clients, one for each group
   for (const auto& group_name : group_names_) {
@@ -69,6 +89,32 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
   execute_all_poses_srv_ = nh_.advertiseService("execute_all_poses", &CartesIOServer::executeAllPosesSrvCb, this);
   execute_all_locked_poses_srv_ =
       nh_.advertiseService("execute_all_locked_poses", &CartesIOServer::executeAllLockedPosesSrvCb, this);
+  execute_group_homing_srv_ = nh_.advertiseService("execute_group_homing", &CartesIOServer::executeHomingSrvCb, this);
+}
+
+auto CartesIOServer::executeHomingSrvCb(roport::ExecuteGroupPose::Request& req,
+                                        roport::ExecuteGroupPose::Response& resp) -> bool {
+  std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
+
+  auto index = getIndex(group_names_, req.group_name);
+  if (index < 0) {
+    ROS_ERROR_STREAM("No group named '" << req.group_name << "' defined");
+    return false;
+  }
+
+  geometry_msgs::Pose goal_pose = homing_poses_[index];
+
+  // Build trajectory to reach the goal
+  cartesian_interface::ReachPoseActionGoal action_goal;
+  buildActionGoal(index, goal_pose, action_goal);
+  action_goals.insert({index, action_goal});
+
+  if (executeGoals(action_goals)) {
+    resp.result_status = roport::ExecuteGroupPose::Response::SUCCEEDED;
+  } else {
+    resp.result_status = roport::ExecuteGroupPose::Response::FAILED;
+  }
+  return true;
 }
 
 auto CartesIOServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
@@ -98,9 +144,9 @@ auto CartesIOServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
     }
   }
   if (executeGoals(action_goals)) {
-    resp.result_status = resp.SUCCEEDED;
+    resp.result_status = roport::ExecuteAllPoses::Response::SUCCEEDED;
   } else {
-    resp.result_status = resp.FAILED;
+    resp.result_status = roport::ExecuteAllPoses::Response::FAILED;
   }
   return true;
 }
@@ -115,7 +161,7 @@ auto CartesIOServer::executeAllLockedPosesSrvCb(roport::ExecuteAllLockedPoses::R
   for (int j = 0; j < req.group_names.size(); ++j) {
     int i = getIndex(group_names_, req.group_names[j]);
     if (i < 0) {
-      ROS_ERROR_STREAM("No " << group_names_[j] << " group defined");
+      ROS_ERROR_STREAM("No group named '" << group_names_[j] << "' defined");
       return false;
     }
 
@@ -145,9 +191,9 @@ auto CartesIOServer::executeAllLockedPosesSrvCb(roport::ExecuteAllLockedPoses::R
   }
 
   if (executeGoals(action_goals)) {
-    resp.result_status = resp.SUCCEEDED;
+    resp.result_status = roport::ExecuteAllLockedPoses::Response::SUCCEEDED;
   } else {
-    resp.result_status = resp.FAILED;
+    resp.result_status = roport::ExecuteAllLockedPoses::Response::FAILED;
   }
   return true;
 }
@@ -220,7 +266,7 @@ auto CartesIOServer::executeGoals(const std::map<int, cartesian_interface::Reach
 
   for (const auto& goal : goals) {
     if (!control_clients_[goal.first]->waitForResult(ros::Duration(duration))) {
-      ROS_ERROR("Goal of group %s execution timeout after %f seconds", group_names_[goal.first].c_str(), duration);
+      ROS_ERROR("Goal of group %s execution timeout after %.2f seconds", group_names_[goal.first].c_str(), duration);
       return false;
     }
   }

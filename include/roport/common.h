@@ -186,6 +186,17 @@ inline void localAlignedPoseToGlobalPose(const geometry_msgs::Pose& pose_local_a
   eigenMatrixToGeometryPose(mat_global_to_target, pose_global_to_target);
 }
 
+/**
+ * Given the current pose of a controlled frame in the reference frame and a commanded pose,
+ * determine the goal pose with the goal type.
+ * @param goal_type 0: The cmd pose is in the global reference frame;
+ *                  1: The cmd pose is in the local aligned frame (LAF) of the reference frame, a LAF's origin is the
+ *                     same as the current frame and its orientation is the same as the reference frame;
+ *                  2: The cmd pose is in the local frame.
+ * @param current_pose
+ * @param cmd_pose
+ * @param goal_pose
+ */
 inline void toGlobalPose(const int& goal_type,
                          const geometry_msgs::Pose& current_pose,
                          const geometry_msgs::Pose& cmd_pose,
@@ -313,8 +324,11 @@ inline auto allClose(std::vector<T> first, std::vector<T> second, size_t& violat
  * @return True if close.
  */
 template <typename T>
-inline auto allClose(std::vector<T> first, std::vector<T> second, std::vector<T>& violated_i, std::vector<T>& residual, T& tol = kTolerance)
-    -> bool {
+inline auto allClose(std::vector<T> first,
+                     std::vector<T> second,
+                     std::vector<T>& violated_i,
+                     std::vector<T>& residual,
+                     T& tol = kTolerance) -> bool {
   if (tol <= 0) {
     tol = kTolerance;
     std::cerr << "Tolerance should be positive, using the default: " << kTolerance << std::endl;
