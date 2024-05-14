@@ -57,7 +57,9 @@ install_ros() {
 
   sudo apt-get install -y ros-$ROS_DISTRO-desktop ros-$ROS_DISTRO-rosmon ros-$ROS_DISTRO-behaviortree-cpp-v3 \
     ros-$ROS_DISTRO-ros-control ros-$ROS_DISTRO-ros-controllers ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs \
-    ros-$ROS_DISTRO-trac-ik-lib ros-$ROS_DISTRO-eigen-conversions ros-$ROS_DISTRO-rosbridge-suite
+    ros-$ROS_DISTRO-trac-ik-lib ros-$ROS_DISTRO-eigen-conversions ros-$ROS_DISTRO-rosbridge-suite \
+    ros-$ROS_DISTRO-libfranka ros-$ROS_DISTRO-franka-gripper ros-$ROS_DISTRO-franka-hw \
+    ros-$ROS_DISTRO-qb-device ros-$ROS_DISTRO-qb-hand
 
   print_divider "Successfully installed ROS $ROS_DISTRO packages" finished
 
@@ -80,6 +82,28 @@ install_ros() {
 
   cd $HOME/RoTools && ./make_symlink.sh
   print_divider "Successfully set up ROS workspace" finished
+}
+
+install_frankx() {
+  print_divider "Installing frankx packages" started
+
+  if [ -d $HOME/frankx ]; then
+    echo_info "frankx folder already exist in $HOME"
+    cd $HOME/frankx && git checkout main
+    git pull
+  else
+    echo_info "Cloning frankx to $HOME ..."
+    cd $HOME
+    git clone https://github.com/clover-cuhk/frankx.git
+    cd $HOME/frankx && git checkout main
+  fi
+
+  mkdir build && cd build
+  cmake ..
+  make -j4
+  sudo make install
+
+  print_divider "Successfully installed frankx" finished
 }
 
 install_cartesio() {
@@ -290,6 +314,7 @@ sudo apt-get install -y wget apt-transport-https libmatio-dev screen
 
 if [ $# -eq 0 ]; then
   install_ros
+  install_frankx
   install_cartesio
   install_hpp
   install_pinocchio
