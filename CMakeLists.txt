@@ -28,6 +28,8 @@ find_package(catkin REQUIRED COMPONENTS
   behaviortree_cpp_v3
   )
 
+find_package(ruckig REQUIRED)
+
 # Optionally build with non ROS pre-installed msgs
 find_package(franka_core_msgs)
 
@@ -178,11 +180,8 @@ catkin_package(
   CATKIN_DEPENDS ${ROS_DEPENDENCIES} message_generation roscpp rospy message_runtime
 )
 
-add_subdirectory(src/lib/ruckig)
-
 include_directories(
   include
-  src/lib/ruckig/include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -201,7 +200,7 @@ add_library(${PROJECT_NAME}
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
-  rotools_ruckig
+  ruckig
   )
 
 if (HPP_CORE_LIB AND HPP_FCL_LIB)
