@@ -191,6 +191,11 @@ class MuJoCoServer(object):
 
     def get_pose_handle(self, req):
         resp = GetGroupPoseResponse()
+        if req.ee_frame is None:
+            rospy.logerr("The ee_frame is not defined")
+            resp.result_status = resp.FAILED
+            return resp
+
         ee_pose = self.interface.get_site_pose(req.ee_frame, req.ref_frame)
         if ee_pose is None:
             resp.result_status = resp.FAILED
