@@ -431,9 +431,12 @@ class MuJoCoInterface(Thread):
             except KeyError:
                 geom_name = None
 
+            # Colorize the geom to show the actuator exceeding torque limit
+            # Blue: exceeding lower limit, red: exceeding the upper limit
+            # The darker the color, the more severe the overshooting
             if force_range is not None:
                 low, high = force_range
-                level = 0.5
+                color_indicator = 0.5  # in range [0, 1], where 0.5 for white
                 need_update = False
                 if joint_qtau < low:
                     rospy.logwarn(
@@ -441,7 +444,9 @@ class MuJoCoInterface(Thread):
                             joint_name, joint_qtau, low
                         )
                     )
-                    level = max(min((low - joint_qtau) / (high - low) * 2, -0.5), -1)
+                    # in range [0, 1], where 0 is fine and 1 is most severe
+                    severity = min((low - joint_qtau) / (high - low), 1.0)
+                    color_indicator = 0.5 * (1.0 - severity)
                     need_update = True
                 if joint_qtau > high:
                     rospy.logwarn(
@@ -449,13 +454,14 @@ class MuJoCoInterface(Thread):
                             joint_name, joint_qtau, high
                         )
                     )
-                    level = min(max((joint_qtau - high) / (high - low) * 2, 0.5), 1)
+                    severity = min((joint_qtau - high) / (high - low), 1.0)
+                    color_indicator = 0.5 * (1.0 + severity)
                     need_update = True
                 if self.reset_verbose:
                     need_update = True
                 if geom_name is not None and need_update:
                     geom = self._model.geom(geom_name)
-                    geom.rgba = bwr_color_palette(level)
+                    geom.rgba = bwr_color_palette(color_indicator)
 
         self.reset_verbose = False
         self._robot_states = np.array(robot_states)
