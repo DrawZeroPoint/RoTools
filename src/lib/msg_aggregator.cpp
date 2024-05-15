@@ -3,6 +3,7 @@
 //
 
 #include "roport/msg_aggregator.h"
+#include "roport/common.h"
 
 namespace roport {
 
@@ -23,20 +24,20 @@ MsgAggregator::MsgAggregator(const ros::NodeHandle& node_handle, const ros::Node
 void MsgAggregator::init() {
   XmlRpc::XmlRpcValue high_frequency_topics;
   XmlRpc::XmlRpcValue high_frequency_names;
-  getParam("high_frequency_topics", high_frequency_topics);
-  getParam("high_frequency_names", high_frequency_names);
+  getParam(nh_, pnh_, "high_frequency_topics", high_frequency_topics);
+  getParam(nh_, pnh_, "high_frequency_names", high_frequency_names);
   if (high_frequency_topics.size() != high_frequency_names.size()) {  // NOLINT
     throw std::runtime_error("High frequency topics size does not match names size");
   }
   high_frequency_num_ = high_frequency_topics.size();
-  if (high_frequency_num_ < 2 || high_frequency_num_ > 3) {  // NOLINT
-    throw std::runtime_error("Only 2 or 3 high frequency topics are supported for now");
+  if (high_frequency_num_ < 1 || high_frequency_num_ > 3) {  // NOLINT
+    throw std::runtime_error("Only 1, 2, or 3 high frequency topics are supported for now");
   }
 
   XmlRpc::XmlRpcValue low_frequency_topics;
   XmlRpc::XmlRpcValue low_frequency_names;
-  getParam("low_frequency_topics", low_frequency_topics);
-  getParam("low_frequency_names", low_frequency_names);
+  getParam(nh_, pnh_, "low_frequency_topics", low_frequency_topics);
+  getParam(nh_, pnh_, "low_frequency_names", low_frequency_names);
   if (low_frequency_topics.size() != low_frequency_names.size()) {  // NOLINT
     throw std::runtime_error("Low frequency topics size does not match names size");
   }
@@ -44,6 +45,26 @@ void MsgAggregator::init() {
   if (low_frequency_num_ < 2 || low_frequency_num_ > 3) {  // NOLINT
     throw std::runtime_error("Only 2 or 3 low frequency topics are supported for now");
   }
+
+  XmlRpc::XmlRpcValue joints_to_inspect;
+  if (getParam(nh_, pnh_, "joints_to_inspect", joints_to_inspect)) {
+    ROS_ASSERT(joints_to_inspect.getType() == XmlRpc::XmlRpcValue::TypeArray);
+    for (int i = 0; i < joints_to_inspect.size(); i++) {
+      joints_to_inspect_.emplace_back(joints_to_inspect[i]);
+      ros::Publisher publisher =
+          nh_.advertise<std_msgs::Float64>("/" + std::string(joints_to_inspect[i]) + "/state/scaled_torque", 1);
+      joint_scaled_torque_publishers_.push_back(publisher);
+    }
+  }
+
+  XmlRpc::XmlRpcValue inspected_joint_torque_limits;
+  if (getParam(nh_, pnh_, "inspected_joint_torque_limits", inspected_joint_torque_limits)) {
+    ROS_ASSERT(joints_to_inspect.getType() == XmlRpc::XmlRpcValue::TypeArray);
+    for (int i = 0; i < inspected_joint_torque_limits.size(); i++) {
+      inspected_joint_torque_limits_.push_back(inspected_joint_torque_limits[i]);
+    }
+  }
+  ROS_ASSERT(joints_to_inspect.size() == inspected_joint_torque_limits.size());
 
   // Handle low frequency topics
   for (int idx = 0; idx < low_frequency_num_; ++idx) {  // NOLINT
@@ -103,7 +124,10 @@ void MsgAggregator::init() {
     auto subscriber = std::make_shared<MsgSubscriber>(nh_, std::string(entity), 1);
     high_frequency_subscribers_.push_back(subscriber);
   }
-  if (high_frequency_num_ == 2) {
+
+  if (high_frequency_num_ == 1) {
+    high_frequency_subscribers_[0]->registerCallback(&MsgAggregator::highFrequencyCB, this);  // NOLINT
+  } else if (high_frequency_num_ == 2) {
     duo_high_frequency_synchronizer_ = std::make_shared<DuoPolicySynchronizer>(
         DuoPolicy(10), *high_frequency_subscribers_[0], *high_frequency_subscribers_[1]);
 
@@ -117,6 +141,11 @@ void MsgAggregator::init() {
     tri_high_frequency_synchronizer_->registerCallback(
         boost::bind(&MsgAggregator::highFrequencyCB, this, _1, _2, _3));  // NOLINT
   }
+}
+
+void MsgAggregator::highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg) {
+  publishInspected(*msg);
+  publishCombined(*msg);
 }
 
 void MsgAggregator::highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
@@ -162,6 +191,7 @@ void MsgAggregator::highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg
     std::copy(msg_2->effort.begin(), msg_2->effort.end(), joint_state.effort.begin() + previous_size);
   }
 
+  publishInspected(joint_state);
   publishCombined(joint_state);
 }
 
@@ -218,6 +248,7 @@ void MsgAggregator::highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg
     std::copy(msg_3->effort.begin(), msg_3->effort.end(), joint_state.effort.begin() + previous_size);
   }
 
+  publishInspected(joint_state);
   publishCombined(joint_state);
 }
 
@@ -306,6 +337,19 @@ void MsgAggregator::lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_
   }
   if (msg_3->effort.size() == msg_3->position.size()) {
     std::copy(msg_3->effort.begin(), msg_3->effort.end(), low_frequency_joint_state_.effort.begin() + previous_size);
+  }
+}
+
+void MsgAggregator::publishInspected(const sensor_msgs::JointState& msg) {
+  for (size_t i = 0; i < msg.name.size(); ++i) {
+    auto result = findInVector<std::string>(joints_to_inspect_, msg.name[i]);
+    if (result.first) {
+      std_msgs::Float64 scaled_torque;
+      auto torque_limit = inspected_joint_torque_limits_[result.second];
+      scaled_torque.data = msg.effort[i] / torque_limit;
+      //ROS_DEBUG("Inspecting: %s, torque: %.4f", msg.name[i].c_str(), scaled_torque.data);
+      joint_scaled_torque_publishers_[result.second].publish(scaled_torque);
+    }
   }
 }
 

@@ -221,30 +221,6 @@ class MsgConverter {
                               const int& arg,
                               const std::vector<std::string>& source_names,
                               const std::vector<std::string>& target_names);
-
-  /**
-   * Generic function to find an element in vector and also its position. It returns a pair of bool & int.
-   * The function will return if the first match is found.
-   * @tparam T Type of the element in the vector.
-   * @param vec_of_elements Vector to find the element from.
-   * @param element The element to find.
-   * @return A pair of <bool, int>. The bool represents if element is present in vector or not.
-   *         The int represents the index of element in vector if its found else -1.
-   */
-  template <typename T>
-  auto findInVector(const std::vector<T>& vec_of_elements, const T& element) -> std::pair<bool, int> {
-    std::pair<bool, int> result;
-    // Find given element in vector
-    auto iterator = std::find(vec_of_elements.begin(), vec_of_elements.end(), element);
-    if (iterator != vec_of_elements.end()) {
-      result.second = distance(vec_of_elements.begin(), iterator);
-      result.first = true;
-    } else {
-      result.first = false;
-      result.second = -1;
-    }
-    return result;
-  }
 };
 }  // namespace roport
 

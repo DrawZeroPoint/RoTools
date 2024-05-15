@@ -10,6 +10,7 @@
 #include <message_filters/time_synchronizer.h>
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
+#include <std_msgs/Float64.h>
 
 namespace roport {
 class MsgAggregator {
@@ -50,19 +51,16 @@ class MsgAggregator {
   std::shared_ptr<TriPolicySynchronizer> tri_low_frequency_synchronizer_;
   sensor_msgs::JointState low_frequency_joint_state_;
 
+  std::vector<std::string> joints_to_inspect_;
+  std::vector<ros::Publisher> joint_scaled_torque_publishers_;
+
+  std::vector<double> inspected_joint_torque_limits_;
+
   const std::string prefix{"Msg Aggregator: "};
 
   void init();
 
-  inline void getParam(const std::string& param_name, XmlRpc::XmlRpcValue& param_value) {
-    if (!pnh_.getParam(param_name, param_value)) {
-      if (!nh_.getParam(param_name, param_value)) {
-        ROS_ERROR_STREAM(prefix << "Param " << param_name << " is not defined");
-        throw std::runtime_error("Param not defined");
-      }
-    }
-    ROS_ASSERT(param_value.getType() == XmlRpc::XmlRpcValue::TypeArray);
-  }
+  void highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg);
 
   void highFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1, const sensor_msgs::JointState::ConstPtr& msg_2);
 
@@ -75,6 +73,8 @@ class MsgAggregator {
   void lowFrequencyCB(const sensor_msgs::JointState::ConstPtr& msg_1,
                       const sensor_msgs::JointState::ConstPtr& msg_2,
                       const sensor_msgs::JointState::ConstPtr& msg_3);
+
+  void publishInspected(const sensor_msgs::JointState& msg);
 
   void publishCombined(const sensor_msgs::JointState& high_frequency_msg);
 };
