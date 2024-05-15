@@ -28,7 +28,6 @@ find_package(catkin REQUIRED COMPONENTS
   behaviortree_cpp_v3
   )
 
-find_package(ruckig REQUIRED)
 
 # Optionally build with non ROS pre-installed msgs
 find_package(franka_core_msgs)
@@ -50,6 +49,8 @@ if (${ubt_core_msgs_FOUND})
 else (${ubt_core_msgs_FOUND})
   MESSAGE(STATUS "NOT FOUND ubt_core_msgs")
 endif (${ubt_core_msgs_FOUND})
+
+find_library(ruckig_LIBRARIES ruckig REQUIRED)
 
 # Optionally locate Humanoid Path Planner
 find_library(HPP_CORE_LIB hpp-core HINTS /opt/openrobots/lib)
@@ -200,7 +201,7 @@ add_library(${PROJECT_NAME}
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
-  ruckig
+  ${ruckig_LIBRARIES}
   )
 
 if (HPP_CORE_LIB AND HPP_FCL_LIB)
