@@ -336,6 +336,10 @@ else
     install_cartesio
     exit
     ;;
+  --frx)
+    install_frankx
+    exit
+    ;;
   --hpp)
     install_hpp
     exit
