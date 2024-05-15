@@ -98,7 +98,7 @@ install_frankx() {
     cd $HOME/frankx && git checkout main
   fi
 
-  mkdir build && cd build
+  mkdir -p build && cd build
   cmake ..
   make -j4
   sudo make install
