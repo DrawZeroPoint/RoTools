@@ -56,6 +56,7 @@ install_ros() {
   fi
 
   sudo apt-get install -y ros-$ROS_DISTRO-desktop ros-$ROS_DISTRO-rosmon ros-$ROS_DISTRO-behaviortree-cpp-v3 \
+    ros-$ROS_DISTRO-catkin python3-catkin-tools \
     ros-$ROS_DISTRO-ros-control ros-$ROS_DISTRO-ros-controllers ros-$ROS_DISTRO-moveit ros-$ROS_DISTRO-std-srvs \
     ros-$ROS_DISTRO-trac-ik-lib ros-$ROS_DISTRO-eigen-conversions ros-$ROS_DISTRO-rosbridge-suite \
     ros-$ROS_DISTRO-libfranka ros-$ROS_DISTRO-franka-gripper ros-$ROS_DISTRO-franka-hw \
@@ -87,8 +88,16 @@ install_ros() {
 install_frankx() {
   print_divider "Installing frankx packages" started
 
+  if [ -f $HOME/catkin_ws/devel/setup.bash ]; then
+    echo_success "Found catkin_ws/devel/setup.bash"
+    source $HOME/catkin_ws/devel/setup.bash
+  else
+    echo_failure "$HOME/catkin_ws/devel/setup.bash was not found, run 'catkin build' to create it first"
+    exit -1
+  fi
+
   if [ -d $HOME/frankx ]; then
-    echo_info "frankx folder already exist in $HOME"
+    echo_info "The folder 'frankx' already exists in $HOME"
     cd $HOME/frankx && git checkout main
     git pull
   else
@@ -176,7 +185,7 @@ install_hpp() {
 install_pinocchio() {
   print_divider "Installing pinocchio ..." started
 
-  sources $HOME/.bashrc
+  source $HOME/.bashrc
   if [ $(lsb_release -sc) == focal ]; then
     PYCODE=3.8
   elif [ $(lsb_release -sc) == bionic ]; then
@@ -189,7 +198,7 @@ install_pinocchio() {
   cd ~
   git clone --recursive https://github.com/stack-of-tasks/pinocchio
   cd pinocchio/ && git checkout master
-  mkdir build && cd build
+  mkdir -p build && cd build
   cmake -DBUILD_WITH_COLLISION_SUPPORT=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
   make -j4
   sudo make install
@@ -215,7 +224,7 @@ install_ocs2() {
   if [ $(lsb_release -sc) == focal ]; then
     PYCODE=3.8
   else
-    echo_failure "Only Ubuntu 20.04 is supported for OCS2 installation"
+    echo_failure "Only Ubuntu 20.04 supports OCS2 installation"
     return
   fi
 
@@ -226,7 +235,7 @@ install_ocs2() {
   cd ~
   git clone https://github.com/raisimTech/raisimLib.git
   cd raisimLib/
-  mkdir build && cd build
+  mkdir -p build && cd build
   cmake .. -DRAISIM_EXAMPLE=ON -DRAISIM_PY=ON -DPYTHON_EXECUTABLE=/usr/bin/python3
   make -j4
 
@@ -241,9 +250,9 @@ install_ocs2() {
 
 install_python() {
   print_divider "Installing Python packages" started
-  sudo apt-get install patchelf
+  sudo apt-get install -y patchelf python3-pip
 
-  pip install -U mujoco imageio
+  pip3 install mujoco==2.3.7 imageio
 
   grep -q "RoTools/src" $HOME/.bashrc
   if [ $? -ne 0 ]; then
@@ -310,7 +319,7 @@ if [ $# -eq 1 ]; then
 fi
 
 sudo apt-get update
-sudo apt-get install -y wget apt-transport-https libmatio-dev screen
+sudo apt-get install -y wget apt-transport-https libmatio-dev screen synaptic vim
 
 if [ $# -eq 0 ]; then
   install_ros
