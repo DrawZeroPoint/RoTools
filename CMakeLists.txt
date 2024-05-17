@@ -50,7 +50,7 @@ else (${ubt_core_msgs_FOUND})
 endif (${ubt_core_msgs_FOUND})
 
 # This should locate the official package ros-noetic-ruckig installed with moveit
-find_package(ruckig 0.12 REQUIRED)
+find_package(ruckig 0.6.5 EXACT)
 if (${ruckig_FOUND})
   MESSAGE(STATUS "FOUND ruckig ${ruckig_VERSION}")
   find_library(ruckig_LIBRARIES ruckig HINTS /usr/local/lib)
