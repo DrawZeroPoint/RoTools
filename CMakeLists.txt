@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(roport)
 
 # Comment this if don't want debug
-set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
 
@@ -50,7 +50,13 @@ else (${ubt_core_msgs_FOUND})
   MESSAGE(STATUS "NOT FOUND ubt_core_msgs")
 endif (${ubt_core_msgs_FOUND})
 
-find_library(ruckig_LIBRARIES ruckig REQUIRED)
+# This should locate the official package ros-noetic-ruckig installed with moveit
+find_package(ruckig REQUIRED)
+if (${ruckig_FOUND})
+  MESSAGE(STATUS "FOUND ruckig")
+else (${ruckig_FOUND})
+  MESSAGE(STATUS "NOT FOUND ruckig")
+endif (${ruckig_FOUND})
 
 # Optionally locate Humanoid Path Planner
 find_library(HPP_CORE_LIB hpp-core HINTS /opt/openrobots/lib)
@@ -181,11 +187,6 @@ catkin_package(
   CATKIN_DEPENDS ${ROS_DEPENDENCIES} message_generation roscpp rospy message_runtime
 )
 
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-)
-
 ###########################
 ## Declare C++ libraries ##
 ###########################
@@ -199,26 +200,34 @@ add_library(${PROJECT_NAME}
   src/lib/online_trajectory_optimizer.cpp
   )
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
+target_include_directories(${PROJECT_NAME} PUBLIC
+  include
+  ${catkin_INCLUDE_DIRS}
+)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${ruckig_LIBRARIES}
-  )
+)
 
 if (HPP_CORE_LIB AND HPP_FCL_LIB)
   # These two definitions solve the pinocchio import issue
   add_definitions(-DPINOCCHIO_WITH_HPP_FCL)
   ADD_DEFINITIONS(-DBOOST_MPL_LIMIT_LIST_SIZE=30)
 
-  include_directories(/opt/openrobots/include /usr/local/include)
-
   find_library(PINOCCHIO_LIBRARIES pinocchio HINTS /usr/local/lib)
   find_library(OMNI_THREAD_LIB omnithread HINTS /opt/openrobots/lib)
   find_library(OMNI_ORB4_LIB omniORB4 HINTS /opt/openrobots/lib)
 
-  add_library(${PROJECT_NAME}_HPP_ADDON
+  add_library(${PROJECT_NAME}_hpp_addon
     src/lib/hpp_interface.cpp
     )
-  target_link_libraries(${PROJECT_NAME}_HPP_ADDON
+  target_include_directories(${PROJECT_NAME}_hpp_addon PUBLIC
+    include
+    /opt/openrobots/include
+    /usr/local/include
+    ${catkin_INCLUDE_DIRS}
+  )
+  target_link_libraries(${PROJECT_NAME}_hpp_addon
     ${catkin_LIBRARIES}
     ${HPP_CORE_LIB}
     ${HPP_FCL_LIB}
@@ -226,17 +235,28 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB)
     ${OMNI_ORB4_LIB}
     ${PINOCCHIO_LIBRARIES}
     )
-  add_dependencies(${PROJECT_NAME}_HPP_ADDON ${PROJECT_NAME}_generate_messages_cpp)
+  add_dependencies(${PROJECT_NAME}_hpp_addon ${PROJECT_NAME}_generate_messages_cpp)
 endif ()
 
 if (CARTESIO_LIB)
-  include_directories(/opt/xbot/include ${OpenSoT_INCLUDE_DIRS})
   add_library(${PROJECT_NAME}_cartesio src/lib/cartesio_server.cpp)
+  target_include_directories(${PROJECT_NAME}_cartesio PUBLIC
+    include
+    /opt/xbot/include
+    ${catkin_INCLUDE_DIRS}
+    ${OpenSoT_INCLUDE_DIRS}
+  )
   target_link_libraries(${PROJECT_NAME}_cartesio ${catkin_LIBRARIES})
   add_dependencies(${PROJECT_NAME}_cartesio ${PROJECT_NAME}_generate_messages_cpp)
 
   add_library(${PROJECT_NAME}_cartesio_addon src/lib/cartesio_addon.cpp)
   add_dependencies(${PROJECT_NAME}_cartesio_addon ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+  target_include_directories(${PROJECT_NAME}_cartesio_addon PUBLIC
+    include
+    /opt/xbot/include
+    ${catkin_INCLUDE_DIRS}
+    ${OpenSoT_INCLUDE_DIRS}
+  )
   target_link_libraries(${PROJECT_NAME}_cartesio_addon
     ${catkin_LIBRARIES}
     ${OpenSoT_LIBRARIES}
@@ -288,7 +308,7 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB)
   target_link_libraries(roport_hpp_interface
     ${catkin_LIBRARIES}
     ${PROJECT_NAME}
-    ${PROJECT_NAME}_HPP_ADDON
+    ${PROJECT_NAME}_hpp_addon
     )
 endif ()
 
@@ -299,7 +319,7 @@ if (CARTESIO_LIB)
     ${catkin_LIBRARIES}
     ${PROJECT_NAME}
     ${PROJECT_NAME}_cartesio
-    )
+  )
 endif ()
 
 ############
