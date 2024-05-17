@@ -2,6 +2,7 @@
 /src/rotools/tests/test_data/
 /src/rotools/sensing/data/
 /cmake-build-debug/
+cmake-build-release
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
