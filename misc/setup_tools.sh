@@ -319,7 +319,7 @@ if [ $# -eq 1 ]; then
 fi
 
 sudo apt-get update
-sudo apt-get install -y wget apt-transport-https libmatio-dev screen synaptic vim
+sudo apt-get install -y wget apt-transport-https libmatio-dev screen synaptic vim net-tools
 
 if [ $# -eq 0 ]; then
   install_ros
