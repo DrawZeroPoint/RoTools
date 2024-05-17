@@ -26,8 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
   hardware_interface
   controller_manager
   behaviortree_cpp_v3
-  )
-
+)
 
 # Optionally build with non ROS pre-installed msgs
 find_package(franka_core_msgs)
@@ -51,11 +50,13 @@ else (${ubt_core_msgs_FOUND})
 endif (${ubt_core_msgs_FOUND})
 
 # This should locate the official package ros-noetic-ruckig installed with moveit
-find_package(ruckig REQUIRED)
+find_package(ruckig 0.12 REQUIRED)
 if (${ruckig_FOUND})
-  MESSAGE(STATUS "FOUND ruckig")
+  MESSAGE(STATUS "FOUND ruckig ${ruckig_VERSION}")
+  find_library(ruckig_LIBRARIES ruckig HINTS /usr/local/lib)
+  MESSAGE(STATUS "ruckig_LIBRARIES: ${ruckig_LIBRARIES}")
 else (${ruckig_FOUND})
-  MESSAGE(STATUS "NOT FOUND ruckig")
+  MESSAGE(FATAL_ERROR "NOT FOUND ruckig")
 endif (${ruckig_FOUND})
 
 # Optionally locate Humanoid Path Planner
@@ -198,7 +199,7 @@ add_library(${PROJECT_NAME}
   src/lib/msg_converter.cpp
   src/lib/msg_aggregator.cpp
   src/lib/online_trajectory_optimizer.cpp
-  )
+)
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC
   include
@@ -220,7 +221,7 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB)
 
   add_library(${PROJECT_NAME}_hpp_addon
     src/lib/hpp_interface.cpp
-    )
+  )
   target_include_directories(${PROJECT_NAME}_hpp_addon PUBLIC
     include
     /opt/openrobots/include
@@ -234,7 +235,7 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB)
     ${OMNI_THREAD_LIB}
     ${OMNI_ORB4_LIB}
     ${PINOCCHIO_LIBRARIES}
-    )
+  )
   add_dependencies(${PROJECT_NAME}_hpp_addon ${PROJECT_NAME}_generate_messages_cpp)
 endif ()
 
@@ -272,35 +273,35 @@ add_dependencies(roport_task_scheduler ${${PROJECT_NAME}_EXPORTED_TARGETS} ${cat
 target_link_libraries(roport_task_scheduler
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
-  )
+)
 
 add_executable(roport_robot_interface src/roport_robot_interface.cpp)
 add_dependencies(roport_robot_interface ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_robot_interface
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
-  )
+)
 
 add_executable(roport_moveit_cpp_server src/roport_moveit_cpp_server.cpp)
 add_dependencies(roport_moveit_cpp_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_moveit_cpp_server
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
-  )
+)
 
 add_executable(roport_msg_converter src/roport_msg_converter.cpp)
 add_dependencies(roport_msg_converter ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_msg_converter
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
-  )
+)
 
 add_executable(roport_msg_aggregator src/roport_msg_aggregator.cpp)
 add_dependencies(roport_msg_aggregator ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(roport_msg_aggregator
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
-  )
+)
 
 if (HPP_CORE_LIB AND HPP_FCL_LIB)
   add_executable(roport_hpp_interface src/roport_hpp_interface.cpp)
@@ -309,7 +310,7 @@ if (HPP_CORE_LIB AND HPP_FCL_LIB)
     ${catkin_LIBRARIES}
     ${PROJECT_NAME}
     ${PROJECT_NAME}_hpp_addon
-    )
+  )
 endif ()
 
 if (CARTESIO_LIB)
@@ -339,33 +340,33 @@ install(TARGETS
   roport_msg_converter
   roport_msg_aggregator
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  )
+)
 
 if (CARTESIO_LIB)
   install(TARGETS roport_cartesio_server
     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-    )
+  )
 endif ()
 
 install(DIRECTORY
   launch
   tree
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-  )
+)
 
 # Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "common.h"
   PATTERN ".svn" EXCLUDE
-  )
+)
 
 # Mark libraries for installation
 install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
-  )
+)
 
 #############
 ## Testing ##
@@ -386,25 +387,25 @@ catkin_add_nosetests(src/rotools/tests)
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/ClangTools.cmake OPTIONAL
   RESULT_VARIABLE CLANG_TOOLS
-  )
+)
 if (CLANG_TOOLS)
   file(GLOB CPP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/*.cpp
-    )
+  )
   file(GLOB_RECURSE HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/roport/*.h
-    )
+  )
   add_format_target(rotools FILES ${CPP_SOURCES} ${HEADERS})
   add_tidy_target(rotools
     FILES ${CPP_SOURCES}
     DEPENDS ${PROJECT_NAME}
-    )
+  )
 endif ()
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/PepTools.cmake OPTIONAL
   RESULT_VARIABLE PEP_TOOLS
-  )
+)
 if (PEP_TOOLS)
   file(GLOB_RECURSE PY_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.py)
   add_pyformat_target(rotools FILES ${PY_SOURCES})

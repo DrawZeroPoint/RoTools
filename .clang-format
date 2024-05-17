@@ -1,4 +1,4 @@
 BasedOnStyle: Chromium
-Standard: Cpp11
-SortIncludes: true
+Standard: c++17
+SortIncludes: CaseInsensitive
 ColumnLimit: 120
