@@ -1,0 +1,26 @@
+# For each planning group defined by its name, execute the given trajectory with that group.
+# One or more groups can be set.
+
+# Execute the Cartesian trajectories for multiple planning groups.
+
+# Requests
+# group_names: The planning groups.
+# goal_type [opt]: BASE_ABS (0): The trajectory pose is wrt the reference frame. By default goal_type=0.
+#                  BASE_REL (1): The pose is wrt the reference frame transferred to current ee frame's origin.
+#                  EEF (2): The pose is wrt the end-effector frame.
+# trajectories: One for each group.
+
+std_msgs/Header header
+string[] group_names
+
+uint8 BASE_ABS=0
+uint8 BASE_REL=1
+uint8 EEF=2
+uint8 goal_type
+
+roport/CartesianTrajectory[] trajectories
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status
+string result_msg

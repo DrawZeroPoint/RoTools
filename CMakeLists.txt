@@ -100,6 +100,8 @@ add_message_files(
   StatusChange.msg
   StatusChangeLog.msg
   TreeNode.msg
+  CartesianTrajectory.msg
+  CartesianTrajectoryPoint.msg
 )
 
 ###########################################
@@ -110,6 +112,7 @@ add_service_files(
   FILES
   ExecuteAddCollisionBox.srv
   ExecuteAddCollisionPlane.srv
+  ExecuteAllCartesianTrajectories.srv
   ExecuteAllLockedPoses.srv
   ExecuteAllPlans.srv
   ExecuteAllPoses.srv
