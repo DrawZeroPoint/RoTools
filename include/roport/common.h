@@ -45,6 +45,7 @@ error "Missing the <filesystem> header."
 
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Transform.h>
+#include <geometry_msgs/TransformStamped.h>
 
 namespace roport {
 
@@ -213,6 +214,21 @@ inline void toGlobalPose(const int& goal_type,
   } else {
     throw std::invalid_argument("Goal type not supported");
   }
+}
+
+inline void toGlobalPose(const int& goal_type,
+                         const geometry_msgs::TransformStamped& current_transform,
+                         const geometry_msgs::Pose& cmd_pose,
+                         geometry_msgs::Pose& goal_pose) {
+  geometry_msgs::Pose current_pose;
+  current_pose.position.x = current_transform.transform.translation.x;
+  current_pose.position.y = current_transform.transform.translation.y;
+  current_pose.position.z = current_transform.transform.translation.z;
+  current_pose.orientation.x = current_transform.transform.rotation.x;
+  current_pose.orientation.y = current_transform.transform.rotation.y;
+  current_pose.orientation.z = current_transform.transform.rotation.z;
+  current_pose.orientation.w = current_transform.transform.rotation.w;
+  toGlobalPose(goal_type, current_pose, cmd_pose, goal_pose);
 }
 
 inline auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
