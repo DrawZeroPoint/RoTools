@@ -7,7 +7,7 @@
 
 namespace rotools {
 
-RuckigOptimizer::RuckigOptimizer(int dof,
+SwiftOptimizer::SwiftOptimizer(int dof,
                                  const std::vector<double>& max_vel,
                                  const std::vector<double>& max_acc,
                                  const std::vector<double>& max_jerk,
@@ -28,9 +28,9 @@ RuckigOptimizer::RuckigOptimizer(int dof,
   is_target_state_set_ = new bool(false);
   start_ = new std::chrono::steady_clock::time_point;
 
-  trajectory_generator_ = new ruckig::Ruckig<capacity_>(1. / *frequency_);
-  input_param_ = new ruckig::InputParameter<capacity_>();
-  output_param_ = new ruckig::OutputParameter<capacity_>();
+  trajectory_generator_ = new swift::Swift<capacity_>(1. / *frequency_);
+  input_param_ = new swift::InputParameter<capacity_>();
+  output_param_ = new swift::OutputParameter<capacity_>();
 
   for (size_t i = 0; i < capacity_; i += 1) {
     if (i < *dof_) {
@@ -38,7 +38,7 @@ RuckigOptimizer::RuckigOptimizer(int dof,
       input_param_->max_acceleration[i] = reduce_ratio * max_acc[i];
       input_param_->max_jerk[i] = reduce_ratio * max_jerk[i];
     } else {
-      // Setting non-zero limits make sure Ruckig receive valid limits and not producing zeros for all cmd.
+      // Setting non-zero limits make sure Swift receive valid limits and not producing zeros for all cmd.
       input_param_->max_velocity[i] = reduce_ratio;
       input_param_->max_acceleration[i] = reduce_ratio;
       input_param_->max_jerk[i] = reduce_ratio;
@@ -46,14 +46,14 @@ RuckigOptimizer::RuckigOptimizer(int dof,
   }
 }
 
-RuckigOptimizer::~RuckigOptimizer() {
+SwiftOptimizer::~SwiftOptimizer() {
   delete trajectory_generator_;
   delete input_param_;
   delete output_param_;
   delete start_;
 }
 
-void RuckigOptimizer::setInitialState(const sensor_msgs::JointState& msg) {
+void SwiftOptimizer::setInitialState(const sensor_msgs::JointState& msg) {
   assert(*is_target_state_set_);
   std::array<double, capacity_> position{};
   std::array<double, capacity_> velocity{};
@@ -67,7 +67,7 @@ void RuckigOptimizer::setInitialState(const sensor_msgs::JointState& msg) {
   *start_ = std::chrono::steady_clock::now();
 }
 
-void RuckigOptimizer::setTargetState(const sensor_msgs::JointState& msg) {
+void SwiftOptimizer::setTargetState(const sensor_msgs::JointState& msg) {
   std::array<double, capacity_> position{};
   std::array<double, capacity_> velocity{};
   std::copy(msg.position.begin(), msg.position.end(), position.begin());
@@ -77,13 +77,13 @@ void RuckigOptimizer::setTargetState(const sensor_msgs::JointState& msg) {
   *is_target_state_set_ = true;
 }
 
-void RuckigOptimizer::getTargetPosition(std::vector<double>& q_d) {
+void SwiftOptimizer::getTargetPosition(std::vector<double>& q_d) {
   assert(*is_target_state_set_);
   q_d.resize(*dof_);
   std::copy(input_param_->target_position.begin(), input_param_->target_position.begin() + *dof_, q_d.begin());
 }
 
-bool RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd) {
+bool SwiftOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq_cmd) {
   assert(*is_initial_state_set_ && *is_target_state_set_);
 
   auto interval = std::chrono::steady_clock::now() - *start_;
@@ -91,8 +91,8 @@ bool RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq
   const unsigned long kSteps = std::max<unsigned long>(i_ms.count(), 1);
   for (unsigned long i = 0; i < kSteps; i++) {
     auto result = trajectory_generator_->update(*input_param_, *output_param_);
-    if (result != ruckig::Working && result != ruckig::Finished) {
-      ROS_ERROR_STREAM("Ruckig reported error code: " << result);
+    if (result != swift::Working && result != swift::Finished) {
+      ROS_ERROR_STREAM("Swift reported error code: " << result);
       ROS_WARN_STREAM(input_param_->to_string());
       ROS_WARN_STREAM(output_param_->to_string());
       *is_initial_state_set_ = false;
@@ -110,10 +110,10 @@ bool RuckigOptimizer::update(std::vector<double>& q_cmd, std::vector<double>& dq
   return true;
 }
 
-void RuckigOptimizer::reset() {
-  trajectory_generator_ = new ruckig::Ruckig<capacity_>(1. / *frequency_);
-  input_param_ = new ruckig::InputParameter<capacity_>();
-  output_param_ = new ruckig::OutputParameter<capacity_>();
+void SwiftOptimizer::reset() {
+  trajectory_generator_ = new swift::Swift<capacity_>(1. / *frequency_);
+  input_param_ = new swift::InputParameter<capacity_>();
+  output_param_ = new swift::OutputParameter<capacity_>();
 
   *is_initial_state_set_ = false;
   *is_target_state_set_ = false;

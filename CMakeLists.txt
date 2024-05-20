@@ -49,15 +49,15 @@ else (${ubt_core_msgs_FOUND})
   MESSAGE(STATUS "NOT FOUND ubt_core_msgs")
 endif (${ubt_core_msgs_FOUND})
 
-# This should locate the official package ros-noetic-ruckig installed with moveit
-find_package(ruckig 0.6.5 EXACT)
-if (${ruckig_FOUND})
-  MESSAGE(STATUS "FOUND ruckig ${ruckig_VERSION}")
-  find_library(ruckig_LIBRARIES ruckig HINTS /usr/local/lib)
-  MESSAGE(STATUS "ruckig_LIBRARIES: ${ruckig_LIBRARIES}")
-else (${ruckig_FOUND})
-  MESSAGE(FATAL_ERROR "NOT FOUND ruckig")
-endif (${ruckig_FOUND})
+# This should locate the specific verion instead of the one installed by ROS
+find_package(swift REQUIRED)
+if (${swift_FOUND})
+  MESSAGE(STATUS "FOUND swift ${swift_VERSION}")
+  find_library(swift_LIBRARIES swift HINTS /usr/local/lib)
+  MESSAGE(STATUS "swift_LIBRARIES: ${swift_LIBRARIES}")
+else (${swift_FOUND})
+  MESSAGE(FATAL_ERROR "NOT FOUND swift")
+endif (${swift_FOUND})
 
 # Optionally locate Humanoid Path Planner
 find_library(HPP_CORE_LIB hpp-core HINTS /opt/openrobots/lib)
@@ -210,7 +210,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
-  ${ruckig_LIBRARIES}
+  ${swift_LIBRARIES}
 )
 
 if (HPP_CORE_LIB AND HPP_FCL_LIB)

@@ -156,7 +156,7 @@ auto MsgConverter::init() -> bool {
       ROS_ASSERT(!max_vel.empty() && max_vel.size() == max_acc.size() && max_vel.size() == max_jerk.size());
     }
 
-    rotools::RuckigOptimizer* optimizer;
+    rotools::SwiftOptimizer* optimizer;
     if (smooth_start_flag > 0) {
       enable_smooth_start_flags_.push_back(true);
       auto start_ref_topic = start_ref_topics[group_id];
@@ -166,7 +166,7 @@ auto MsgConverter::init() -> bool {
           });
       start_ref_subscribers_.push_back(subscriber);
       finished_smooth_start_flags_.push_back(false);
-      optimizer = new rotools::RuckigOptimizer(static_cast<int>(source_names.size()), max_vel, max_acc, max_jerk);
+      optimizer = new rotools::SwiftOptimizer(static_cast<int>(source_names.size()), max_vel, max_acc, max_jerk);
     } else {
       enable_smooth_start_flags_.push_back(false);
       ros::Subscriber dummy_subscriber;
@@ -302,7 +302,7 @@ auto MsgConverter::filterJointState(const sensor_msgs::JointState::ConstPtr& src
 auto MsgConverter::smoothJointState(const sensor_msgs::JointState& msg,
                                     const std::string& source_topic,
                                     const std::string& reference_topic,
-                                    rotools::RuckigOptimizer* optimizer,
+                                    rotools::SwiftOptimizer* optimizer,
                                     sensor_msgs::JointState& smoothed_msg) -> bool {
   optimizer->setTargetState(msg);
   if (!optimizer->isInitialStateSet()) {

@@ -33,7 +33,7 @@
 #include <std_msgs/Float64.h>
 
 #include "roport/online_trajectory_optimizer.h"
-#include "ruckig/ruckig.hpp"
+#include "swift/swift.hpp"
 
 #ifdef FRANKA_CORE_MSGS
 #include <franka_core_msgs/JointCommand.h>
@@ -68,7 +68,7 @@ class MsgConverter {
 
   std::vector<ros::Publisher> publishers_;
   std::vector<ros::Subscriber> subscribers_;
-  std::vector<rotools::RuckigOptimizer*> optimizers_;
+  std::vector<rotools::SwiftOptimizer*> optimizers_;
 
   std::vector<std::string> target_joint_to_inspect_;
   std::vector<ros::Publisher> inspected_joint_value_publishers_;
@@ -165,7 +165,7 @@ class MsgConverter {
   auto smoothJointState(const sensor_msgs::JointState& msg,
                         const std::string& source_topic,
                         const std::string& reference_topic,
-                        rotools::RuckigOptimizer* optimizer,
+                        rotools::SwiftOptimizer* optimizer,
                         sensor_msgs::JointState& smoothed_msg) -> bool;
 
   /**

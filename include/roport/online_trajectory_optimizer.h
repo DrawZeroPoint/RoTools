@@ -13,20 +13,20 @@
 #include <iostream>
 #include <vector>
 
-#include "ruckig/ruckig.hpp"
+#include "swift/swift.hpp"
 
 namespace rotools {
 
-class RuckigOptimizer {
+class SwiftOptimizer {
  public:
-  RuckigOptimizer() = delete;
-  explicit RuckigOptimizer(int dof,
+  SwiftOptimizer() = delete;
+  explicit SwiftOptimizer(int dof,
                            const std::vector<double>& max_vel,
                            const std::vector<double>& max_acc,
                            const std::vector<double>& max_jerk,
                            double frequency = 1000.,
                            double reduce_ratio = 0.005);
-  ~RuckigOptimizer();
+  ~SwiftOptimizer();
 
   /**
    * Set the initial position and velocity into the input_param.
@@ -73,9 +73,9 @@ class RuckigOptimizer {
   double* frequency_;
   std::chrono::steady_clock::time_point* start_;
 
-  ruckig::Ruckig<capacity_>* trajectory_generator_;
-  ruckig::InputParameter<capacity_>* input_param_;
-  ruckig::OutputParameter<capacity_>* output_param_;
+  swift::Swift<capacity_>* trajectory_generator_;
+  swift::InputParameter<capacity_>* input_param_;
+  swift::OutputParameter<capacity_>* output_param_;
 };
 
 }  // namespace rotools
