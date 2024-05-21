@@ -1,40 +1,25 @@
-# Execute the goal pose for the planning group
+# Execute the pose goal for given planning group
 
 # Requests
-# group_name [opt]: The group providing the reference frame
-# ref_frame [opt]: If given, this will override the reference frame declaration by group_name or header.frame_id.
-# ee_frame [opt]: If given, this will override the end-effector frame declaration by group_name or header.frame_id.
-# goal_type [opt]: BASE_ABS (0): The goal pose is wrt the reference frame. By default goal_type=0.
-#                  BASE_REL (1): The goal pose is wrt the reference frame transferred to current ee frame's origin.
-#                  EEF (2): The goal pose is wrt the end-effector frame.
-# goal: Goal pose of the end-effector.
-# tolerance [opt, deprecated]: Tolerance for considering the goal has been reached, default 0.01 m/rad. We suggest
-#                              using translation_tolerance and rotation_tolerance instead.
-# translation_tolerance [opt]: Tolerance for considering the goal has been reached regarding translation.
-#                              If not given, the default DEFAULT_T_TOL (m) will be used.
-# rotation_tolerance [opt]: Tolerance for considering the goal has been reached regarding rotation.
-#                           If not given, the default DEFAULT_R_TOL (rad) will be used.
-# constraint [opt]: If 'r', 'p', or 'y' is given, the eef_frame will not rotate along its x-, y-, or z-axis during
-#                   reaching to the goal. You can combine them like 'rp', 'ry', 'py', and 'rpy'. Default ''.
-
-uint8 BASE_ABS=0
-uint8 BASE_REL=1
-uint8 EEF=2
-float64 DEFAULT_T_TOL=0.01
-float64 DEFAULT_R_TOL=0.1
+# group_name: The group providing the reference frame
+# goal_type: BASE_ABS: pose wrt the global base frame (robot base)
+#            BASE_REL: pose wrt the base frame transferred to current eef base position
+#            EEF: pose wrt the eef frame
+# goal: Pose of the goal
+# tolerance [opt]: Tolerance for considering the goal has been reached, default 0.01 m/rad
+# constraint: If 'r', 'p', or 'y' is given, the eef_frame should not rotate about itself along x-, y-, or z-axis.
+#             You can combine them like 'rp', 'ry', 'py', and 'rpy'. default ''
 
 std_msgs/Header header
 string group_name
-string ref_frame
-string ee_frame
+uint8 BASE_ABS=0
+uint8 BASE_REL=1
+uint8 EEF=2
 uint8 goal_type
 geometry_msgs/Pose goal
 float64 tolerance
-float64 translation_tolerance
-float64 rotation_tolerance
 string constraint
 ---
 uint8 SUCCEEDED=0
 uint8 FAILED=1
 uint8 result_status
-string result_msg
