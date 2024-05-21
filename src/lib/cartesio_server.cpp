@@ -90,6 +90,33 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
   execute_all_locked_poses_srv_ =
       nh_.advertiseService("execute_all_locked_poses", &CartesIOServer::executeAllLockedPosesSrvCb, this);
   execute_group_homing_srv_ = nh_.advertiseService("execute_group_homing", &CartesIOServer::executeHomingSrvCb, this);
+
+  execute_left_arm_pose_srv_ = nh_.advertiseService("execute_left_arm_pose", &CartesIOServer::executeLeftArmCb, this);
+}
+
+auto CartesIOServer::executeLeftArmCb(roport::ExecuteGroupPose::Request& req,
+                                      roport::ExecuteGroupPose::Response& resp) -> bool {
+  std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
+
+  auto index = getIndex(group_names_, req.group_name);
+  if (index < 0) {
+    ROS_ERROR_STREAM("No group named '" << req.group_name << "' defined");
+    return false;
+  }
+
+  geometry_msgs::Pose goal_pose = req.goal;
+
+  // Build trajectory to reach the goal
+  cartesian_interface::ReachPoseActionGoal action_goal;
+  buildActionGoal(index, goal_pose, action_goal);
+  action_goals.insert({index, action_goal});
+
+  if (executeGoals(action_goals)) {
+    resp.result_status = roport::ExecuteGroupPose::Response::SUCCEEDED;
+  } else {
+    resp.result_status = roport::ExecuteGroupPose::Response::FAILED;
+  }
+  return true;
 }
 
 auto CartesIOServer::executeHomingSrvCb(roport::ExecuteGroupPose::Request& req,

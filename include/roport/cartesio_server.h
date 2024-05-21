@@ -72,6 +72,8 @@ class CartesIOServer {
   ros::ServiceServer execute_all_poses_srv_;
   ros::ServiceServer execute_all_locked_poses_srv_;
 
+  ros::ServiceServer execute_left_arm_pose_srv_;
+
   using reachPoseActionClient = actionlib::SimpleActionClient<cartesian_interface::ReachPoseAction>;
   std::vector<std::shared_ptr<reachPoseActionClient>> control_clients_;
 
@@ -95,6 +97,8 @@ class CartesIOServer {
                                   roport::ExecuteAllLockedPoses::Response& resp) -> bool;
 
   auto executeHomingSrvCb(roport::ExecuteGroupPose::Request& req, roport::ExecuteGroupPose::Response& resp) -> bool;
+
+  auto executeLeftArmCb(roport::ExecuteGroupPose::Request& req, roport::ExecuteGroupPose::Response& resp) -> bool;
 
   void buildActionGoal(const int& index,
                        const geometry_msgs::Pose& goal_pose,
