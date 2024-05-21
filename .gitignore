@@ -1,8 +1,10 @@
 /src/rotools/sensing/vae/results/
 /src/rotools/tests/test_data/
 /src/rotools/sensing/data/
-/cmake-build-debug/
+cmake-build-debug
 cmake-build-release
+catkin_generated
+cmake
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
