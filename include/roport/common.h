@@ -29,8 +29,8 @@
 #define ROPORT_COMMON_H
 
 #include <ros/ros.h>
-#include <Eigen/Eigen>
 #include <cmath>
+#include <Eigen/Eigen>
 
 #if __has_include(<filesystem>)
 #include <filesystem>
@@ -202,15 +202,24 @@ inline void toGlobalPose(const int& goal_type,
                          const geometry_msgs::Pose& current_pose,
                          const geometry_msgs::Pose& cmd_pose,
                          geometry_msgs::Pose& goal_pose) {
+  geometry_msgs::Pose refined_cmd_pose;
+  if (cmd_pose.orientation.x == 0 && cmd_pose.orientation.y == 0 && cmd_pose.orientation.z == 0 &&
+      cmd_pose.orientation.w == 0) {
+    ROS_WARN("Given cmd pose orientation coeffs are all zeros, using current orientation to initialize");
+    refined_cmd_pose.position = cmd_pose.position;
+    refined_cmd_pose.orientation = current_pose.orientation;
+  } else {
+    refined_cmd_pose = cmd_pose;
+  }
   if (goal_type == 0) {
     // The given pose is already in the reference frame
-    goal_pose = cmd_pose;
+    goal_pose = refined_cmd_pose;
   } else if (goal_type == 1) {
     // The given pose is relative to the local aligned frame having the same orientation as the reference frame
-    localAlignedPoseToGlobalPose(cmd_pose, current_pose, goal_pose, true);
+    localAlignedPoseToGlobalPose(refined_cmd_pose, current_pose, goal_pose, true);
   } else if (goal_type == 2) {
     // The given pose is relative to the local frame
-    localPoseToGlobalPose(cmd_pose, current_pose, goal_pose);
+    localPoseToGlobalPose(refined_cmd_pose, current_pose, goal_pose);
   } else {
     throw std::invalid_argument("Goal type not supported");
   }
@@ -517,14 +526,14 @@ inline void saturate(const Eigen::VectorXd& input,
 }
 
 /**
-* Generic function to find an element in vector and also its position. It returns a pair of bool & int.
-* The function will return if the first match is found.
-* @tparam T Type of the element in the vector.
-* @param vec_of_elements Vector to find the element from.
-* @param element The element to find.
-* @return A pair of <bool, int>. The bool represents if element is present in vector or not.
-*         The int represents the index of element in vector if its found else -1.
-*/
+ * Generic function to find an element in vector and also its position. It returns a pair of bool & int.
+ * The function will return if the first match is found.
+ * @tparam T Type of the element in the vector.
+ * @param vec_of_elements Vector to find the element from.
+ * @param element The element to find.
+ * @return A pair of <bool, int>. The bool represents if element is present in vector or not.
+ *         The int represents the index of element in vector if its found else -1.
+ */
 template <typename T>
 auto findInVector(const std::vector<T>& vec_of_elements, const T& element) -> std::pair<bool, int> {
   std::pair<bool, int> result;
