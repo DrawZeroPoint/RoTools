@@ -10,10 +10,11 @@
 # goal: Goal pose of the end-effector.
 # tolerance [opt, deprecated]: Tolerance for considering the goal has been reached, default 0.01 m/rad. We suggest
 #                              using translation_tolerance and rotation_tolerance instead.
-# translation_tolerance [opt]: Tolerance for considering the goal has been reached regarding translation.
+# translation_tolerance [opt]: Total tolerance for considering the goal has been reached regarding translation.
 #                              If not given, the default DEFAULT_T_TOL (m) will be used.
-# rotation_tolerance [opt]: Tolerance for considering the goal has been reached regarding rotation.
+# rotation_tolerance [opt]: Tolerance for considering the goal has been reached regarding rotation included angle.
 #                           If not given, the default DEFAULT_R_TOL (rad) will be used.
+# duration: Time in seconds that the goal pose should be reached.
 # constraint [opt]: If 'r', 'p', or 'y' is given, the eef_frame will not rotate along its x-, y-, or z-axis during
 #                   reaching to the goal. You can combine them like 'rp', 'ry', 'py', and 'rpy'. Default ''.
 
@@ -32,6 +33,7 @@ geometry_msgs/Pose goal
 float64 tolerance
 float64 translation_tolerance
 float64 rotation_tolerance
+float64 duration
 string constraint
 ---
 uint8 SUCCEEDED=0
