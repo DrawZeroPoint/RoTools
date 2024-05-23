@@ -436,7 +436,7 @@ inline bool allClose(geometry_msgs::Pose first,
   q1.coeffs() << first.orientation.x, first.orientation.y, first.orientation.z, first.orientation.w;
   q2.coeffs() << second.orientation.x, second.orientation.y, second.orientation.z, second.orientation.w;
   auto theta = angleBetweenQuaternions(q1, q2);
-  if (fabs(theta) > orientation_residual) {
+  if (fabs(theta) > orientation_tolerance) {
     is_all_close = false;
   }
   orientation_residual += fabs(theta);
