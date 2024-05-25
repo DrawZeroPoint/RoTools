@@ -121,6 +121,26 @@ class Test(unittest.TestCase):
         for i in range(4):
             self.assertAlmostEqual(q_b1[i], q_m[i])
 
+    def test_get_gravity_compensation_vector(self):
+        """This is a working example for how to calculate gravity compensation vector.
+
+        Given the default gravity compensation vector [0, 0, -9.81], this function calculates the
+        rotated gravity compensation vector by quaternion Q.
+        """
+        v0 = np.array([0, 0, -9.78, 0])
+        # Raw values obtained with URDF. As the raw values denotes the rotation from link0 -> base,
+        # so to get base -> link0, we use q's conjugate, which denotes base -> link0 rotation
+        q = np.array([-0.43687, 0.49775, 0.054428, 0.74728])  # CURI left arm link0
+        # q = np.array([0.43687, 0.49775, -0.054428, 0.74728])  # CURI right arm link0
+        q = transform.quaternion_conjugate(q)
+        q_v0 = tf.transformations.quaternion_multiply(q, v0)
+        q_conj = tf.transformations.quaternion_conjugate(q)
+        q_v0_q_conj = tf.transformations.quaternion_multiply(q_v0, q_conj)
+        # Left: [ 7.74060751  5.85572955 -1.20078201  0.        ]
+        # Right: [ 7.74060751 -5.85572955 -1.20078201  0.        ]
+        print("CURI left arm gravity compensation vector: ", q_v0_q_conj)
+
+
     def test_2d_rotation(self):
         R = transform.rotation_matrix(-20 * np.pi / 180, (0, 0, 1))
         v0_t = np.dot(R, np.array([1, 2, 0, 1]).T)
