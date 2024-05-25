@@ -205,7 +205,7 @@ inline void toGlobalPose(const int& goal_type,
   geometry_msgs::Pose refined_cmd_pose;
   if (cmd_pose.orientation.x == 0 && cmd_pose.orientation.y == 0 && cmd_pose.orientation.z == 0 &&
       cmd_pose.orientation.w == 0) {
-    ROS_WARN("Given cmd pose orientation coeffs are all zeros, using current orientation to initialize");
+    ROS_WARN("Commanded pose orientation coeffs are all zeros, using current orientation to initialize");
     refined_cmd_pose.position = cmd_pose.position;
     refined_cmd_pose.orientation = current_pose.orientation;
   } else {
