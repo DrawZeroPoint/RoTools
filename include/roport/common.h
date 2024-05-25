@@ -187,6 +187,19 @@ inline void localAlignedPoseToGlobalPose(const geometry_msgs::Pose& pose_local_a
   eigenMatrixToGeometryPose(mat_global_to_target, pose_global_to_target);
 }
 
+inline auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
+  if (pose.orientation.w == 0 && pose.orientation.x == 0 && pose.orientation.y == 0 && pose.orientation.z == 0) {
+    ROS_WARN("The orientation coefficients are all zeros");
+    return false;
+  }
+  if (fabs(std::pow(pose.orientation.w, 2) + std::pow(pose.orientation.x, 2) + std::pow(pose.orientation.y, 2) +
+           std::pow(pose.orientation.z, 2) - 1.) > kQuaternionOrientationTolerance) {
+    ROS_WARN("The pose has un-normalized orientation");
+    return false;
+  }
+  return true;
+}
+
 /**
  * Given the current pose of a controlled frame in the reference frame and a commanded pose,
  * determine the goal pose with the goal type.
@@ -203,9 +216,8 @@ inline void toGlobalPose(const int& goal_type,
                          const geometry_msgs::Pose& cmd_pose,
                          geometry_msgs::Pose& goal_pose) {
   geometry_msgs::Pose refined_cmd_pose;
-  if (cmd_pose.orientation.x == 0 && cmd_pose.orientation.y == 0 && cmd_pose.orientation.z == 0 &&
-      cmd_pose.orientation.w == 0) {
-    ROS_WARN("Commanded pose orientation coeffs are all zeros, using current orientation to initialize");
+  if (!isPoseLegal(cmd_pose)) {
+    ROS_WARN("Using current orientation to initialize");
     refined_cmd_pose.position = cmd_pose.position;
     refined_cmd_pose.orientation = current_pose.orientation;
   } else {
@@ -238,19 +250,6 @@ inline void toGlobalPose(const int& goal_type,
   current_pose.orientation.z = current_transform.transform.rotation.z;
   current_pose.orientation.w = current_transform.transform.rotation.w;
   toGlobalPose(goal_type, current_pose, cmd_pose, goal_pose);
-}
-
-inline auto isPoseLegal(const geometry_msgs::Pose& pose) -> bool {
-  if (pose.orientation.w == 0 && pose.orientation.x == 0 && pose.orientation.y == 0 && pose.orientation.z == 0) {
-    ROS_ERROR("The pose is empty (all orientation coefficients are zero)");
-    return false;
-  }
-  if (fabs(std::pow(pose.orientation.w, 2) + std::pow(pose.orientation.x, 2) + std::pow(pose.orientation.y, 2) +
-           std::pow(pose.orientation.z, 2) - 1.) > kQuaternionOrientationTolerance) {
-    ROS_WARN("The pose has un-normalized orientation");
-    return false;
-  }
-  return true;
 }
 
 /**
