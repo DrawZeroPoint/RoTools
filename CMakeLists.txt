@@ -85,6 +85,14 @@ else ()
   message(WARNING "CARTESIO_LIB not found")
 endif ()
 
+find_package(drake HINTS /opt/drake/)
+if (${drake_FOUND})
+  add_definitions(-DWITH_DRAKE)
+  message(STATUS "Found drake lib at ${drake_LIBRARIES}")
+else (${drake_FOUND})
+  message(WARNING "drake not found")
+endif (${drake_FOUND})
+
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -252,6 +260,12 @@ if (CARTESIO_LIB)
   )
   target_link_libraries(${PROJECT_NAME}_cartesio ${catkin_LIBRARIES})
   add_dependencies(${PROJECT_NAME}_cartesio ${PROJECT_NAME}_generate_messages_cpp)
+  if (${drake_FOUND})
+    target_include_directories(${PROJECT_NAME}_cartesio PUBLIC
+      /opt/drake/include
+    )
+    target_link_libraries(${PROJECT_NAME}_cartesio ${drake_LIBRARIES})
+  endif ()
 
   add_library(${PROJECT_NAME}_cartesio_addon src/lib/cartesio_addon.cpp)
   add_dependencies(${PROJECT_NAME}_cartesio_addon ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
