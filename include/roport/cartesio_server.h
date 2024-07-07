@@ -110,11 +110,18 @@ class CartesIOServer {
   auto executeMultipleCartesianTrajectoriesCb(roport::ExecuteAllCartesianTrajectories::Request& req,
                                               roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool;
 
+  /**
+   *
+   * @param index
+   * @param goal_pose The goal pose represents the controlled frame's pose in the reference frame denoted by
+   *                  reference_frames_[index].
+   * @param duration Time duration from the previous pose to the goal pose, in seconds.
+   * @param action_goal
+   */
   void buildActionGoal(const int& index,
                        const geometry_msgs::Pose& goal_pose,
                        const float& duration,
-                       cartesian_interface::ReachPoseActionGoal& action_goal,
-                       const bool& incremental = false);
+                       cartesian_interface::ReachPoseActionGoal& action_goal);
 
   static void updateStamp(const double& stamp, cartesian_interface::ReachPoseActionGoal& action_goal);
 

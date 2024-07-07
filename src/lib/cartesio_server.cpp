@@ -255,12 +255,18 @@ auto CartesIOServer::executeMultipleCartesianTrajectoriesCb(ExecuteAllCartesianT
     auto trajectory = req.trajectories[i];
 
     // TODO check if the first pose in the traj is identical with the current pose
+    if (trajectory.points.empty()) {
+      ROS_ERROR("Trajectory for group %s is empty", required_group_name.c_str());
+      resp.result_msg = "Empty trajectory";
+      resp.result_status = roport::ExecuteAllCartesianTrajectories::Response::FAILED;
+      return false;
+    }
 
     cartesian_interface::ReachPoseActionGoal action_goal;
     for (size_t j = 0; j < trajectory.points.size(); j++) {
       // TODO check if the required reference frame is identical with the setting
       auto point = trajectory.points[j];
-      buildActionGoal(index, point.pose, point.duration, action_goal, true);
+      buildActionGoal(index, point.pose, point.duration, action_goal);
     }
     action_goals.insert({index, action_goal});
   }
@@ -322,13 +328,24 @@ void CartesIOServer::getGoalPoseWithReference(const int& ref_idx,
 void CartesIOServer::buildActionGoal(const int& index,
                                      const geometry_msgs::Pose& goal_pose,
                                      const float& duration,
-                                     cartesian_interface::ReachPoseActionGoal& action_goal,
-                                     const bool& incremental) {
-  float d = duration > 0 ? duration : 10.0;
+                                     cartesian_interface::ReachPoseActionGoal& action_goal) {
+  ROS_INFO("Building action goal with the following goal poses:");
+  logROSPose(goal_pose);
+
   action_goal.header.frame_id = reference_frames_[index];
   action_goal.goal.frames.push_back(goal_pose);
-  action_goal.goal.time.push_back(d);
-  action_goal.goal.incremental = incremental;
+
+  // Ref: https://advrhumanoids.github.io/CartesianInterface/tasks/cartesianros.html#reach
+  // The time represents waypoints respective times w.r.t. trajectory start
+  float d = duration > 0 ? duration : 10.0;
+  float absolute_time = 0.0;
+  for (const auto& t : action_goal.goal.time) {
+    absolute_time += t;
+  }
+  action_goal.goal.time.push_back(absolute_time + d);
+
+  // The incremental flag, if set to true, allows to specify waypoints w.r.t. the starting pose of the robot.
+  action_goal.goal.incremental = false;
 }
 
 void CartesIOServer::updateStamp(const double& stamp, cartesian_interface::ReachPoseActionGoal& action_goal) {
@@ -342,15 +359,11 @@ auto CartesIOServer::executeGoals(const std::map<int, cartesian_interface::Reach
   std::map<int, float> duration_handlers;
 
   for (const auto& goal_handler : goal_handlers) {
-    float duration = 0;
-    if (goal_handler.second.goal.incremental) {
-      for (const float& i : goal_handler.second.goal.time) {
-        duration += i;
-      }
-    } else {
-      duration = goal_handler.second.goal.time.back();
+    float total_duration = 0;
+    for (const float& i : goal_handler.second.goal.time) {
+      total_duration += i;
     }
-    duration_handlers.insert({goal_handler.first, duration});
+    duration_handlers.insert({goal_handler.first, total_duration});
   }
 
   for (const auto& goal : goal_handlers) {
@@ -365,7 +378,6 @@ auto CartesIOServer::executeGoals(const std::map<int, cartesian_interface::Reach
     if (!control_clients_[duration_handler.first]->waitForResult(ros::Duration(extended_duration))) {
       ROS_ERROR("Goal(s) of group %s execution timeout (expected: %.2f seconds)",
                 group_names_[duration_handler.first].c_str(), extended_duration);
-      // TODO dzp test this
       control_clients_[duration_handler.first]->cancelAllGoals();
       return false;
     }
