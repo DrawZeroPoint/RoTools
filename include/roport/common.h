@@ -449,6 +449,16 @@ inline void logWarningList(const T& list) {
   }
 }
 
+inline void logROSPose(const geometry_msgs::Pose& pose) {
+  ROS_WARN_STREAM("pos_x: " << pose.position.x);
+  ROS_WARN_STREAM("pos_y: " << pose.position.y);
+  ROS_WARN_STREAM("pos_z: " << pose.position.z);
+  ROS_WARN_STREAM("ori_x: " << pose.orientation.x);
+  ROS_WARN_STREAM("ori_y: " << pose.orientation.y);
+  ROS_WARN_STREAM("ori_z: " << pose.orientation.z);
+  ROS_WARN_STREAM("ori_w: " << pose.orientation.w);
+}
+
 inline auto getFilePath(const std::string& raw_path, std::string& full_path) -> bool {
   if (fs::exists(raw_path)) {
     full_path = raw_path;
