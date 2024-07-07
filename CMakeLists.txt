@@ -131,6 +131,7 @@ add_service_files(
   ExecuteDualArmPoseTorsoJointPosition.srv
   ExecuteEllipticalTrajectory.srv
   ExecuteFrankaGripperGrasp.srv
+  ExecuteGroupHoming.srv
   ExecuteGroupJointStates.srv
   ExecuteGroupNamedStates.srv
   ExecuteGroupPlan.srv

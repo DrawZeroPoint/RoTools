@@ -1,0 +1,23 @@
+# Execute homing for the planning group
+
+# Requests
+# group_name: The planning group to return to home configuration.
+# translation_tolerance [opt]: Total tolerance for considering the goal has been reached regarding translation.
+#                              If not given, the default DEFAULT_T_TOL (m) will be used.
+# rotation_tolerance [opt]: Tolerance for considering the goal has been reached regarding rotation included angle.
+#                           If not given, the default DEFAULT_R_TOL (rad) will be used.
+# duration: Time in seconds that the homing should be archived.
+
+float64 DEFAULT_T_TOL=0.01
+float64 DEFAULT_R_TOL=0.1
+
+std_msgs/Header header
+string group_name
+float64 translation_tolerance
+float64 rotation_tolerance
+float64 duration
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status
+string result_msg
