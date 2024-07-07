@@ -1,6 +1,6 @@
 /*
  * cartesio_server
- * Copyright (c) 2021-2022, Zhipeng Dong
+ * Copyright (c) 2021-2024, Zhipeng Dong
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,10 +43,15 @@
 #include <cartesian_interface/ReachPoseAction.h>
 #include <trajectory_msgs/JointTrajectory.h>
 
+#include <roport/ExecuteAllCartesianTrajectories.h>
 #include <roport/ExecuteAllLockedPoses.h>
 #include <roport/ExecuteAllPoses.h>
-#include <roport/ExecuteMirroredPose.h>
 #include <roport/ExecuteGroupPose.h>
+#include <roport/ExecuteMirroredPose.h>
+
+#ifdef WITH_DRAKE
+#include <drake/common/trajectories/piecewise_pose.h>
+#endif
 
 namespace roport {
 class CartesIOServer {
@@ -72,7 +77,9 @@ class CartesIOServer {
   ros::ServiceServer execute_all_poses_srv_;
   ros::ServiceServer execute_all_locked_poses_srv_;
 
-  ros::ServiceServer execute_left_arm_pose_srv_;
+  ros::ServiceServer execute_group_pose_srv_;
+
+  ros::ServiceServer execute_trajectories_srv_;
 
   using reachPoseActionClient = actionlib::SimpleActionClient<cartesian_interface::ReachPoseAction>;
   std::vector<std::shared_ptr<reachPoseActionClient>> control_clients_;
@@ -98,16 +105,26 @@ class CartesIOServer {
 
   auto executeHomingSrvCb(roport::ExecuteGroupPose::Request& req, roport::ExecuteGroupPose::Response& resp) -> bool;
 
-  auto executeLeftArmCb(roport::ExecuteGroupPose::Request& req, roport::ExecuteGroupPose::Response& resp) -> bool;
+  auto executeGroupPoseCb(roport::ExecuteGroupPose::Request& req, roport::ExecuteGroupPose::Response& resp) -> bool;
+
+  auto executeMultipleCartesianTrajectoriesCb(roport::ExecuteAllCartesianTrajectories::Request& req,
+                                              roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool;
 
   void buildActionGoal(const int& index,
                        const geometry_msgs::Pose& goal_pose,
-                       cartesian_interface::ReachPoseActionGoal& action_goal);
+                       const float& duration,
+                       cartesian_interface::ReachPoseActionGoal& action_goal,
+                       const bool& incremental = false);
 
   static void updateStamp(const double& stamp, cartesian_interface::ReachPoseActionGoal& action_goal);
 
-  auto executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goals,
-                    double duration = 120.0) -> bool;
+  /**
+   * Execute goals given a map of goals for selected control groups.
+   * @param goal_handlers For each entity in the map, the first element in the map indicates the control group index,
+   *                      the second element records pose goals to be visited by individual control group.
+   * @return
+   */
+  auto executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goal_handlers) -> bool;
 
   bool getTransform(const int& index, geometry_msgs::TransformStamped& transform);
 
@@ -126,6 +143,8 @@ class CartesIOServer {
                                 const int& idx,
                                 const geometry_msgs::Pose& curr_pose,
                                 geometry_msgs::Pose& goal_pose);
+
+  bool checkGroupValid(std::string required_group_name);
 };
 
 }  // namespace roport

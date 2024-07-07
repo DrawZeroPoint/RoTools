@@ -85,30 +85,46 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
     ROS_INFO_STREAM("Control action client " << action_name << " initialized");
   }
 
-  // Initialize control servers
+  // Servers for controlling multiple groups' pose
   execute_all_poses_srv_ = nh_.advertiseService("execute_all_poses", &CartesIOServer::executeAllPosesSrvCb, this);
   execute_all_locked_poses_srv_ =
       nh_.advertiseService("execute_all_locked_poses", &CartesIOServer::executeAllLockedPosesSrvCb, this);
-  execute_group_homing_srv_ = nh_.advertiseService("execute_group_homing", &CartesIOServer::executeHomingSrvCb, this);
 
-  execute_left_arm_pose_srv_ = nh_.advertiseService("execute_left_arm_pose", &CartesIOServer::executeLeftArmCb, this);
+  // Servers for controlling one group's pose
+  execute_group_homing_srv_ = nh_.advertiseService("execute_group_homing", &CartesIOServer::executeHomingSrvCb, this);
+  execute_group_pose_srv_ = nh_.advertiseService("execute_group_pose", &CartesIOServer::executeGroupPoseCb, this);
+
+  // Servers for controlling multiple groups' trajectories
+  execute_trajectories_srv_ = nh_.advertiseService("execute_multiple_cartesian_trajectories",
+                                                   &CartesIOServer::executeMultipleCartesianTrajectoriesCb, this);
 }
 
-auto CartesIOServer::executeLeftArmCb(roport::ExecuteGroupPose::Request& req,
-                                      roport::ExecuteGroupPose::Response& resp) -> bool {
-  std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
-
-  auto index = getIndex(group_names_, req.group_name);
+bool CartesIOServer::checkGroupValid(std::string required_group_name) {
+  auto index = getIndex(group_names_, required_group_name);
   if (index < 0) {
-    ROS_ERROR_STREAM("No group named '" << req.group_name << "' defined");
+    ROS_ERROR_STREAM("No group named '" << required_group_name << "' defined");
+    ROS_WARN("Defined group names are:");
+    logWarningList<std::vector<std::string>>(group_names_);
+    return false;
+  }
+  return true;
+}
+
+auto CartesIOServer::executeGroupPoseCb(roport::ExecuteGroupPose::Request& req,
+                                        roport::ExecuteGroupPose::Response& resp) -> bool {
+  if (!checkGroupValid(req.group_name)) {
     return false;
   }
 
+  std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
+
+  auto index = getIndex(group_names_, req.group_name);
   geometry_msgs::Pose goal_pose = req.goal;
+  float duration = req.duration > 0 ? req.duration : 5.0;
 
   // Build trajectory to reach the goal
   cartesian_interface::ReachPoseActionGoal action_goal;
-  buildActionGoal(index, goal_pose, action_goal);
+  buildActionGoal(index, goal_pose, duration, action_goal);
   action_goals.insert({index, action_goal});
 
   if (executeGoals(action_goals)) {
@@ -121,19 +137,19 @@ auto CartesIOServer::executeLeftArmCb(roport::ExecuteGroupPose::Request& req,
 
 auto CartesIOServer::executeHomingSrvCb(roport::ExecuteGroupPose::Request& req,
                                         roport::ExecuteGroupPose::Response& resp) -> bool {
-  std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
-
-  auto index = getIndex(group_names_, req.group_name);
-  if (index < 0) {
-    ROS_ERROR_STREAM("No group named '" << req.group_name << "' defined");
+  if (!checkGroupValid(req.group_name)) {
     return false;
   }
 
+  std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
+
+  auto index = getIndex(group_names_, req.group_name);
   geometry_msgs::Pose goal_pose = homing_poses_[index];
+  float duration = req.duration > 0 ? req.duration : 10.0;
 
   // Build trajectory to reach the goal
   cartesian_interface::ReachPoseActionGoal action_goal;
-  buildActionGoal(index, goal_pose, action_goal);
+  buildActionGoal(index, goal_pose, duration, action_goal);
   action_goals.insert({index, action_goal});
 
   if (executeGoals(action_goals)) {
@@ -162,7 +178,7 @@ auto CartesIOServer::executeAllPosesSrvCb(roport::ExecuteAllPoses::Request& req,
 
         // Build trajectory to reach the goal
         cartesian_interface::ReachPoseActionGoal action_goal;
-        buildActionGoal(i, goal_pose, action_goal);
+        buildActionGoal(i, goal_pose, 10.0, action_goal);
         if (req.stamps.size() == req.group_names.size() && req.stamps[j] > 0) {
           updateStamp(req.stamps[j], action_goal);
         }
@@ -210,7 +226,7 @@ auto CartesIOServer::executeAllLockedPosesSrvCb(roport::ExecuteAllLockedPoses::R
     }
     // Build trajectory to reach the goal
     cartesian_interface::ReachPoseActionGoal action_goal;
-    buildActionGoal(i, goal_pose, action_goal);
+    buildActionGoal(i, goal_pose, 10.0, action_goal);
     if (req.stamp > 0) {
       updateStamp(req.stamp, action_goal);
     }
@@ -222,6 +238,39 @@ auto CartesIOServer::executeAllLockedPosesSrvCb(roport::ExecuteAllLockedPoses::R
   } else {
     resp.result_status = roport::ExecuteAllLockedPoses::Response::FAILED;
   }
+  return true;
+}
+
+auto CartesIOServer::executeMultipleCartesianTrajectoriesCb(ExecuteAllCartesianTrajectories::Request& req,
+                                                            ExecuteAllCartesianTrajectories::Response& resp) -> bool {
+  std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
+  for (size_t i = 0; i < req.group_names.size(); ++i) {
+    auto required_group_name = req.group_names[i];
+    if (!checkGroupValid(required_group_name)) {
+      resp.result_status = roport::ExecuteAllCartesianTrajectories::Response::FAILED;
+      return false;
+    }
+
+    auto index = getIndex(group_names_, required_group_name);
+    auto trajectory = req.trajectories[i];
+
+    // TODO check if the first pose in the traj is identical with the current pose
+
+    cartesian_interface::ReachPoseActionGoal action_goal;
+    for (size_t j = 0; j < trajectory.points.size(); j++) {
+      // TODO check if the required reference frame is identical with the setting
+      auto point = trajectory.points[j];
+      buildActionGoal(index, point.pose, point.duration, action_goal, true);
+    }
+    action_goals.insert({index, action_goal});
+  }
+
+  if (executeGoals(action_goals)) {
+    resp.result_status = roport::ExecuteGroupPose::Response::SUCCEEDED;
+  } else {
+    resp.result_status = roport::ExecuteGroupPose::Response::FAILED;
+  }
+
   return true;
 }
 
@@ -272,11 +321,14 @@ void CartesIOServer::getGoalPoseWithReference(const int& ref_idx,
 
 void CartesIOServer::buildActionGoal(const int& index,
                                      const geometry_msgs::Pose& goal_pose,
-                                     cartesian_interface::ReachPoseActionGoal& action_goal) {
+                                     const float& duration,
+                                     cartesian_interface::ReachPoseActionGoal& action_goal,
+                                     const bool& incremental) {
+  float d = duration > 0 ? duration : 10.0;
   action_goal.header.frame_id = reference_frames_[index];
   action_goal.goal.frames.push_back(goal_pose);
-  action_goal.goal.time.push_back(10.);
-  action_goal.goal.incremental = false;
+  action_goal.goal.time.push_back(d);
+  action_goal.goal.incremental = incremental;
 }
 
 void CartesIOServer::updateStamp(const double& stamp, cartesian_interface::ReachPoseActionGoal& action_goal) {
@@ -285,18 +337,40 @@ void CartesIOServer::updateStamp(const double& stamp, cartesian_interface::Reach
   }
 }
 
-auto CartesIOServer::executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goals,
-                                  double duration) -> bool {
-  for (const auto& goal : goals) {
-    control_clients_[goal.first]->sendGoal(goal.second.goal);
+auto CartesIOServer::executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goal_handlers)
+    -> bool {
+  std::map<int, float> duration_handlers;
+
+  for (const auto& goal_handler : goal_handlers) {
+    float duration = 0;
+    if (goal_handler.second.goal.incremental) {
+      for (const float& i : goal_handler.second.goal.time) {
+        duration += i;
+      }
+    } else {
+      duration = goal_handler.second.goal.time.back();
+    }
+    duration_handlers.insert({goal_handler.first, duration});
   }
 
-  for (const auto& goal : goals) {
-    if (!control_clients_[goal.first]->waitForResult(ros::Duration(duration))) {
-      ROS_ERROR("Goal of group %s execution timeout after %.2f seconds", group_names_[goal.first].c_str(), duration);
+  for (const auto& goal : goal_handlers) {
+    // Send all goals for all control groups
+    for (size_t i = 0; i < goal.second.goal.frames.size(); ++i) {
+      control_clients_[goal.first]->sendGoal(goal.second.goal);
+    }
+  }
+
+  for (const auto& duration_handler : duration_handlers) {
+    auto extended_duration = duration_handler.second + 0.5;
+    if (!control_clients_[duration_handler.first]->waitForResult(ros::Duration(extended_duration))) {
+      ROS_ERROR("Goal(s) of group %s execution timeout (expected: %.2f seconds)",
+                group_names_[duration_handler.first].c_str(), extended_duration);
+      // TODO dzp test this
+      control_clients_[duration_handler.first]->cancelAllGoals();
       return false;
     }
   }
+
   return true;
 }
 }  // namespace roport
