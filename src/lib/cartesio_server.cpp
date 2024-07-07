@@ -119,12 +119,19 @@ auto CartesIOServer::executeGroupPoseCb(roport::ExecuteGroupPose::Request& req,
   std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
 
   auto index = getIndex(group_names_, req.group_name);
-  geometry_msgs::Pose goal_pose = req.goal;
+
+  geometry_msgs::Pose ref_to_ctrl_pose;
+  if (!calculateReferenceToControlFrameGoalPose(index, req.ref_frame, req.ee_frame, req.goal, ref_to_ctrl_pose)) {
+    resp.result_status = roport::ExecuteGroupPose::Response::FAILED;
+    resp.result_msg = "Cannot get ref_to_ctrl pose";
+    return false;
+  }
+
   float duration = req.duration > 0 ? req.duration : 5.0;
 
   // Build trajectory to reach the goal
   cartesian_interface::ReachPoseActionGoal action_goal;
-  buildActionGoal(index, goal_pose, duration, action_goal);
+  buildActionGoal(index, ref_to_ctrl_pose, duration, action_goal);
   action_goals.insert({index, action_goal});
 
   if (executeGoals(action_goals)) {
@@ -135,9 +142,11 @@ auto CartesIOServer::executeGroupPoseCb(roport::ExecuteGroupPose::Request& req,
   return true;
 }
 
-auto CartesIOServer::executeHomingSrvCb(roport::ExecuteGroupPose::Request& req,
-                                        roport::ExecuteGroupPose::Response& resp) -> bool {
+auto CartesIOServer::executeHomingSrvCb(roport::ExecuteGroupHoming::Request& req,
+                                        roport::ExecuteGroupHoming::Response& resp) -> bool {
   if (!checkGroupValid(req.group_name)) {
+    resp.result_status = roport::ExecuteGroupHoming::Response::FAILED;
+    resp.result_msg = "Group name not valid";
     return false;
   }
 
@@ -254,7 +263,6 @@ auto CartesIOServer::executeMultipleCartesianTrajectoriesCb(ExecuteAllCartesianT
     auto index = getIndex(group_names_, controlled_group_name);
     auto trajectory = req.trajectories[i];
 
-    // TODO check if the first pose in the traj is identical with the current pose
     if (trajectory.points.empty()) {
       ROS_ERROR("Trajectory for group %s is empty", controlled_group_name.c_str());
       resp.result_msg = "Empty trajectory";

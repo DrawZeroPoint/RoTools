@@ -47,6 +47,7 @@
 #include <roport/ExecuteAllLockedPoses.h>
 #include <roport/ExecuteAllPoses.h>
 #include <roport/ExecuteGroupPose.h>
+#include <roport/ExecuteGroupHoming.h>
 #include <roport/ExecuteMirroredPose.h>
 
 #ifdef WITH_DRAKE
@@ -103,7 +104,7 @@ class CartesIOServer {
   auto executeAllLockedPosesSrvCb(roport::ExecuteAllLockedPoses::Request& req,
                                   roport::ExecuteAllLockedPoses::Response& resp) -> bool;
 
-  auto executeHomingSrvCb(roport::ExecuteGroupPose::Request& req, roport::ExecuteGroupPose::Response& resp) -> bool;
+  auto executeHomingSrvCb(roport::ExecuteGroupHoming::Request& req, roport::ExecuteGroupHoming::Response& resp) -> bool;
 
   auto executeGroupPoseCb(roport::ExecuteGroupPose::Request& req, roport::ExecuteGroupPose::Response& resp) -> bool;
 
