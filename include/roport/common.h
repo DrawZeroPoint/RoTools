@@ -443,10 +443,9 @@ inline bool allClose(geometry_msgs::Pose first,
 }
 
 template <typename T>
-inline void logWarningList(const T& list, const std::string& title = "List in focus:") {
-  ROS_WARN_STREAM(title << " In total " << list.size() << " values");
+inline void logWarningList(const T& list) {
   for (size_t idx = 0; idx < list.size(); ++idx) {
-    ROS_WARN_STREAM("# " << idx << " " << list[idx]);
+    ROS_WARN_STREAM("#" << idx << " " << list[idx]);
   }
 }
 
@@ -456,7 +455,7 @@ inline auto getFilePath(const std::string& raw_path, std::string& full_path) -> 
     return true;
   } else {
     auto home_dir = getenv("HOME");
-    if (home_dir == NULL) {
+    if (home_dir == nullptr) {
       return false;
     }
     fs::path path = fs::path(home_dir) / raw_path;
