@@ -133,7 +133,11 @@ class CartesIOServer {
    */
   auto executeGoals(const std::map<int, cartesian_interface::ReachPoseActionGoal>& goal_handlers) -> bool;
 
-  bool getTransform(const int& index, geometry_msgs::TransformStamped& transform);
+  bool calculateReferenceToControlFrameGoalPose(const int& index,
+                                                const std::string& user_ref_frame,
+                                                const std::string& user_ctrl_frame,
+                                                const geometry_msgs::Pose& raw_pose,
+                                                geometry_msgs::Pose& output_pose);
 
   /**
    * Given the index of the group in group_names_, get current pose of that group's control frame wrt the reference
@@ -151,7 +155,7 @@ class CartesIOServer {
                                 const geometry_msgs::Pose& curr_pose,
                                 geometry_msgs::Pose& goal_pose);
 
-  bool checkGroupValid(std::string required_group_name);
+  bool checkGroupValid(const std::string& required_group_name);
 };
 
 }  // namespace roport

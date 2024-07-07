@@ -72,7 +72,7 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
   XmlRpc::XmlRpcValue timeout;
   getParam(nh_, pnh_, "timeout", timeout);
   ROS_ASSERT(timeout.getType() == XmlRpc::XmlRpcValue::TypeInt);
-  ROS_INFO("Server launching timeout: %is", int(timeout));
+  ROS_INFO("CartesIO Server launching timeout: %is", int(timeout));
 
   // Initialize controller action clients, one for each group
   for (const auto& group_name : group_names_) {
@@ -99,7 +99,7 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
                                                    &CartesIOServer::executeMultipleCartesianTrajectoriesCb, this);
 }
 
-bool CartesIOServer::checkGroupValid(std::string required_group_name) {
+bool CartesIOServer::checkGroupValid(const std::string& required_group_name) {
   auto index = getIndex(group_names_, required_group_name);
   if (index < 0) {
     ROS_ERROR_STREAM("No group named '" << required_group_name << "' defined");
@@ -245,18 +245,18 @@ auto CartesIOServer::executeMultipleCartesianTrajectoriesCb(ExecuteAllCartesianT
                                                             ExecuteAllCartesianTrajectories::Response& resp) -> bool {
   std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
   for (size_t i = 0; i < req.group_names.size(); ++i) {
-    auto required_group_name = req.group_names[i];
-    if (!checkGroupValid(required_group_name)) {
+    auto controlled_group_name = req.group_names[i];
+    if (!checkGroupValid(controlled_group_name)) {
       resp.result_status = roport::ExecuteAllCartesianTrajectories::Response::FAILED;
       return false;
     }
 
-    auto index = getIndex(group_names_, required_group_name);
+    auto index = getIndex(group_names_, controlled_group_name);
     auto trajectory = req.trajectories[i];
 
     // TODO check if the first pose in the traj is identical with the current pose
     if (trajectory.points.empty()) {
-      ROS_ERROR("Trajectory for group %s is empty", required_group_name.c_str());
+      ROS_ERROR("Trajectory for group %s is empty", controlled_group_name.c_str());
       resp.result_msg = "Empty trajectory";
       resp.result_status = roport::ExecuteAllCartesianTrajectories::Response::FAILED;
       return false;
@@ -264,9 +264,12 @@ auto CartesIOServer::executeMultipleCartesianTrajectoriesCb(ExecuteAllCartesianT
 
     cartesian_interface::ReachPoseActionGoal action_goal;
     for (size_t j = 0; j < trajectory.points.size(); j++) {
-      // TODO check if the required reference frame is identical with the setting
       auto point = trajectory.points[j];
-      buildActionGoal(index, point.pose, point.duration, action_goal);
+      geometry_msgs::Pose ref_to_ctrl_pose;
+      calculateReferenceToControlFrameGoalPose(index, trajectory.ref_frame, trajectory.ee_frame, point.pose,
+                                               ref_to_ctrl_pose);
+
+      buildActionGoal(index, ref_to_ctrl_pose, point.duration, action_goal);
     }
     action_goals.insert({index, action_goal});
   }
@@ -280,30 +283,46 @@ auto CartesIOServer::executeMultipleCartesianTrajectoriesCb(ExecuteAllCartesianT
   return true;
 }
 
-bool CartesIOServer::getTransform(const int& index, geometry_msgs::TransformStamped& transform) {
-  try {
-    // The transform derived by lookupTransform is T_rc, i.e., from the reference to the controlled frame.
-    transform = tf_buffer_.lookupTransform(reference_frames_[index], controlled_frames_[index], ros::Time(0));
-    return true;
-  } catch (tf2::TransformException& ex) {
-    ROS_WARN("%s", ex.what());
+bool CartesIOServer::getCurrentPoseWithIndex(const int& index, geometry_msgs::Pose& pose) {
+  geometry_msgs::TransformStamped ref_T_ctrl_stamped;
+  if (!roport::getTransformWithTFBuffer(tf_buffer_, reference_frames_[index], controlled_frames_[index],
+                                        ref_T_ctrl_stamped)) {
     return false;
   }
+  roport::geometryTransformToPose(ref_T_ctrl_stamped.transform, pose);
+  return true;
 }
 
-bool CartesIOServer::getCurrentPoseWithIndex(const int& index, geometry_msgs::Pose& pose) {
-  geometry_msgs::TransformStamped transform;
-  if (!getTransform(index, transform)) {
-    return false;
+bool CartesIOServer::calculateReferenceToControlFrameGoalPose(const int& index,
+                                                              const std::string& user_ref_frame,
+                                                              const std::string& user_ctrl_frame,
+                                                              const geometry_msgs::Pose& raw_pose,
+                                                              geometry_msgs::Pose& output_pose) {
+  auto ref_frame = reference_frames_[index];
+  auto ctrl_frame = controlled_frames_[index];
+
+  geometry_msgs::TransformStamped ref_T_user_ref_stamped;
+  if (user_ref_frame.empty()) {
+    ROS_WARN_STREAM("User reference frame was not given, using " << ref_frame);
+    ref_T_user_ref_stamped.transform = roport::identityTransform();
+  } else {
+    if (!roport::getTransformWithTFBuffer(tf_buffer_, ref_frame, user_ref_frame, ref_T_user_ref_stamped)) {
+      return false;
+    }
   }
 
-  pose.position.x = transform.transform.translation.x;
-  pose.position.y = transform.transform.translation.y;
-  pose.position.z = transform.transform.translation.z;
-  pose.orientation.x = transform.transform.rotation.x;
-  pose.orientation.y = transform.transform.rotation.y;
-  pose.orientation.z = transform.transform.rotation.z;
-  pose.orientation.w = transform.transform.rotation.w;
+  geometry_msgs::TransformStamped user_ctrl_T_ctrl_stamped;
+  if (user_ctrl_frame.empty()) {
+    ROS_WARN_STREAM("User control frame was not given, using " << ctrl_frame);
+    user_ctrl_T_ctrl_stamped.transform = roport::identityTransform();
+  } else {
+    if (!roport::getTransformWithTFBuffer(tf_buffer_, user_ctrl_frame, ctrl_frame, user_ctrl_T_ctrl_stamped)) {
+      return false;
+    }
+  }
+
+  roport::getReferenceToControlledFramePose(ref_T_user_ref_stamped.transform, user_ctrl_T_ctrl_stamped.transform,
+                                            raw_pose, output_pose);
   return true;
 }
 

@@ -29,6 +29,7 @@
 #define ROPORT_COMMON_H
 
 #include <ros/ros.h>
+#include <tf2_ros/transform_listener.h>
 #include <cmath>
 #include <Eigen/Eigen>
 
@@ -73,6 +74,40 @@ inline auto getIndex(const std::vector<std::string>& names, const std::string& t
   return -1;
 }
 
+/**
+ * TF2's lookupTransform method could be confusing, here we provide a handy function to get the transform
+ * from the given frame_a to frame_b.
+ * @param buffer
+ * @param frame_a
+ * @param frame_b
+ * @param a_to_b_transform_stamped
+ * @return
+ */
+inline auto getTransformWithTFBuffer(tf2_ros::Buffer& buffer,
+                                     const std::string& frame_a,
+                                     const std::string& frame_b,
+                                     geometry_msgs::TransformStamped& a_to_b_transform_stamped) -> bool {
+  try {
+    a_to_b_transform_stamped = buffer.lookupTransform(frame_a, frame_b, ros::Time(0));
+  } catch (tf2::TransformException& e) {
+    ROS_ERROR("%s", e.what());
+    return false;
+  }
+  return true;
+}
+
+inline auto identityTransform() -> geometry_msgs::Transform {
+  geometry_msgs::Transform t;
+  t.translation.x = 0.0;
+  t.translation.y = 0.0;
+  t.translation.z = 0.0;
+  t.rotation.x = 0.0;
+  t.rotation.y = 0.0;
+  t.rotation.z = 0.0;
+  t.rotation.w = 1.0;
+  return t;
+}
+
 inline void geometryPoseToEigen(const geometry_msgs::Pose& pose, Eigen::Vector3d& trans, Eigen::Quaterniond& quat) {
   trans << pose.position.x, pose.position.y, pose.position.z;
   quat.coeffs() << pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w;
@@ -108,6 +143,16 @@ inline void geometryPoseStampedToEigenMatrix(const geometry_msgs::PoseStamped& p
   geometryPoseToEigenMatrix(pose.pose, mat);
 }
 
+inline void geometryTransformToPose(const geometry_msgs::Transform& t, geometry_msgs::Pose& p) {
+  p.position.x = t.translation.x;
+  p.position.y = t.translation.y;
+  p.position.z = t.translation.z;
+  p.orientation.x = t.rotation.x;
+  p.orientation.y = t.rotation.y;
+  p.orientation.z = t.rotation.z;
+  p.orientation.w = t.rotation.w;
+}
+
 inline void geometryTransformToEigenMatrix(const geometry_msgs::Transform& t, Eigen::Matrix4d& mat) {
   mat = Eigen::Matrix4d::Identity();
 
@@ -138,6 +183,25 @@ inline void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::Pose& 
 
 inline void eigenMatrixToGeometryPose(Eigen::Matrix4d mat, geometry_msgs::PoseStamped& pose) {
   eigenMatrixToGeometryPose(std::move(mat), pose.pose);
+}
+
+inline void getReferenceToControlledFramePose(const geometry_msgs::Transform& ref_T_user_ref,
+                                              const geometry_msgs::Transform& user_ctrl_T_ctrl,
+                                              const geometry_msgs::Pose& user_ref_P_user_ctrl,
+                                              geometry_msgs::Pose& ref_P_ctrl) {
+  Eigen::Matrix4d ref_M_user_ref;
+  geometryTransformToEigenMatrix(ref_T_user_ref, ref_M_user_ref);
+
+  Eigen::Matrix4d user_ref_M_user_ctrl;
+  geometryPoseToEigenMatrix(user_ref_P_user_ctrl, user_ref_M_user_ctrl);
+
+  Eigen::Matrix4d user_ctrl_M_ctrl;
+  geometryTransformToEigenMatrix(user_ctrl_T_ctrl, user_ctrl_M_ctrl);
+
+  Eigen::Matrix4d ref_M_ctrl;
+  ref_M_ctrl = ref_M_user_ref * user_ref_M_user_ctrl * user_ctrl_M_ctrl;
+
+  eigenMatrixToGeometryPose(ref_M_ctrl, ref_P_ctrl);
 }
 
 inline void localPoseToGlobalPose(const geometry_msgs::Pose& pose_local_to_target,
@@ -242,13 +306,7 @@ inline void toGlobalPose(const int& goal_type,
                          const geometry_msgs::Pose& cmd_pose,
                          geometry_msgs::Pose& goal_pose) {
   geometry_msgs::Pose current_pose;
-  current_pose.position.x = current_transform.transform.translation.x;
-  current_pose.position.y = current_transform.transform.translation.y;
-  current_pose.position.z = current_transform.transform.translation.z;
-  current_pose.orientation.x = current_transform.transform.rotation.x;
-  current_pose.orientation.y = current_transform.transform.rotation.y;
-  current_pose.orientation.z = current_transform.transform.rotation.z;
-  current_pose.orientation.w = current_transform.transform.rotation.w;
+  geometryTransformToPose(current_transform.transform, current_pose);
   toGlobalPose(goal_type, current_pose, cmd_pose, goal_pose);
 }
 
