@@ -90,7 +90,7 @@ class CartesianTrajectoryPlanner {
   void drakeTrajectoryToCartesianTrajectory(const drake::trajectories::PiecewisePose<double>& drake_trajectory,
                                             roport::CartesianTrajectory& trajectory) const;
 
-  auto executeAllCartesianTrajectoryCb(roport::ExecuteAllCartesianTrajectories::Request& req,
+  auto executeAllCartesianTrajectoriesCb(roport::ExecuteAllCartesianTrajectories::Request& req,
                                        roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool;
 };
 

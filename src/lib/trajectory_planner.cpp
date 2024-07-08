@@ -20,7 +20,15 @@ CartesianTrajectoryPlanner::CartesianTrajectoryPlanner(const ros::NodeHandle& nh
     auto get_pose_client = nh_.serviceClient<roport::GetGroupPose>("/" + name + "/get_group_pose");
     if (!ros::service::waitForService("/" + name + "/get_group_pose", wait_for_service_timeout_)) {
       ROS_WARN("Service %s/get_group_pose is not up, so the client is not created", name.c_str());
-      continue;
+      get_pose_client = nh_.serviceClient<roport::GetGroupPose>("/get_group_pose");
+      if (!ros::service::waitForService("/get_group_pose", wait_for_service_timeout_)) {
+        ROS_WARN("Service /get_group_pose is not up, so the client is not created");
+        continue;
+      } else {
+        ROS_INFO("Created client for service /get_group_pose for %s", name.c_str());
+      }
+    } else {
+      ROS_INFO("Created client for service %s/get_group_pose", name.c_str());
     }
 
     group_names_.push_back(name);
@@ -28,10 +36,10 @@ CartesianTrajectoryPlanner::CartesianTrajectoryPlanner(const ros::NodeHandle& nh
   }
 
   execute_all_cartesian_trajectory_srv_ = nh_.advertiseService(
-      "execute_all_cartesian_trajectory", &CartesianTrajectoryPlanner::executeAllCartesianTrajectoryCb, this);
+      "execute_all_cartesian_trajectories", &CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb, this);
 }
 
-auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoryCb(
+auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb(
     roport::ExecuteAllCartesianTrajectories::Request& req,
     roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool {
   if (req.group_names.empty()) {
@@ -61,6 +69,7 @@ auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoryCb(
     auto ee_frame = req.trajectories[i].ee_frame;
 
     roport::GetGroupPose get_current_pose;
+    get_current_pose.request.group_name = group_names_[index];
     get_current_pose.request.ref_frame = reference_frame;
     get_current_pose.request.ee_frame = ee_frame;
     // Use the current pose as the initial commanded pose of the generated cartesian trajectory.
@@ -74,6 +83,7 @@ auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoryCb(
       ROS_WARN("Fail to get the current pose for group %s", group_names_[index].c_str());
       resp.result_status = roport::ExecuteAllCartesianTrajectoriesResponse::FAILED;
       resp.result_msg = "Get current pose failed";
+      return false;
     }
   }
 
@@ -84,7 +94,7 @@ auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoryCb(
   //  for (int j = 0; j <= goal_trajectory.trajectory.points.size(); ++j) {
   //    ros::Duration(default_time_step_).sleep();
   //  }
-  resp.result_status = resp.SUCCEEDED;
+  resp.result_status = roport::ExecuteAllCartesianTrajectoriesResponse::SUCCEEDED;
   return true;
 }
 
@@ -117,7 +127,7 @@ void CartesianTrajectoryPlanner::drakeTrajectoryToCartesianTrajectory(
     roport::CartesianTrajectory& trajectory) const {
   ROS_WARN_STREAM(drake_trajectory.start_time() << "  " << drake_trajectory.end_time());
   int trajectory_length = static_cast<int>(drake_trajectory.end_time() / default_time_step_);
-  for (int i = 0; i < trajectory_length; ++i) {
+  for (int i = 0; i <= trajectory_length; ++i) {
     auto time_stamp = default_time_step_ * i;
     auto pose = drake_trajectory.GetPose(time_stamp);
     auto vel = drake_trajectory.GetVelocity(time_stamp);
@@ -125,8 +135,12 @@ void CartesianTrajectoryPlanner::drakeTrajectoryToCartesianTrajectory(
     roport::CartesianTrajectoryPoint point;
     if (i == 0) {
       drakeRigidTransformToCartesianTrajectoryPoint(pose, vel, acc, 0.0, point);
+      logROSPose(point.pose);
     } else {
       drakeRigidTransformToCartesianTrajectoryPoint(pose, vel, acc, default_time_step_, point);
+      if (i == trajectory_length) {
+        logROSPose(point.pose);
+      }
     }
     trajectory.points.push_back(point);
   }
@@ -139,13 +153,17 @@ bool CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(
   std::vector<double> times;
   std::vector<drake::math::RigidTransformd> poses;
 
-  times.push_back(0.0);  // The time_stamp for the initial_pose
+  // The times for Drake's PiecewisePose record time_from_start, successive stamps must satisfy:
+  // breaks_[i] - breaks_[i - 1] >= kEpsilonTime (i.e., std::numeric_limits<T>::epsilon = 2.22045e-16)
+  double time_from_start = 0.0;
+  times.push_back(time_from_start);  // The time_stamp for the initial_pose
   drake::math::RigidTransformd initial_t;
   geometryPoseToDrakeRigidTransform(initial_pose, initial_t);
   poses.push_back(initial_t);
 
   for (const auto& p : trajectory_points) {
-    times.push_back(p.duration);
+    time_from_start += p.duration;
+    times.push_back(time_from_start);
     drake::math::RigidTransformd intermediate_t;
     geometryPoseToDrakeRigidTransform(p.pose, intermediate_t);
     poses.push_back(intermediate_t);

@@ -1,0 +1,9 @@
+<launch>
+
+  <arg name="debug" default="false" doc="If true, the node will be disabled. Default false."/>
+
+  <rosparam command="load" file="$(find roport)/config/roport_trajectory_planner.yaml"
+            ns="roport_trajectory_planner"/>
+  <node unless="$(arg debug)" pkg="roport" type="roport_trajectory_planner" name="roport_trajectory_planner" output="screen"/>
+
+</launch>
