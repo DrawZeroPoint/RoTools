@@ -2,6 +2,7 @@
 # twist: The goal twist of the controlled frame.
 # acceleration: The goal acceleration of the controlled frame.
 # duration: Time in seconds for reaching the goal pose from the previous goal pose.
+#           For the first pose, it denotes the travel time from the robot's current pose.
 
 geometry_msgs/Pose pose
 geometry_msgs/Twist twist
