@@ -222,6 +222,19 @@ target_link_libraries(${PROJECT_NAME}
   ${swift_LIBRARIES}
 )
 
+if (${drake_FOUND})
+  add_library(${PROJECT_NAME}_trajectory
+    src/lib/trajectory_planner.cpp
+  )
+  add_dependencies(${PROJECT_NAME}_trajectory ${PROJECT_NAME}_generate_messages_cpp)
+  target_include_directories(${PROJECT_NAME}_trajectory PUBLIC
+    include
+    ${catkin_INCLUDE_DIRS}
+    /opt/drake/include
+  )
+  target_link_libraries(${PROJECT_NAME}_trajectory ${drake_LIBRARIES})
+endif ()
+
 if (HPP_CORE_LIB AND HPP_FCL_LIB)
   # These two definitions solve the pinocchio import issue
   add_definitions(-DPINOCCHIO_WITH_HPP_FCL)
@@ -320,6 +333,16 @@ target_link_libraries(roport_msg_aggregator
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
 )
+
+if (${drake_FOUND})
+  add_executable(roport_trajectory_planner src/roport_trajectory_planner.cpp)
+  add_dependencies(roport_trajectory_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+  target_link_libraries(roport_trajectory_planner
+    ${catkin_LIBRARIES}
+    ${PROJECT_NAME}
+    ${PROJECT_NAME}_trajectory
+  )
+endif ()
 
 if (HPP_CORE_LIB AND HPP_FCL_LIB)
   add_executable(roport_hpp_interface src/roport_hpp_interface.cpp)

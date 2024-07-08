@@ -1,6 +1,6 @@
 /*
  * common
- * Copyright (c) 2021-2022, Zhipeng Dong
+ * Copyright (c) 2021-2024, Zhipeng Dong
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,6 +47,8 @@ error "Missing the <filesystem> header."
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Transform.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Accel.h>
 
 namespace roport {
 
@@ -108,6 +110,16 @@ inline auto identityTransform() -> geometry_msgs::Transform {
   return t;
 }
 
+inline void geometryPoseToTransform(const geometry_msgs::Pose& p, geometry_msgs::Transform& t) {
+  t.translation.x = p.position.x;
+  t.translation.y = p.position.y;
+  t.translation.z = p.position.z;
+  t.rotation.x = p.orientation.x;
+  t.rotation.y = p.orientation.y;
+  t.rotation.z = p.orientation.z;
+  t.rotation.w = p.orientation.w;
+}
+
 inline void geometryPoseToEigen(const geometry_msgs::Pose& pose, Eigen::Vector3d& trans, Eigen::Quaterniond& quat) {
   trans << pose.position.x, pose.position.y, pose.position.z;
   quat.coeffs() << pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w;
@@ -137,6 +149,24 @@ inline void geometryPoseToEigenMatrix(const geometry_msgs::Pose& pose, Eigen::Ma
   Eigen::Vector3d t_eigen;
   t_eigen << pose.position.x, pose.position.y, pose.position.z;
   mat.topRightCorner(3, 1) = t_eigen;
+}
+
+inline void eigenMatrixToGeometryTwist(const Eigen::Matrix<double, 6, 1>& mat, geometry_msgs::Twist& twist) {
+  twist.angular.x = mat[0];
+  twist.angular.y = mat[1];
+  twist.angular.z = mat[2];
+  twist.linear.x = mat[3];
+  twist.linear.y = mat[4];
+  twist.linear.z = mat[5];
+}
+
+inline void eigenMatrixToGeometryAccel(const Eigen::Matrix<double, 6, 1>& mat, geometry_msgs::Accel& acc) {
+  acc.angular.x = mat[0];
+  acc.angular.y = mat[1];
+  acc.angular.z = mat[2];
+  acc.linear.x = mat[3];
+  acc.linear.y = mat[4];
+  acc.linear.z = mat[5];
 }
 
 inline void geometryPoseStampedToEigenMatrix(const geometry_msgs::PoseStamped& pose, Eigen::Matrix4d& mat) {
