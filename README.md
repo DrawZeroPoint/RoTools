@@ -266,9 +266,9 @@ Then, on the linux side, run:
 roslaunch roport roport_optitrack_client.launch
 ```
 
-# :page_facing_up: API reference
+# :page_facing_up: APP reference
 
-## roport_robot_interface
+## [roport_robot_interface](./src/roport_robot_interface.cpp)
 
 This interface inherits the `hardware_interface` in `ros_control`. It gets measured joint states via one or more topics
 from the real robot or the simulator. Meanwhile, it sets the joint states commands down to the robot or the simulator
@@ -311,7 +311,7 @@ leading `/`. Besides, the `joint_states_name_group`
 should be set for each getter and setter topics. If it is not set, there should be only one getter and one setter topic,
 in this case, the algorithm will use all names set in the parameter `joint_name_param_id`.
 
-## roport_msg_converter
+## [roport_msg_converter](./src/roport_msg_converter.cpp)
 
 This converter will convert `sensor_msgs::JointState` type message from one topic (source) to another (target). Be
 different with `remap` which only change the topic's id but not touching the contents, it could:
@@ -340,13 +340,13 @@ To use this function, we need to define the following parameters in the launch f
 | `target_js_topics`    | list[str]        | Topic ids converted from `source_js_topic`.                                                                                                                                                |
 | `target_types`        | list[str]        | Target topic type. By default, the type string is `sensor_msgs/JointState`, other types are also supported by modifying the code. Its size must equal to `target_js_topics`.               |
 | `target_args`         | list[int]        | Arguments defining the customized control arg. For `sensor_msgs/JointState`, it is ignored. Its size must be equal to target_js_topics.                                                    |
-| `enable_smooth_start` | list[int]        | Flag for smooth start. If larger than 0, Swift will be used to smoothly move the enabled groups from the current configurations to the target. Its size equals to `source_js_topics`.     |
+| `enable_smooth_start` | list[int]        | Flag for smooth start. If larger than 0, Swift will be used to smoothly move the enabled groups from the current configurations to the target. Its size equals to `source_js_topics`.      |
 | `start_ref_topics`    | list[str]        | Topic id for monitoring the robot state and initializing the start configurations for smoothing enabled groups.                                                                            |
 | `max_vel`             | map[str, double] | For each joint name, define its maximum allowed velocity during smooth movement. The name could be either in `source_joint_group` or `target_joint_group` (same for max_acc and max_jerk). |
 | `max_acc`             | map[str, double] | For each joint name, define its maximum acceleration during smooth movement.                                                                                                               |
 | `max_jerk`            | map[str, double] | For each joint name, define its maximum jerk during smooth movement.                                                                                                                       |
 
-## roport_snapshot_server
+## [roport_snapshot_server](./scripts/roport_snapshot_server.py)
 
 This server records ROS msgs to local files depending on the msg types. Text types, like JointState, will be saved in
 CSV file. Image types are directly saved as images. Currently, we support:
