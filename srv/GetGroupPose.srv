@@ -20,6 +20,7 @@ string ref_frame
 uint8 SUCCEEDED=0
 uint8 FAILED=1
 uint8 result_status
+string result_msg
 geometry_msgs/Pose pose
 string ee_link
 string ref_link

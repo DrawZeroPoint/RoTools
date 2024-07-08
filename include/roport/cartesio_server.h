@@ -46,9 +46,11 @@
 #include <roport/ExecuteAllCartesianTrajectories.h>
 #include <roport/ExecuteAllLockedPoses.h>
 #include <roport/ExecuteAllPoses.h>
-#include <roport/ExecuteGroupPose.h>
 #include <roport/ExecuteGroupHoming.h>
+#include <roport/ExecuteGroupPose.h>
 #include <roport/ExecuteMirroredPose.h>
+#include <roport/GetAllNames.h>
+#include <roport/GetGroupPose.h>
 
 #ifdef WITH_DRAKE
 #include <drake/common/trajectories/piecewise_pose.h>
@@ -73,6 +75,9 @@ class CartesIOServer {
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
 
+  ros::ServiceServer get_group_names_srv_;
+  ros::ServiceServer get_group_pose_srv_;
+
   ros::ServiceServer execute_group_homing_srv_;
 
   ros::ServiceServer execute_all_poses_srv_;
@@ -84,6 +89,10 @@ class CartesIOServer {
 
   using reachPoseActionClient = actionlib::SimpleActionClient<cartesian_interface::ReachPoseAction>;
   std::vector<std::shared_ptr<reachPoseActionClient>> control_clients_;
+
+  auto getGroupNamesCb(roport::GetAllNames::Request& req, roport::GetAllNames::Response& resp) -> bool;
+
+  auto getGroupPoseCb(roport::GetGroupPose::Request& req, roport::GetGroupPose::Response& resp) -> bool;
 
   /**
    * Move the groups to corresponding poses.
@@ -112,8 +121,8 @@ class CartesIOServer {
                                               roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool;
 
   /**
-   *
-   * @param index
+   * Build the action goal for specific group.
+   * @param index The index of the controlled group to execute the goal.
    * @param goal_pose The goal pose represents the controlled frame's pose in the reference frame denoted by
    *                  reference_frames_[index].
    * @param duration Time duration from the previous pose to the goal pose, in seconds.
@@ -147,7 +156,10 @@ class CartesIOServer {
    * @param pose Pose of the control frame.
    * @return True if succeed, false otherwise.
    */
-  bool getCurrentPoseWithIndex(const int& index, geometry_msgs::Pose& pose);
+  bool getCurrentPoseWithIndex(const int& index,
+                               geometry_msgs::Pose& pose,
+                               const std::string& reference_frame = "",
+                               const std::string& control_frame = "");
 
   void getGoalPoseWithReference(const int& ref_idx,
                                 const geometry_msgs::Pose& curr_ref_pose,
@@ -156,7 +168,7 @@ class CartesIOServer {
                                 const geometry_msgs::Pose& curr_pose,
                                 geometry_msgs::Pose& goal_pose);
 
-  bool checkGroupValid(const std::string& required_group_name);
+  bool checkGroupValid(const std::string& required_group_name, int& index);
 };
 
 }  // namespace roport

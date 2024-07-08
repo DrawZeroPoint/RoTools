@@ -3,7 +3,6 @@
 //
 
 #include "roport/cartesio_server.h"
-
 #include "roport/common.h"
 
 namespace roport {
@@ -85,6 +84,10 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
     ROS_INFO_STREAM("Control action client " << action_name << " initialized");
   }
 
+  // Services for getting control group information
+  get_group_names_srv_ = nh_.advertiseService("get_group_names", &CartesIOServer::getGroupNamesCb, this);
+  get_group_pose_srv_ = nh_.advertiseService("get_group_pose", &CartesIOServer::getGroupPoseCb, this);
+
   // Servers for controlling multiple groups' pose
   execute_all_poses_srv_ = nh_.advertiseService("execute_all_poses", &CartesIOServer::executeAllPosesSrvCb, this);
   execute_all_locked_poses_srv_ =
@@ -99,8 +102,8 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
                                                    &CartesIOServer::executeMultipleCartesianTrajectoriesCb, this);
 }
 
-bool CartesIOServer::checkGroupValid(const std::string& required_group_name) {
-  auto index = getIndex(group_names_, required_group_name);
+bool CartesIOServer::checkGroupValid(const std::string& required_group_name, int& index) {
+  index = getIndex(group_names_, required_group_name);
   if (index < 0) {
     ROS_ERROR_STREAM("No group named '" << required_group_name << "' defined");
     ROS_WARN("Defined group names are:");
@@ -110,16 +113,38 @@ bool CartesIOServer::checkGroupValid(const std::string& required_group_name) {
   return true;
 }
 
+auto CartesIOServer::getGroupNamesCb(roport::GetAllNames::Request& req, roport::GetAllNames::Response& resp) -> bool {
+  resp.group_names.resize(group_names_.size());
+  std::copy(group_names_.begin(), group_names_.end(), resp.group_names.begin());
+  return true;
+}
+
+auto CartesIOServer::getGroupPoseCb(roport::GetGroupPose::Request& req, roport::GetGroupPose::Response& resp) -> bool {
+  int index = -1;
+  if (!checkGroupValid(req.group_name, index)) {
+    resp.result_status = roport::GetGroupPose::Response::FAILED;
+    return false;
+  }
+
+  if (!getCurrentPoseWithIndex(index, resp.pose, req.ref_frame, req.ee_frame)) {
+    resp.result_status = roport::GetGroupPose::Response::FAILED;
+    return false;
+  }
+
+  resp.ref_link = req.ref_frame.empty() ? reference_frames_[index] : req.ref_frame;
+  resp.ee_link = req.ee_frame.empty() ? controlled_frames_[index] : req.ee_frame;
+  return true;
+}
+
 auto CartesIOServer::executeGroupPoseCb(roport::ExecuteGroupPose::Request& req,
                                         roport::ExecuteGroupPose::Response& resp) -> bool {
-  if (!checkGroupValid(req.group_name)) {
+  int index = -1;
+  if (!checkGroupValid(req.group_name, index)) {
+    resp.result_status = roport::ExecuteGroupPose::Response::FAILED;
     return false;
   }
 
   std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
-
-  auto index = getIndex(group_names_, req.group_name);
-
   geometry_msgs::Pose ref_to_ctrl_pose;
   if (!calculateReferenceToControlFrameGoalPose(index, req.ref_frame, req.ee_frame, req.goal, ref_to_ctrl_pose)) {
     resp.result_status = roport::ExecuteGroupPose::Response::FAILED;
@@ -144,7 +169,8 @@ auto CartesIOServer::executeGroupPoseCb(roport::ExecuteGroupPose::Request& req,
 
 auto CartesIOServer::executeHomingSrvCb(roport::ExecuteGroupHoming::Request& req,
                                         roport::ExecuteGroupHoming::Response& resp) -> bool {
-  if (!checkGroupValid(req.group_name)) {
+  int index = -1;
+  if (!checkGroupValid(req.group_name, index)) {
     resp.result_status = roport::ExecuteGroupHoming::Response::FAILED;
     resp.result_msg = "Group name not valid";
     return false;
@@ -152,7 +178,6 @@ auto CartesIOServer::executeHomingSrvCb(roport::ExecuteGroupHoming::Request& req
 
   std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
 
-  auto index = getIndex(group_names_, req.group_name);
   geometry_msgs::Pose goal_pose = homing_poses_[index];
   float duration = req.duration > 0 ? req.duration : 10.0;
 
@@ -254,15 +279,15 @@ auto CartesIOServer::executeMultipleCartesianTrajectoriesCb(ExecuteAllCartesianT
                                                             ExecuteAllCartesianTrajectories::Response& resp) -> bool {
   std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
   for (size_t i = 0; i < req.group_names.size(); ++i) {
+    int index = -1;
     auto controlled_group_name = req.group_names[i];
-    if (!checkGroupValid(controlled_group_name)) {
+    if (!checkGroupValid(controlled_group_name, index)) {
+      resp.result_msg = "Group name not valid";
       resp.result_status = roport::ExecuteAllCartesianTrajectories::Response::FAILED;
       return false;
     }
 
-    auto index = getIndex(group_names_, controlled_group_name);
     auto trajectory = req.trajectories[i];
-
     if (trajectory.points.empty()) {
       ROS_ERROR("Trajectory for group %s is empty", controlled_group_name.c_str());
       resp.result_msg = "Empty trajectory";
@@ -291,13 +316,18 @@ auto CartesIOServer::executeMultipleCartesianTrajectoriesCb(ExecuteAllCartesianT
   return true;
 }
 
-bool CartesIOServer::getCurrentPoseWithIndex(const int& index, geometry_msgs::Pose& pose) {
-  geometry_msgs::TransformStamped ref_T_ctrl_stamped;
-  if (!roport::getTransformWithTFBuffer(tf_buffer_, reference_frames_[index], controlled_frames_[index],
-                                        ref_T_ctrl_stamped)) {
+bool CartesIOServer::getCurrentPoseWithIndex(const int& index,
+                                             geometry_msgs::Pose& pose,
+                                             const std::string& reference_frame,
+                                             const std::string& control_frame) {
+  auto ref_frame = reference_frame.empty() ? reference_frames_[index] : reference_frame;
+  auto ctrl_frame = control_frame.empty() ? controlled_frames_[index] : control_frame;
+
+  geometry_msgs::TransformStamped ref_t_ctrl_stamped;
+  if (!roport::getTransformWithTFBuffer(tf_buffer_, ref_frame, ctrl_frame, ref_t_ctrl_stamped)) {
     return false;
   }
-  roport::geometryTransformToPose(ref_T_ctrl_stamped.transform, pose);
+  roport::geometryTransformToPose(ref_t_ctrl_stamped.transform, pose);
   return true;
 }
 
