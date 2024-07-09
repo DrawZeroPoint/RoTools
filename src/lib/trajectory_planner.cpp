@@ -3,7 +3,7 @@
 namespace roport {
 
 CartesianTrajectoryPlanner::CartesianTrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
-    : nh_(nh), pnh_(pnh) {
+    : nh_(nh), pnh_(pnh), visualize_(false) {
   // Get all available planning group names
   XmlRpc::XmlRpcValue group_names;
   roport::getParam(nh_, pnh_, "group_names", group_names);
@@ -34,9 +34,61 @@ CartesianTrajectoryPlanner::CartesianTrajectoryPlanner(const ros::NodeHandle& nh
     group_names_.push_back(name);
     get_current_pose_clients_.push_back(get_pose_client);
   }
+  ROS_ASSERT(declared_group_names_.size() == group_names_.size());
+
+  // Get visualize flag
+  XmlRpc::XmlRpcValue display_trajectory;
+  roport::getParam(nh_, pnh_, "display_trajectory", display_trajectory);
+  visualize_ = bool(display_trajectory);
+
+  // Get joint names for each planning group
+  XmlRpc::XmlRpcValue joint_names;
+  roport::getParam(nh_, pnh_, "joint_names", joint_names);
+  if (joint_names.size() != group_names.size()) {
+    throw std::runtime_error("Param joint_names is not properly defined");
+  }
+  for (int i = 0; i < group_names_.size(); ++i) {
+    ROS_ASSERT(joint_names[i].getType() == XmlRpc::XmlRpcValue::TypeArray);
+    std::vector<std::string> joint_name_list;
+    for (int j = 0; j < joint_names[i].size(); ++j) {
+      joint_name_list.push_back(joint_names[i][j]);
+    }
+    joint_names_.push_back(joint_name_list);
+  }
 
   execute_all_cartesian_trajectory_srv_ = nh_.advertiseService(
       "execute_all_cartesian_trajectories", &CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb, this);
+
+  if (visualize_) {
+    joint_state_subscriber_ =
+        nh_.subscribe<sensor_msgs::JointState>("/joint_states", 1, &CartesianTrajectoryPlanner::jointStatesCb, this);
+
+    cartesian_trajectory_publisher_ =
+        nh_.advertise<geometry_msgs::PoseArray>("trajectory_planner/cartesian_trajectory", 1);
+    ROS_INFO("Planned cartesian trajectory can be visualized in RViz with: trajectory_planner/cartesian_trajectory");
+
+    display_trajectory_publisher_ =
+        nh_.advertise<moveit_msgs::DisplayTrajectory>("trajectory_planner/joint_trajectory", 1);
+    ROS_INFO("Planned joint trajectory can be visualized in RViz with: trajectory_planner/joint_trajectory");
+  }
+}
+
+void CartesianTrajectoryPlanner::jointStatesCb(const sensor_msgs::JointState::ConstPtr& msg) {
+  current_joint_state_ = *msg;
+
+  joint_positions_.clear();
+  for (int i = 0; i < joint_names_.size(); ++i) {
+    std::vector<double> position_list;
+    for (int j = 0; j < joint_names_[i].size(); ++j) {
+      auto res = findInVector<std::string>(msg->name, joint_names_[i][j]);
+      if (res.first) {
+        position_list.push_back(msg->position[res.second]);
+      } else {
+        throw std::runtime_error("Joint name not found in joint_states");
+      }
+    }
+    joint_positions_.push_back(position_list);
+  }
 }
 
 auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb(
@@ -77,8 +129,11 @@ auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb(
 
     if (get_current_pose.response.result_status == roport::GetGroupPoseResponse::SUCCEEDED) {
       roport::CartesianTrajectory goal_trajectory;
-      CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(get_current_pose.response.pose,
-                                                                   req.trajectories[i].points, goal_trajectory);
+      CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(get_current_pose.response.pose, req.trajectories[i],
+                                                                   goal_trajectory);
+      if (visualize_) {
+        displayCartesianTrajectoryInRViz(index, goal_trajectory);
+      }
     } else {
       ROS_WARN("Fail to get the current pose for group %s", group_names_[index].c_str());
       resp.result_status = roport::ExecuteAllCartesianTrajectoriesResponse::FAILED;
@@ -146,10 +201,13 @@ void CartesianTrajectoryPlanner::drakeTrajectoryToCartesianTrajectory(
   }
 }
 
-bool CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(
-    geometry_msgs::Pose initial_pose,
-    const std::vector<roport::CartesianTrajectoryPoint>& trajectory_points,
-    roport::CartesianTrajectory& goal_trajectory) {
+bool CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(geometry_msgs::Pose initial_pose,
+                                                                  const roport::CartesianTrajectory& sparse_trajectory,
+                                                                  roport::CartesianTrajectory& goal_trajectory) {
+  goal_trajectory.header = sparse_trajectory.header;
+  goal_trajectory.ref_frame = sparse_trajectory.ref_frame;
+  goal_trajectory.ee_frame = sparse_trajectory.ee_frame;
+
   std::vector<double> times;
   std::vector<drake::math::RigidTransformd> poses;
 
@@ -161,7 +219,7 @@ bool CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(
   geometryPoseToDrakeRigidTransform(initial_pose, initial_t);
   poses.push_back(initial_t);
 
-  for (const auto& p : trajectory_points) {
+  for (const auto& p : sparse_trajectory.points) {
     time_from_start += p.duration;
     times.push_back(time_from_start);
     drake::math::RigidTransformd intermediate_t;
@@ -172,5 +230,34 @@ bool CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(
   auto drake_trajectory = drake::trajectories::PiecewisePose<double>::MakeLinear(times, poses);
   drakeTrajectoryToCartesianTrajectory(drake_trajectory, goal_trajectory);
   return true;
+}
+
+void CartesianTrajectoryPlanner::displayCartesianTrajectoryInRViz(
+    const int& index,
+    const roport::CartesianTrajectory& cartesian_trajectory) {
+  geometry_msgs::PoseArray pose_array;
+  pose_array.header.frame_id = cartesian_trajectory.ref_frame;
+  ROS_INFO_STREAM("Frame id of the pose array: " << pose_array.header.frame_id);
+  for (int i = 0; i < cartesian_trajectory.points.size(); i += 100) {
+    pose_array.poses.push_back(cartesian_trajectory.points[i].pose);
+  }
+  cartesian_trajectory_publisher_.publish(pose_array);
+}
+
+void CartesianTrajectoryPlanner::displayJointTrajectoryInRViz(const int& index,
+                                                              const roport::CartesianTrajectory& cartesian_trajectory) {
+  moveit_msgs::DisplayTrajectory display_trajectory;
+  display_trajectory.model_id = "";
+
+  moveit_msgs::RobotState trajectory_start;
+  trajectory_start.joint_state = current_joint_state_;
+  display_trajectory.trajectory_start = trajectory_start;
+
+  moveit_msgs::RobotTrajectory robot_trajectory;
+  robot_trajectory.joint_trajectory.joint_names = joint_names_[index];
+  //
+  display_trajectory.trajectory.push_back(robot_trajectory);
+
+  display_trajectory_publisher_.publish(display_trajectory);
 }
 }  // namespace roport

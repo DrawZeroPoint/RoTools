@@ -1,2 +1,12 @@
-group_names: ["left_arm", "right_arm"]
+group_names: [ "left_arm", "right_arm" ]
 #group_names: ["panda_left", "panda_right"]
+
+# For each planning group, there is a set of joint names:
+joint_names: [
+  [ "panda_left_joint1", "panda_left_joint2", "panda_left_joint3", "panda_left_joint4", "panda_left_joint5",
+    "panda_left_joint6", "panda_left_joint7" ],
+  [ "panda_right_joint1", "panda_right_joint2", "panda_right_joint3", "panda_right_joint4", "panda_right_joint5",
+    "panda_right_joint6", "panda_right_joint7" ],
+]
+
+display_trajectory: true

@@ -27,11 +27,16 @@
 #pragma once
 
 #include <eigen_conversions/eigen_msg.h>
-#include <geometry_msgs/PoseStamped.h>
 #include <ros/ros.h>
 #include <chrono>
 #include <cmath>
 #include <eigen3/Eigen/Dense>
+
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseArray.h>
+#include <moveit_msgs/DisplayTrajectory.h>
+#include <moveit_msgs/RobotState.h>
+#include <sensor_msgs/JointState.h>
 
 #ifdef WITH_DRAKE
 #include <drake/common/trajectories/piecewise_pose.h>
@@ -55,12 +60,16 @@ class CartesianTrajectoryPlanner {
    * of the controlled frame using Drake.
    * @param initial_pose Initial pose of the end-effector. It could be different with the starting pose of the
    * trajectory.
-   * @param trajectory_points Sparse trajectory waypoints
+   * @param sparse_trajectory Sparse trajectory.
    * @param goal_trajectory Output dense trajectory.
    */
   bool makeCartesianTrajectoryWithDrake(geometry_msgs::Pose initial_pose,
-                                        const std::vector<roport::CartesianTrajectoryPoint>& trajectory_points,
+                                        const roport::CartesianTrajectory& sparse_trajectory,
                                         roport::CartesianTrajectory& goal_trajectory);
+
+  void displayCartesianTrajectoryInRViz(const int& index, const roport::CartesianTrajectory& cartesian_trajectory);
+
+  void displayJointTrajectoryInRViz(const int& index, const roport::CartesianTrajectory& cartesian_trajectory);
 
  private:
   ros::NodeHandle nh_;
@@ -68,6 +77,15 @@ class CartesianTrajectoryPlanner {
 
   std::vector<std::string> declared_group_names_;
   std::vector<std::string> group_names_;
+
+  bool visualize_;
+  ros::Publisher display_trajectory_publisher_;
+  ros::Publisher cartesian_trajectory_publisher_;
+
+  ros::Subscriber joint_state_subscriber_;
+  sensor_msgs::JointState current_joint_state_;
+  std::vector<std::vector<std::string>> joint_names_;
+  std::vector<std::vector<double>> joint_positions_;
 
   ros::ServiceServer execute_all_cartesian_trajectory_srv_;
 
@@ -91,7 +109,11 @@ class CartesianTrajectoryPlanner {
                                             roport::CartesianTrajectory& trajectory) const;
 
   auto executeAllCartesianTrajectoriesCb(roport::ExecuteAllCartesianTrajectories::Request& req,
-                                       roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool;
+                                         roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool;
+
+  void jointStatesCb(const sensor_msgs::JointState::ConstPtr& msg);
+
+  //void cartesianTrajectoryToJointTrajectory();
 };
 
 }  // namespace roport
