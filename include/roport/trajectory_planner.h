@@ -32,8 +32,8 @@
 #include <cmath>
 #include <eigen3/Eigen/Dense>
 
-#include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <moveit_msgs/DisplayTrajectory.h>
 #include <moveit_msgs/RobotState.h>
 #include <sensor_msgs/JointState.h>
@@ -44,7 +44,7 @@
 
 #include "roport/common.h"
 #include "roport/ExecuteAllCartesianTrajectories.h"
-#include "roport/ExecuteGroupPose.h"
+#include "roport/ExecuteGroupCartesianTrajectory.h"
 #include "roport/GetGroupPose.h"
 
 namespace roport {
@@ -67,7 +67,7 @@ class CartesianTrajectoryPlanner {
                                         const roport::CartesianTrajectory& sparse_trajectory,
                                         roport::CartesianTrajectory& goal_trajectory);
 
-  void displayCartesianTrajectoryInRViz(const int& index, const roport::CartesianTrajectory& cartesian_trajectory);
+  void displayCartesianTrajectoryInRViz(const roport::CartesianTrajectory& cartesian_trajectory, const int& step = 100);
 
   void displayJointTrajectoryInRViz(const int& index, const roport::CartesianTrajectory& cartesian_trajectory);
 
@@ -75,7 +75,6 @@ class CartesianTrajectoryPlanner {
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
 
-  std::vector<std::string> declared_group_names_;
   std::vector<std::string> group_names_;
 
   bool visualize_;
@@ -87,11 +86,13 @@ class CartesianTrajectoryPlanner {
   std::vector<std::vector<std::string>> joint_names_;
   std::vector<std::vector<double>> joint_positions_;
 
+  bool is_execute_;
   ros::ServiceServer execute_all_cartesian_trajectory_srv_;
 
   ros::Duration wait_for_service_timeout_{5.0};
 
   std::vector<ros::ServiceClient> get_current_pose_clients_;
+  std::vector<ros::ServiceClient> execute_group_cartesian_trajectory_clients_;
 
   double default_time_step_{0.001};
 
@@ -113,7 +114,7 @@ class CartesianTrajectoryPlanner {
 
   void jointStatesCb(const sensor_msgs::JointState::ConstPtr& msg);
 
-  //void cartesianTrajectoryToJointTrajectory();
+  // void cartesianTrajectoryToJointTrajectory();
 };
 
 }  // namespace roport

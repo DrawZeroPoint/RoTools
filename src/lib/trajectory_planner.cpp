@@ -3,7 +3,7 @@
 namespace roport {
 
 CartesianTrajectoryPlanner::CartesianTrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
-    : nh_(nh), pnh_(pnh), visualize_(false) {
+    : nh_(nh), pnh_(pnh), visualize_(false), is_execute_(true) {
   // Get all available planning group names
   XmlRpc::XmlRpcValue group_names;
   roport::getParam(nh_, pnh_, "group_names", group_names);
@@ -12,29 +12,41 @@ CartesianTrajectoryPlanner::CartesianTrajectoryPlanner(const ros::NodeHandle& nh
   if (group_names.size() == 0) {
     throw std::runtime_error("Param group_names not defined");
   }
+
+  // Create clients for getting the current group pose and executing pose command
+  XmlRpc::XmlRpcValue get_group_pose_service_id;
+  roport::getParam(nh_, pnh_, "get_group_pose_service_id", get_group_pose_service_id);
+  ROS_ASSERT(get_group_pose_service_id.size() == group_names.size());
+
+  XmlRpc::XmlRpcValue execute_group_cartesian_trajectory_service_id;
+  roport::getParam(nh_, pnh_, "execute_group_cartesian_trajectory_service_id",
+                   execute_group_cartesian_trajectory_service_id);
+  ROS_ASSERT(execute_group_cartesian_trajectory_service_id.size() == group_names.size());
+
   for (int i = 0; i < group_names.size(); i++) {
     ROS_ASSERT(group_names[i].getType() == XmlRpc::XmlRpcValue::TypeString);
     std::string name = std::string(group_names[i]);
-    declared_group_names_.push_back(name);
 
-    auto get_pose_client = nh_.serviceClient<roport::GetGroupPose>("/" + name + "/get_group_pose");
-    if (!ros::service::waitForService("/" + name + "/get_group_pose", wait_for_service_timeout_)) {
-      ROS_WARN("Service %s/get_group_pose is not up, so the client is not created", name.c_str());
-      get_pose_client = nh_.serviceClient<roport::GetGroupPose>("/get_group_pose");
-      if (!ros::service::waitForService("/get_group_pose", wait_for_service_timeout_)) {
-        ROS_WARN("Service /get_group_pose is not up, so the client is not created");
-        continue;
-      } else {
-        ROS_INFO("Created client for service /get_group_pose for %s", name.c_str());
-      }
+    std::string service_id = std::string(get_group_pose_service_id[i]);
+    auto get_pose_client = nh_.serviceClient<roport::GetGroupPose>(service_id);
+    if (!ros::service::waitForService(service_id, wait_for_service_timeout_)) {
+      throw std::runtime_error("Failed to connect to get_group_pose service");
+    }
+    ROS_INFO("Created client for group '%s' to service %s", name.c_str(), service_id.c_str());
+
+    service_id = std::string(execute_group_cartesian_trajectory_service_id[i]);
+    auto execute_trajectory_client = nh_.serviceClient<roport::ExecuteGroupCartesianTrajectory>(service_id);
+    if (!ros::service::waitForService(service_id, wait_for_service_timeout_)) {
+      ROS_WARN_STREAM("Failed to connect to service: " << service_id);
+      is_execute_ = false;
     } else {
-      ROS_INFO("Created client for service %s/get_group_pose", name.c_str());
+      ROS_INFO("Created client for group '%s' to service %s", name.c_str(), service_id.c_str());
     }
 
     group_names_.push_back(name);
     get_current_pose_clients_.push_back(get_pose_client);
+    execute_group_cartesian_trajectory_clients_.push_back(execute_trajectory_client);
   }
-  ROS_ASSERT(declared_group_names_.size() == group_names_.size());
 
   // Get visualize flag
   XmlRpc::XmlRpcValue display_trajectory;
@@ -101,19 +113,14 @@ auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb(
     return true;
   }
 
-  //  std::vector<std::pair<std::shared_ptr<CT_Client>, CT_Goal>> goal_temp;
+  std::map<int, roport::CartesianTrajectory> trajectory_handler;
   for (size_t i = 0; i < req.group_names.size(); ++i) {
     auto result = roport::findInVector(group_names_, req.group_names[i]);
     if (!result.first) {
-      auto is_in_declared = roport::findInVector(declared_group_names_, req.group_names[i]);
-      if (is_in_declared.first) {
-        ROS_WARN("Client for group %s was not created, its trajectory will not be executed",
-                 req.group_names[i].c_str());
-      } else {
-        ROS_WARN("Group name %s is not in known names, its trajectory will not be executed",
-                 req.group_names[i].c_str());
-      }
-      continue;
+      ROS_WARN("Group name %s is not in known names, its trajectory will not be executed", req.group_names[i].c_str());
+      resp.result_status = roport::ExecuteAllCartesianTrajectories::Response::FAILED;
+      resp.result_msg = "Invalid group name";
+      return true;
     }
 
     auto index = result.second;
@@ -132,8 +139,9 @@ auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb(
       CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(get_current_pose.response.pose, req.trajectories[i],
                                                                    goal_trajectory);
       if (visualize_) {
-        displayCartesianTrajectoryInRViz(index, goal_trajectory);
+        displayCartesianTrajectoryInRViz(goal_trajectory);
       }
+      trajectory_handler.insert({index, goal_trajectory});
     } else {
       ROS_WARN("Fail to get the current pose for group %s", group_names_[index].c_str());
       resp.result_status = roport::ExecuteAllCartesianTrajectoriesResponse::FAILED;
@@ -142,13 +150,27 @@ auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb(
     }
   }
 
-  //  for (const auto& pair : goal_temp) {
-  //    pair.first->sendGoal(pair.second, doneCb, activeCb, feedbackCb);
-  //  }
-  // TODO dzp check whether waiting is necessary?
-  //  for (int j = 0; j <= goal_trajectory.trajectory.points.size(); ++j) {
-  //    ros::Duration(default_time_step_).sleep();
-  //  }
+  /** This naive implementation only allows executing one trajectory for one group for testing
+  for (const auto& pair : trajectory_handler) {
+    roport::ExecuteGroupPose execute_group_pose;
+    execute_group_pose.request.ref_frame = pair.second.ref_frame;
+    execute_group_pose.request.ee_frame = pair.second.ee_frame;
+    execute_group_pose.request.group_name = group_names_[pair.first];
+    for (int i = 0; i < pair.second.points.size(); i += 100) {
+      auto p = pair.second.points[i];
+      execute_group_pose.request.goal = p.pose;
+      execute_group_pose.request.duration = p.duration * 100;
+      execute_group_pose_clients_[pair.first].call(execute_group_pose);
+      if (execute_group_pose.response.result_status != roport::ExecuteGroupPose::Response::SUCCEEDED) {
+        ROS_ERROR("Call execute_group_pose service failed");
+        break;
+      }
+    }
+  }
+  **/
+  if (is_execute_) {
+    // TODO use execute_group_cartesian_trajectory_clients_ to send dense trajectories to each group
+  }
   resp.result_status = roport::ExecuteAllCartesianTrajectoriesResponse::SUCCEEDED;
   return true;
 }
@@ -233,12 +255,11 @@ bool CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(geometry_msgs:
 }
 
 void CartesianTrajectoryPlanner::displayCartesianTrajectoryInRViz(
-    const int& index,
-    const roport::CartesianTrajectory& cartesian_trajectory) {
+    const roport::CartesianTrajectory& cartesian_trajectory,
+    const int& step) {
   geometry_msgs::PoseArray pose_array;
   pose_array.header.frame_id = cartesian_trajectory.ref_frame;
-  ROS_INFO_STREAM("Frame id of the pose array: " << pose_array.header.frame_id);
-  for (int i = 0; i < cartesian_trajectory.points.size(); i += 100) {
+  for (int i = 0; i < cartesian_trajectory.points.size(); i += step) {
     pose_array.poses.push_back(cartesian_trajectory.points[i].pose);
   }
   cartesian_trajectory_publisher_.publish(pose_array);
