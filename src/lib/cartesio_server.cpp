@@ -144,6 +144,12 @@ auto CartesIOServer::executeGroupPoseCb(roport::ExecuteGroupPose::Request& req,
     return false;
   }
 
+  if (req.duration == 0) {
+    resp.result_status = roport::ExecuteGroupPose::Response::SUCCEEDED;
+    resp.result_msg = "No execution as duration is 0";
+    return true;
+  }
+
   std::map<int, cartesian_interface::ReachPoseActionGoal> action_goals;
   geometry_msgs::Pose ref_to_ctrl_pose;
   if (!calculateReferenceToControlFrameGoalPose(index, req.ref_frame, req.ee_frame, req.goal, ref_to_ctrl_pose)) {
