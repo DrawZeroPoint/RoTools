@@ -1,0 +1,28 @@
+# For the planning group defined by its name, execute the given trajectory with that group.
+
+# Execute the Cartesian trajectories for one planning group.
+
+# Requests
+# group_name: The planning group's name.
+# sparse_trajectory: The (sparse) Cartesian trajectory for the group to execute.
+#                    "Sparse" indicates that the trajectory may contain only a limited number of waypoints with their
+#                    respective poses. The velocity and acceleration at these waypoints can be unspecified.
+# dry_run: If set to true, the trajectory will be planned but not executed.
+#          A dense trajectory will always be created in this case. The planner will make its best effort to populate
+#          the velocity and acceleration properties for the dense trajectory. Default false.
+
+# Response
+# dense_trajectory: The dense trajectory is a trajectory prepared for execution by the real robot.
+#                   Except for the first pose (0s), the duration of all waypoints is precisely 0.001 seconds,
+#                   which corresponds to the Franka robot's control loop time.
+
+std_msgs/Header header
+string group_name
+roport/CartesianTrajectory sparse_trajectory
+bool dry_run
+---
+uint8 SUCCEEDED=0
+uint8 FAILED=1
+uint8 result_status
+string result_msg
+roport/CartesianTrajectory dense_trajectory
