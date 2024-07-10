@@ -621,6 +621,19 @@ inline void saturate(const Eigen::VectorXd& input,
   }
 }
 
+inline void getSubStr(const std::string& raw_str, const char& divider, std::string& sub_str, bool is_tail = true) {
+  size_t pos = raw_str.find(divider);
+  if (pos != std::string::npos) {
+    if (is_tail) {
+      sub_str = raw_str.substr(pos + 1);
+    } else {
+      sub_str = raw_str.substr(0, pos);
+    }
+  } else {
+    sub_str = raw_str;
+  }
+}
+
 /**
  * Generic function to find an element in vector and also its position. It returns a pair of bool & int.
  * The function will return if the first match is found.
