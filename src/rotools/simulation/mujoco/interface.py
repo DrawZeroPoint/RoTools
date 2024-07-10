@@ -96,6 +96,8 @@ class MuJoCoInterface(Thread):
         # This variable is for replacing certain joints' command value with predefined constant
         self._overwrite_commands = {}
 
+        self._names_to_exclude = []
+
         if os.path.exists(kinematics_path):
             kinematic_tree = ElementTree.parse(kinematics_path)
             kinematics_root = kinematic_tree.getroot()
@@ -204,6 +206,9 @@ class MuJoCoInterface(Thread):
             None
         """
         self._overwrite_commands = command_dict
+
+    def set_names_to_exclude_from_joint_states(self, names_to_exclude):
+        self._names_to_exclude = names_to_exclude
 
     def run(self):
         # The model, data, and viewer must be initialized here.
@@ -510,22 +515,22 @@ class MuJoCoInterface(Thread):
             return None
         joint_state_msg = JointState()
         joint_state_msg.header.stamp = rospy.Time.now()
-        joint_state_msg.name = self._actuated_joint_names
-        q_clapped = []
-        q_raw = self._robot_states[:, 0].tolist()
-        for i, r in enumerate(self._actuated_joint_ranges.values()):
+
+        for i, name in enumerate(self._actuated_joint_names):
+            if name in self._names_to_exclude:
+                continue
+
+            joint_state_msg.name.append(name)
+            q = self._robot_states[i, 0]
+            r = self._actuated_joint_ranges[name]
             if r is None:
-                q_clapped.append(q_raw[i])
+                q_clipped = q
             else:
-                if q_raw[i] < r[0]:
-                    q_clapped.append(r[0])
-                elif q_raw[i] > r[1]:
-                    q_clapped.append(r[1])
-                else:
-                    q_clapped.append(q_raw[i])
-        joint_state_msg.position = q_clapped
-        joint_state_msg.velocity = self._robot_states[:, 1].tolist()
-        joint_state_msg.effort = self._robot_states[:, 2].tolist()
+                q_clipped = np.clip(q, r[0], r[1])
+            joint_state_msg.position.append(q_clipped)
+            joint_state_msg.velocity.append(self._robot_states[i, 1])
+            joint_state_msg.effort.append(self._robot_states[i, 2])
+
         return joint_state_msg
 
     def get_odom(self):

@@ -111,6 +111,13 @@ class MuJoCoServer(object):
         if kwargs["overwrite_commands"]:
             self.interface.set_overwrite_commands(kwargs["overwrite_commands"])
 
+        # Set joint names to exclude from the published joint states. This is used to scenario where
+        # the published joint names is not listed in the robot_description
+        if kwargs["names_to_exclude_from_joint_states"]:
+            self.interface.set_names_to_exclude_from_joint_states(
+                kwargs["names_to_exclude_from_joint_states"]
+            )
+
     def publish_handle(self, _):
         joint_state_msg = self.interface.get_joint_states()
         if joint_state_msg:
