@@ -2,8 +2,8 @@
 
 namespace roport {
 
-CartesianTrajectoryPlanner::CartesianTrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
-    : nh_(nh), pnh_(pnh), visualize_(false), is_execute_(true) {
+TrajectoryPlanner::TrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
+    : nh_(nh), pnh_(pnh), visualize_(false), is_execute_(true), plant_(0.0), parser_(&plant_) {
   // Get all available planning group names
   XmlRpc::XmlRpcValue group_names;
   roport::getParam(nh_, pnh_, "group_names", group_names);
@@ -65,34 +65,46 @@ CartesianTrajectoryPlanner::CartesianTrajectoryPlanner(const ros::NodeHandle& nh
     for (int j = 0; j < joint_names[i].size(); ++j) {
       joint_name_list.push_back(joint_names[i][j]);
     }
-    joint_names_.push_back(joint_name_list);
+    group_joint_names_.push_back(joint_name_list);
   }
 
+  // Drake initialization
+  XmlRpc::XmlRpcValue urdf;
+  roport::getParam(nh_, pnh_, "robot_description", urdf);
+  model_indexes_ = parser_.AddModelsFromString(std::string(urdf), "URDF");
+  plant_.Finalize();
+
+  // ROS interface initialization
   execute_all_cartesian_trajectory_srv_ = nh_.advertiseService(
-      "execute_all_cartesian_trajectories", &CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb, this);
+      "execute_all_cartesian_trajectories", &TrajectoryPlanner::executeAllCartesianTrajectoriesCb, this);
 
   if (visualize_) {
     joint_state_subscriber_ =
-        nh_.subscribe<sensor_msgs::JointState>("/joint_states", 1, &CartesianTrajectoryPlanner::jointStatesCb, this);
+        nh_.subscribe<sensor_msgs::JointState>("/joint_states", 1, &TrajectoryPlanner::jointStatesCb, this);
 
-    cartesian_trajectory_publisher_ =
-        nh_.advertise<geometry_msgs::PoseArray>("trajectory_planner/cartesian_trajectory", 1);
-    ROS_INFO("Planned cartesian trajectory can be visualized in RViz with: trajectory_planner/cartesian_trajectory");
+    ROS_INFO("Planned trajectory can be visualized in RViz with:");
+    for (const auto& name : group_names_) {
+      std::string topic = "trajectory_planner/" + name + "/cartesian_trajectory";
+      auto c_publisher = nh_.advertise<geometry_msgs::PoseArray>(topic, 1);
+      cartesian_trajectory_publishers_.push_back(c_publisher);
+      ROS_INFO_STREAM(topic);
 
-    display_trajectory_publisher_ =
-        nh_.advertise<moveit_msgs::DisplayTrajectory>("trajectory_planner/joint_trajectory", 1);
-    ROS_INFO("Planned joint trajectory can be visualized in RViz with: trajectory_planner/joint_trajectory");
+      topic = "trajectory_planner/" + name + "/joint_trajectory";
+      auto j_publisher = nh_.advertise<moveit_msgs::DisplayTrajectory>(topic, 1);
+      joint_trajectory_publishers_.push_back(j_publisher);
+      ROS_INFO_STREAM(topic);
+    }
   }
 }
 
-void CartesianTrajectoryPlanner::jointStatesCb(const sensor_msgs::JointState::ConstPtr& msg) {
+void TrajectoryPlanner::jointStatesCb(const sensor_msgs::JointState::ConstPtr& msg) {
   current_joint_state_ = *msg;
 
   joint_positions_.clear();
-  for (int i = 0; i < joint_names_.size(); ++i) {
+  for (int i = 0; i < group_joint_names_.size(); ++i) {
     std::vector<double> position_list;
-    for (int j = 0; j < joint_names_[i].size(); ++j) {
-      auto res = findInVector<std::string>(msg->name, joint_names_[i][j]);
+    for (int j = 0; j < group_joint_names_[i].size(); ++j) {
+      auto res = findInVector<std::string>(msg->name, group_joint_names_[i][j]);
       if (res.first) {
         position_list.push_back(msg->position[res.second]);
       } else {
@@ -103,9 +115,9 @@ void CartesianTrajectoryPlanner::jointStatesCb(const sensor_msgs::JointState::Co
   }
 }
 
-auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb(
-    roport::ExecuteAllCartesianTrajectories::Request& req,
-    roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool {
+auto TrajectoryPlanner::executeAllCartesianTrajectoriesCb(roport::ExecuteAllCartesianTrajectories::Request& req,
+                                                          roport::ExecuteAllCartesianTrajectories::Response& resp)
+    -> bool {
   if (req.group_names.empty()) {
     ROS_WARN("The 'group_names' in the execute all cartesian trajectory request is empty.");
     resp.result_status = roport::ExecuteAllCartesianTrajectories::Response::FAILED;
@@ -135,13 +147,16 @@ auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb(
     get_current_pose_clients_[index].call(get_current_pose);
 
     if (get_current_pose.response.result_status == roport::GetGroupPoseResponse::SUCCEEDED) {
-      roport::CartesianTrajectory goal_trajectory;
-      CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(get_current_pose.response.pose, req.trajectories[i],
-                                                                   goal_trajectory);
+      roport::CartesianTrajectory cartesian_trajectory;
+      TrajectoryPlanner::makeCartesianTrajectoryWithDrake(get_current_pose.response.pose, req.trajectories[i],
+                                                          cartesian_trajectory);
+      trajectory_msgs::JointTrajectory joint_trajectory;
+      TrajectoryPlanner::makeJointTrajectoryWithDrake(req.trajectories[i], joint_trajectory);
       if (visualize_) {
-        displayCartesianTrajectoryInRViz(goal_trajectory);
+        displayCartesianTrajectoryInRViz(index, cartesian_trajectory);
+        displayJointTrajectoryInRViz(index, joint_trajectory);
       }
-      trajectory_handler.insert({index, goal_trajectory});
+      trajectory_handler.insert({index, cartesian_trajectory});
     } else {
       ROS_WARN("Fail to get the current pose for group %s", group_names_[index].c_str());
       resp.result_status = roport::ExecuteAllCartesianTrajectoriesResponse::FAILED;
@@ -175,34 +190,33 @@ auto CartesianTrajectoryPlanner::executeAllCartesianTrajectoriesCb(
   return true;
 }
 
-void CartesianTrajectoryPlanner::geometryPoseToDrakeRigidTransform(const geometry_msgs::Pose& p,
-                                                                   drake::math::RigidTransformd& t) {
+void TrajectoryPlanner::geometryPoseToDrakeRigidTransform(const geometry_msgs::Pose& p,
+                                                          drake::math::RigidTransformd& t) {
   Eigen::Matrix4d m;
   geometryPoseToEigenMatrix(p, m);
   t = drake::math::RigidTransformd(m);
 }
 
-void CartesianTrajectoryPlanner::drakeRigidTransformToGeometryPose(const drake::math::RigidTransformd& t,
-                                                                   geometry_msgs::Pose& p) {
+void TrajectoryPlanner::drakeRigidTransformToGeometryPose(const drake::math::RigidTransformd& t,
+                                                          geometry_msgs::Pose& p) {
   Eigen::Matrix4d m = t.GetAsMatrix4();
   eigenMatrixToGeometryPose(m, p);
 }
 
-void CartesianTrajectoryPlanner::drakeRigidTransformToCartesianTrajectoryPoint(const drake::math::RigidTransformd& pose,
-                                                                               const Eigen::Matrix<double, 6, 1>& vel,
-                                                                               const Eigen::Matrix<double, 6, 1>& acc,
-                                                                               const double& duration,
-                                                                               roport::CartesianTrajectoryPoint& p) {
+void TrajectoryPlanner::drakeRigidTransformToCartesianTrajectoryPoint(const drake::math::RigidTransformd& pose,
+                                                                      const Eigen::Matrix<double, 6, 1>& vel,
+                                                                      const Eigen::Matrix<double, 6, 1>& acc,
+                                                                      const double& duration,
+                                                                      roport::CartesianTrajectoryPoint& p) {
   drakeRigidTransformToGeometryPose(pose, p.pose);
   eigenMatrixToGeometryTwist(vel, p.twist);
   eigenMatrixToGeometryAccel(acc, p.acceleration);
   p.duration = duration;
 }
 
-void CartesianTrajectoryPlanner::drakeTrajectoryToCartesianTrajectory(
+void TrajectoryPlanner::drakeTrajectoryToCartesianTrajectory(
     const drake::trajectories::PiecewisePose<double>& drake_trajectory,
     roport::CartesianTrajectory& trajectory) const {
-  ROS_WARN_STREAM(drake_trajectory.start_time() << "  " << drake_trajectory.end_time());
   int trajectory_length = static_cast<int>(drake_trajectory.end_time() / default_time_step_);
   for (int i = 0; i <= trajectory_length; ++i) {
     auto time_stamp = default_time_step_ * i;
@@ -223,12 +237,12 @@ void CartesianTrajectoryPlanner::drakeTrajectoryToCartesianTrajectory(
   }
 }
 
-bool CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(geometry_msgs::Pose initial_pose,
-                                                                  const roport::CartesianTrajectory& sparse_trajectory,
-                                                                  roport::CartesianTrajectory& goal_trajectory) {
-  goal_trajectory.header = sparse_trajectory.header;
-  goal_trajectory.ref_frame = sparse_trajectory.ref_frame;
-  goal_trajectory.ee_frame = sparse_trajectory.ee_frame;
+bool TrajectoryPlanner::makeCartesianTrajectoryWithDrake(geometry_msgs::Pose initial_pose,
+                                                         const roport::CartesianTrajectory& sparse_trajectory,
+                                                         roport::CartesianTrajectory& dense_trajectory) {
+  dense_trajectory.header = sparse_trajectory.header;
+  dense_trajectory.ref_frame = sparse_trajectory.ref_frame;
+  dense_trajectory.ee_frame = sparse_trajectory.ee_frame;
 
   std::vector<double> times;
   std::vector<drake::math::RigidTransformd> poses;
@@ -250,23 +264,98 @@ bool CartesianTrajectoryPlanner::makeCartesianTrajectoryWithDrake(geometry_msgs:
   }
 
   auto drake_trajectory = drake::trajectories::PiecewisePose<double>::MakeLinear(times, poses);
-  drakeTrajectoryToCartesianTrajectory(drake_trajectory, goal_trajectory);
+  drakeTrajectoryToCartesianTrajectory(drake_trajectory, dense_trajectory);
   return true;
 }
 
-void CartesianTrajectoryPlanner::displayCartesianTrajectoryInRViz(
-    const roport::CartesianTrajectory& cartesian_trajectory,
-    const int& step) {
+void TrajectoryPlanner::currentJointStatesToInitialState(Eigen::VectorXd& initial_state) {
+  ROS_INFO_STREAM("plant num positions" << plant_.num_positions());
+  initial_state.resize(plant_.num_positions());
+  for (int i = 0; i < current_joint_state_.name.size(); ++i) {
+    auto joint_name = current_joint_state_.name[i];
+    auto joint_position = current_joint_state_.position[i];
+    const auto& joint = plant_.GetJointByName(joint_name, model_indexes_[0]);
+    int joint_index = joint.position_start();
+    initial_state[joint_index] = joint_position;
+    ROS_INFO_STREAM(i << " | " <<  joint_index);
+  }
+}
+
+bool TrajectoryPlanner::makeJointTrajectoryWithDrake(const roport::CartesianTrajectory& sparse_trajectory,
+                                                     trajectory_msgs::JointTrajectory& joint_trajectory) {
+  joint_trajectory.header = sparse_trajectory.header;
+  joint_trajectory.joint_names = current_joint_state_.name;
+
+  std::string pure_ee_frame;
+  getSubStr(sparse_trajectory.ee_frame, '/', pure_ee_frame);
+  std::string pure_ref_frame;
+  getSubStr(sparse_trajectory.ref_frame, '/', pure_ref_frame);
+
+  const auto& ee_frame = plant_.GetFrameByName(pure_ee_frame);
+  const auto& ref_frame = plant_.GetFrameByName(pure_ref_frame);
+
+  auto lower_limits = plant_.GetPositionLowerLimits();
+  auto upper_limits = plant_.GetPositionUpperLimits();
+
+  double time_from_start = 0.0;
+  for (const auto& point : sparse_trajectory.points) {
+    drake::multibody::InverseKinematics ik(plant_);
+    drake::math::RigidTransformd t;
+    geometryPoseToDrakeRigidTransform(point.pose, t);
+    ik.AddPositionConstraint(ee_frame, drake::Vector3<double>::Zero(), ref_frame, t.translation(), t.translation());
+    ik.AddOrientationConstraint(ee_frame, drake::math::RotationMatrixd::Identity(), ref_frame, t.rotation(), 0.0);
+    auto prog = ik.get_mutable_prog();
+    prog->AddBoundingBoxConstraint(lower_limits, upper_limits, ik.q());
+
+    // For floating base robots, the first 7 vars in initial_state represents the pose of the base frame
+    // wrt the world frame, which could be 1 0 0 0 0 0 0, i.e., the first 4 vars represent orientation,
+    // and the last 3 represent translation.
+    Eigen::VectorXd initial_state = plant_.GetPositions(*plant_.CreateDefaultContext(), model_indexes_[0]);
+    currentJointStatesToInitialState(initial_state);
+
+    const auto& result = drake::solvers::Solve(*prog, initial_state);
+    if (result.is_success()) {
+      // solution type: Eigen::VectorXd is for all joints of the robot
+      auto solution = result.GetSolution(ik.q());
+      std::vector<double> joint_positions(solution.data(), solution.data() + solution.size());
+
+      // Select joint values to be added into trajectory by name
+      std::vector<double> selected_joint_positions;
+      for (const auto& joint_name : current_joint_state_.name) {
+        const auto& joint = plant_.GetJointByName(joint_name, model_indexes_[0]);
+        int joint_index = joint.position_start();
+        auto joint_position = joint_positions[joint_index];
+        selected_joint_positions.push_back(joint_position);
+      }
+
+      trajectory_msgs::JointTrajectoryPoint j_point;
+      j_point.positions = selected_joint_positions;
+
+      time_from_start += point.duration;
+      j_point.time_from_start = ros::Duration(time_from_start);
+      joint_trajectory.points.push_back(j_point);
+    } else {
+      ROS_ERROR("IK solution failed for pose:");
+      logROSPose(point.pose);
+      return false;
+    }
+  }
+  return true;
+}
+
+void TrajectoryPlanner::displayCartesianTrajectoryInRViz(const int& index,
+                                                         const roport::CartesianTrajectory& cartesian_trajectory,
+                                                         const int& step) {
   geometry_msgs::PoseArray pose_array;
   pose_array.header.frame_id = cartesian_trajectory.ref_frame;
   for (int i = 0; i < cartesian_trajectory.points.size(); i += step) {
     pose_array.poses.push_back(cartesian_trajectory.points[i].pose);
   }
-  cartesian_trajectory_publisher_.publish(pose_array);
+  cartesian_trajectory_publishers_[index].publish(pose_array);
 }
 
-void CartesianTrajectoryPlanner::displayJointTrajectoryInRViz(const int& index,
-                                                              const roport::CartesianTrajectory& cartesian_trajectory) {
+void TrajectoryPlanner::displayJointTrajectoryInRViz(const int& index,
+                                                     const trajectory_msgs::JointTrajectory& joint_trajectory) {
   moveit_msgs::DisplayTrajectory display_trajectory;
   display_trajectory.model_id = "";
 
@@ -275,10 +364,9 @@ void CartesianTrajectoryPlanner::displayJointTrajectoryInRViz(const int& index,
   display_trajectory.trajectory_start = trajectory_start;
 
   moveit_msgs::RobotTrajectory robot_trajectory;
-  robot_trajectory.joint_trajectory.joint_names = joint_names_[index];
-  //
+  robot_trajectory.joint_trajectory = joint_trajectory;
   display_trajectory.trajectory.push_back(robot_trajectory);
 
-  display_trajectory_publisher_.publish(display_trajectory);
+  joint_trajectory_publishers_[index].publish(display_trajectory);
 }
 }  // namespace roport

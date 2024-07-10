@@ -7,7 +7,7 @@ auto main(int argc, char** argv) -> int {
   ros::NodeHandle node_handle;
   ros::NodeHandle pnh("~");
 
-  roport::CartesianTrajectoryPlanner planner(node_handle, pnh);
+  roport::TrajectoryPlanner planner(node_handle, pnh);
 
   ros::AsyncSpinner spinner(4);
   spinner.start();

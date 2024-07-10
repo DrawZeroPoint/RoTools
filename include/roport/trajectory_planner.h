@@ -37,9 +37,20 @@
 #include <moveit_msgs/DisplayTrajectory.h>
 #include <moveit_msgs/RobotState.h>
 #include <sensor_msgs/JointState.h>
+#include <trajectory_msgs/JointTrajectory.h>
+#include <trajectory_msgs/JointTrajectoryPoint.h>
 
 #ifdef WITH_DRAKE
+#include <drake/common/find_resource.h>
+#include <drake/common/text_logging.h>
 #include <drake/common/trajectories/piecewise_pose.h>
+#include <drake/math/rigid_transform.h>
+#include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
+#include <drake/multibody/parsing/parser.h>
+#include <drake/multibody/plant/multibody_plant.h>
+#include <drake/multibody/tree/multibody_tree.h>
+#include <drake/solvers/mathematical_program.h>
+#include <drake/solvers/solve.h>
 #endif
 
 #include "roport/common.h"
@@ -49,11 +60,11 @@
 
 namespace roport {
 
-class CartesianTrajectoryPlanner {
+class TrajectoryPlanner {
  public:
-  CartesianTrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
+  TrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
-  ~CartesianTrajectoryPlanner() = default;
+  ~TrajectoryPlanner() = default;
 
   /**
    * Make a dense trajectory (i.e., the time step is exactly 0.001s) given the initial pose and sparse waypoints
@@ -61,15 +72,20 @@ class CartesianTrajectoryPlanner {
    * @param initial_pose Initial pose of the end-effector. It could be different with the starting pose of the
    * trajectory.
    * @param sparse_trajectory Sparse trajectory.
-   * @param goal_trajectory Output dense trajectory.
+   * @param dense_trajectory Output dense trajectory.
    */
   bool makeCartesianTrajectoryWithDrake(geometry_msgs::Pose initial_pose,
                                         const roport::CartesianTrajectory& sparse_trajectory,
-                                        roport::CartesianTrajectory& goal_trajectory);
+                                        roport::CartesianTrajectory& dense_trajectory);
 
-  void displayCartesianTrajectoryInRViz(const roport::CartesianTrajectory& cartesian_trajectory, const int& step = 100);
+  bool makeJointTrajectoryWithDrake(const roport::CartesianTrajectory& sparse_trajectory,
+                                    trajectory_msgs::JointTrajectory& joint_trajectory);
 
-  void displayJointTrajectoryInRViz(const int& index, const roport::CartesianTrajectory& cartesian_trajectory);
+  void displayCartesianTrajectoryInRViz(const int& index,
+                                        const roport::CartesianTrajectory& cartesian_trajectory,
+                                        const int& step = 100);
+
+  void displayJointTrajectoryInRViz(const int& index, const trajectory_msgs::JointTrajectory& joint_trajectory);
 
  private:
   ros::NodeHandle nh_;
@@ -78,12 +94,12 @@ class CartesianTrajectoryPlanner {
   std::vector<std::string> group_names_;
 
   bool visualize_;
-  ros::Publisher display_trajectory_publisher_;
-  ros::Publisher cartesian_trajectory_publisher_;
+  std::vector<ros::Publisher> joint_trajectory_publishers_;
+  std::vector<ros::Publisher> cartesian_trajectory_publishers_;
 
   ros::Subscriber joint_state_subscriber_;
   sensor_msgs::JointState current_joint_state_;
-  std::vector<std::vector<std::string>> joint_names_;
+  std::vector<std::vector<std::string>> group_joint_names_;
   std::vector<std::vector<double>> joint_positions_;
 
   bool is_execute_;
@@ -93,6 +109,11 @@ class CartesianTrajectoryPlanner {
 
   std::vector<ros::ServiceClient> get_current_pose_clients_;
   std::vector<ros::ServiceClient> execute_group_cartesian_trajectory_clients_;
+
+  // Drake objects
+  drake::multibody::MultibodyPlant<double> plant_;
+  drake::multibody::Parser parser_;
+  std::vector<drake::multibody::ModelInstanceIndex> model_indexes_;
 
   double default_time_step_{0.001};
 
@@ -113,6 +134,8 @@ class CartesianTrajectoryPlanner {
                                          roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool;
 
   void jointStatesCb(const sensor_msgs::JointState::ConstPtr& msg);
+
+  void currentJointStatesToInitialState(Eigen::VectorXd& initial_state);
 
   // void cartesianTrajectoryToJointTrajectory();
 };
