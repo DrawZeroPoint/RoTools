@@ -78,9 +78,16 @@ TrajectoryPlanner::TrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeH
   execute_all_cartesian_trajectory_srv_ = nh_.advertiseService(
       "execute_all_cartesian_trajectories", &TrajectoryPlanner::executeAllCartesianTrajectoriesCb, this);
 
+  execute_joint_trajectory_with_cartesian_trajectories_srv_ =
+      nh_.advertiseService("execute_joint_trajectory_with_cartesian_trajectories",
+                           &TrajectoryPlanner::executeJointTrajectoryWithCartesianTrajectoriesCb, this);
+
   if (visualize_) {
     joint_state_subscriber_ =
         nh_.subscribe<sensor_msgs::JointState>("/joint_states", 1, &TrajectoryPlanner::jointStatesCb, this);
+
+    joint_trajectory_publisher_ =
+        nh_.advertise<moveit_msgs::DisplayTrajectory>("trajectory_planner/joint_trajectory", 1);
 
     ROS_INFO("Planned trajectory can be visualized in RViz with:");
     for (const auto& name : group_names_) {
@@ -190,6 +197,26 @@ auto TrajectoryPlanner::executeAllCartesianTrajectoriesCb(roport::ExecuteAllCart
   return true;
 }
 
+auto TrajectoryPlanner::executeJointTrajectoryWithCartesianTrajectoriesCb(
+    roport::ExecuteAllCartesianTrajectories::Request& req,
+    roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool {
+  if (req.group_names.empty()) {
+    ROS_WARN("The 'group_names' in the execute all cartesian trajectory request is empty.");
+    resp.result_status = roport::ExecuteAllCartesianTrajectories::Response::FAILED;
+    resp.result_msg = "Empty group_names";
+    return true;
+  }
+
+  trajectory_msgs::JointTrajectory joint_trajectory;
+  TrajectoryPlanner::makeJointTrajectoryWithDrake(req, joint_trajectory);
+  if (visualize_) {
+    displayJointTrajectoryInRViz(joint_trajectory);
+  }
+
+  resp.result_status = roport::ExecuteAllCartesianTrajectories::Response::SUCCEEDED;
+  return true;
+}
+
 void TrajectoryPlanner::geometryPoseToDrakeRigidTransform(const geometry_msgs::Pose& p,
                                                           drake::math::RigidTransformd& t) {
   Eigen::Matrix4d m;
@@ -269,7 +296,6 @@ bool TrajectoryPlanner::makeCartesianTrajectoryWithDrake(geometry_msgs::Pose ini
 }
 
 void TrajectoryPlanner::currentJointStatesToInitialState(Eigen::VectorXd& initial_state) {
-  ROS_INFO_STREAM("plant num positions" << plant_.num_positions());
   initial_state.resize(plant_.num_positions());
   for (int i = 0; i < current_joint_state_.name.size(); ++i) {
     auto joint_name = current_joint_state_.name[i];
@@ -277,8 +303,82 @@ void TrajectoryPlanner::currentJointStatesToInitialState(Eigen::VectorXd& initia
     const auto& joint = plant_.GetJointByName(joint_name, model_indexes_[0]);
     int joint_index = joint.position_start();
     initial_state[joint_index] = joint_position;
-    ROS_INFO_STREAM(i << " | " <<  joint_index);
   }
+}
+
+bool TrajectoryPlanner::makeJointTrajectoryWithDrake(const roport::ExecuteAllCartesianTrajectories::Request& request,
+                                                     trajectory_msgs::JointTrajectory& joint_trajectory) {
+  joint_trajectory.header = request.header;
+  joint_trajectory.joint_names = current_joint_state_.name;
+  return generateConstraintsWithCartesianTrajectory(request.trajectories, joint_trajectory);
+}
+
+bool TrajectoryPlanner::generateConstraintsWithCartesianTrajectory(
+    const std::vector<roport::CartesianTrajectory>& c_trajectories,
+    trajectory_msgs::JointTrajectory& joint_trajectory) {
+  auto lower_limits = plant_.GetPositionLowerLimits();
+  auto upper_limits = plant_.GetPositionUpperLimits();
+
+  // TODO release this limit:
+  // Currently we assume the trajectory points of different groups share the same series of time stamps
+  for (int i = 0; i < c_trajectories.size(); ++i) {
+    ROS_ASSERT(c_trajectories[i].points.size() == c_trajectories[0].points.size());
+  }
+
+  double time_from_start = 0.0;
+  for (int j = 0; j < c_trajectories[0].points.size(); ++j) {
+    drake::multibody::InverseKinematics ik(plant_);
+    auto prog = ik.get_mutable_prog();
+    for (int i = 0; i < c_trajectories.size(); ++i) {
+      std::string pure_ee_frame;
+      getSubStr(c_trajectories[i].ee_frame, '/', pure_ee_frame);
+      std::string pure_ref_frame;
+      getSubStr(c_trajectories[i].ref_frame, '/', pure_ref_frame);
+
+      const auto& ee_frame = plant_.GetFrameByName(pure_ee_frame);
+      const auto& ref_frame = plant_.GetFrameByName(pure_ref_frame);
+
+      auto pose = c_trajectories[i].points[j].pose;
+      drake::math::RigidTransformd trans;
+      geometryPoseToDrakeRigidTransform(pose, trans);
+
+      // Add pose constraint
+      ik.AddPositionConstraint(ee_frame, drake::Vector3<double>::Zero(), ref_frame, trans.translation(),
+                               trans.translation());
+      ik.AddOrientationConstraint(ee_frame, drake::math::RotationMatrixd::Identity(), ref_frame, trans.rotation(), 0.0);
+      // Add joint position constraint
+      prog->AddBoundingBoxConstraint(lower_limits, upper_limits, ik.q());
+    }
+    Eigen::VectorXd initial_state = plant_.GetPositions(*plant_.CreateDefaultContext(), model_indexes_[0]);
+    currentJointStatesToInitialState(initial_state);
+
+    const auto& result = drake::solvers::Solve(*prog, initial_state);
+    if (result.is_success()) {
+      // solution type: Eigen::VectorXd is for all joints of the robot
+      auto solution = result.GetSolution(ik.q());
+
+      // Select joint values to be added into trajectory by name
+      std::vector<double> joint_positions(solution.data(), solution.data() + solution.size());
+      std::vector<double> selected_joint_positions;
+      for (const auto& joint_name : current_joint_state_.name) {
+        const auto& joint = plant_.GetJointByName(joint_name, model_indexes_[0]);
+        int joint_index = joint.position_start();
+        auto joint_position = joint_positions[joint_index];
+        selected_joint_positions.push_back(joint_position);
+      }
+
+      trajectory_msgs::JointTrajectoryPoint jtp;
+      jtp.positions = selected_joint_positions;
+
+      time_from_start += c_trajectories[0].points[j].duration;
+      jtp.time_from_start = ros::Duration(time_from_start);
+      joint_trajectory.points.push_back(jtp);
+    } else {
+      ROS_ERROR("IK solution failed for %i-th waypoints", j);
+      return false;
+    }
+  }
+  return true;
 }
 
 bool TrajectoryPlanner::makeJointTrajectoryWithDrake(const roport::CartesianTrajectory& sparse_trajectory,
@@ -302,8 +402,11 @@ bool TrajectoryPlanner::makeJointTrajectoryWithDrake(const roport::CartesianTraj
     drake::multibody::InverseKinematics ik(plant_);
     drake::math::RigidTransformd t;
     geometryPoseToDrakeRigidTransform(point.pose, t);
+
+    // Add pose constraint
     ik.AddPositionConstraint(ee_frame, drake::Vector3<double>::Zero(), ref_frame, t.translation(), t.translation());
     ik.AddOrientationConstraint(ee_frame, drake::math::RotationMatrixd::Identity(), ref_frame, t.rotation(), 0.0);
+    // Add joint position constraint
     auto prog = ik.get_mutable_prog();
     prog->AddBoundingBoxConstraint(lower_limits, upper_limits, ik.q());
 
@@ -317,9 +420,37 @@ bool TrajectoryPlanner::makeJointTrajectoryWithDrake(const roport::CartesianTraj
     if (result.is_success()) {
       // solution type: Eigen::VectorXd is for all joints of the robot
       auto solution = result.GetSolution(ik.q());
-      std::vector<double> joint_positions(solution.data(), solution.data() + solution.size());
+
+      auto traj =
+          drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold({0.0, 1.0}, {initial_state, solution});
+
+      // Exception thrown while processing service call: The specified input port is abstract-valued,
+      // and this constraint only supports vector-valued input ports.
+      // Did you perhaps forget to pass a non-default `input_port_index` argument?
+      const auto& input_port = plant_.get_actuation_input_port();
+      const auto& input_port_index = input_port.get_index();
+      auto traj_opt = drake::planning::trajectory_optimization::DirectCollocation(
+          &plant_, *plant_.CreateDefaultContext(), 10, 0.1, 0.1, input_port_index);
+
+      const double kMaxSpeed = 0.1;  //  rad/s
+      traj_opt.AddEqualTimeIntervalsConstraints();
+      ROS_INFO_STREAM(traj_opt.initial_state());
+      Eigen::VectorXd initial_states = Eigen::VectorXd::Zero(plant_.num_positions() + plant_.num_velocities());
+      initial_states.segment(0, plant_.num_positions()) = initial_state;
+      traj_opt.AddConstraintToAllKnotPoints(traj_opt.initial_state() == initial_state);
+      traj_opt.AddConstraintToAllKnotPoints(traj_opt.state()(7, plant_.num_positions()) <= kMaxSpeed);
+      traj_opt.AddConstraintToAllKnotPoints(traj_opt.state()(7, plant_.num_positions()) >= -kMaxSpeed);
+
+      auto traj_result = drake::solvers::Solve(traj_opt.prog());
+      if (traj_result.is_success()) {
+        auto optimized_traj = traj_opt.ReconstructInputTrajectory(traj_result);
+        ROS_INFO_STREAM("Trajectory optimized " << optimized_traj.value(0));
+      } else {
+        ROS_WARN_STREAM("Failed to optimize trajectory");
+      }
 
       // Select joint values to be added into trajectory by name
+      std::vector<double> joint_positions(solution.data(), solution.data() + solution.size());
       std::vector<double> selected_joint_positions;
       for (const auto& joint_name : current_joint_state_.name) {
         const auto& joint = plant_.GetJointByName(joint_name, model_indexes_[0]);
@@ -368,5 +499,20 @@ void TrajectoryPlanner::displayJointTrajectoryInRViz(const int& index,
   display_trajectory.trajectory.push_back(robot_trajectory);
 
   joint_trajectory_publishers_[index].publish(display_trajectory);
+}
+
+void TrajectoryPlanner::displayJointTrajectoryInRViz(const trajectory_msgs::JointTrajectory& joint_trajectory) {
+  moveit_msgs::DisplayTrajectory display_trajectory;
+  display_trajectory.model_id = "";
+
+  moveit_msgs::RobotState trajectory_start;
+  trajectory_start.joint_state = current_joint_state_;
+  display_trajectory.trajectory_start = trajectory_start;
+
+  moveit_msgs::RobotTrajectory robot_trajectory;
+  robot_trajectory.joint_trajectory = joint_trajectory;
+  display_trajectory.trajectory.push_back(robot_trajectory);
+
+  joint_trajectory_publisher_.publish(display_trajectory);
 }
 }  // namespace roport

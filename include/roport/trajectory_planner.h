@@ -43,12 +43,14 @@
 #ifdef WITH_DRAKE
 #include <drake/common/find_resource.h>
 #include <drake/common/text_logging.h>
+#include <drake/common/trajectories/piecewise_polynomial.h>
 #include <drake/common/trajectories/piecewise_pose.h>
 #include <drake/math/rigid_transform.h>
 #include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/multibody/plant/multibody_plant.h>
 #include <drake/multibody/tree/multibody_tree.h>
+#include <drake/planning/trajectory_optimization/direct_collocation.h>
 #include <drake/solvers/mathematical_program.h>
 #include <drake/solvers/solve.h>
 #endif
@@ -81,11 +83,16 @@ class TrajectoryPlanner {
   bool makeJointTrajectoryWithDrake(const roport::CartesianTrajectory& sparse_trajectory,
                                     trajectory_msgs::JointTrajectory& joint_trajectory);
 
+  bool makeJointTrajectoryWithDrake(const roport::ExecuteAllCartesianTrajectories::Request& request,
+                                    trajectory_msgs::JointTrajectory& joint_trajectory);
+
   void displayCartesianTrajectoryInRViz(const int& index,
                                         const roport::CartesianTrajectory& cartesian_trajectory,
                                         const int& step = 100);
 
   void displayJointTrajectoryInRViz(const int& index, const trajectory_msgs::JointTrajectory& joint_trajectory);
+
+  void displayJointTrajectoryInRViz(const trajectory_msgs::JointTrajectory& joint_trajectory);
 
  private:
   ros::NodeHandle nh_;
@@ -94,7 +101,8 @@ class TrajectoryPlanner {
   std::vector<std::string> group_names_;
 
   bool visualize_;
-  std::vector<ros::Publisher> joint_trajectory_publishers_;
+  ros::Publisher joint_trajectory_publisher_;
+  std::vector<ros::Publisher> joint_trajectory_publishers_;  // Deprecated
   std::vector<ros::Publisher> cartesian_trajectory_publishers_;
 
   ros::Subscriber joint_state_subscriber_;
@@ -104,6 +112,7 @@ class TrajectoryPlanner {
 
   bool is_execute_;
   ros::ServiceServer execute_all_cartesian_trajectory_srv_;
+  ros::ServiceServer execute_joint_trajectory_with_cartesian_trajectories_srv_;
 
   ros::Duration wait_for_service_timeout_{5.0};
 
@@ -133,9 +142,16 @@ class TrajectoryPlanner {
   auto executeAllCartesianTrajectoriesCb(roport::ExecuteAllCartesianTrajectories::Request& req,
                                          roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool;
 
+  auto executeJointTrajectoryWithCartesianTrajectoriesCb(roport::ExecuteAllCartesianTrajectories::Request& req,
+                                                         roport::ExecuteAllCartesianTrajectories::Response& resp)
+      -> bool;
+
   void jointStatesCb(const sensor_msgs::JointState::ConstPtr& msg);
 
   void currentJointStatesToInitialState(Eigen::VectorXd& initial_state);
+
+  bool generateConstraintsWithCartesianTrajectory(const std::vector<roport::CartesianTrajectory>& c_trajectories,
+                                                  trajectory_msgs::JointTrajectory& joint_trajectory);
 
   // void cartesianTrajectoryToJointTrajectory();
 };
