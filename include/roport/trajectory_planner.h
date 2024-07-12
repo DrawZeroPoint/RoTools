@@ -62,6 +62,8 @@
 
 namespace roport {
 
+using namespace drake::planning::trajectory_optimization;
+
 class TrajectoryPlanner {
  public:
   TrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
@@ -90,8 +92,6 @@ class TrajectoryPlanner {
                                         const roport::CartesianTrajectory& cartesian_trajectory,
                                         const int& step = 100);
 
-  void displayJointTrajectoryInRViz(const int& index, const trajectory_msgs::JointTrajectory& joint_trajectory);
-
   void displayJointTrajectoryInRViz(const trajectory_msgs::JointTrajectory& joint_trajectory);
 
  private:
@@ -102,19 +102,17 @@ class TrajectoryPlanner {
 
   bool visualize_;
   ros::Publisher joint_trajectory_publisher_;
-  std::vector<ros::Publisher> joint_trajectory_publishers_;  // Deprecated
   std::vector<ros::Publisher> cartesian_trajectory_publishers_;
 
   ros::Subscriber joint_state_subscriber_;
   sensor_msgs::JointState current_joint_state_;
   std::vector<std::vector<std::string>> group_joint_names_;
-  std::vector<std::vector<double>> joint_positions_;
 
   bool is_execute_;
   ros::ServiceServer execute_all_cartesian_trajectory_srv_;
   ros::ServiceServer execute_joint_trajectory_with_cartesian_trajectories_srv_;
 
-  ros::Duration wait_for_service_timeout_{5.0};
+  ros::Duration wait_for_service_timeout_{1.0};
 
   std::vector<ros::ServiceClient> get_current_pose_clients_;
   std::vector<ros::ServiceClient> execute_group_cartesian_trajectory_clients_;
@@ -125,19 +123,28 @@ class TrajectoryPlanner {
   std::vector<drake::multibody::ModelInstanceIndex> model_indexes_;
 
   double default_time_step_{0.001};
+  double joint_traj_time_step_{0.1};
 
-  static void geometryPoseToDrakeRigidTransform(const geometry_msgs::Pose& p, drake::math::RigidTransformd& t);
+  static void geometryPoseToRigidTransform(const geometry_msgs::Pose& p, drake::math::RigidTransformd& t);
 
-  static void drakeRigidTransformToGeometryPose(const drake::math::RigidTransformd& t, geometry_msgs::Pose& p);
+  void jointTrajectoryPointToDrakePosition(const std::vector<std::string>& joint_names,
+                                           const trajectory_msgs::JointTrajectoryPoint& wp,
+                                           Eigen::VectorXd& q);
 
-  static void drakeRigidTransformToCartesianTrajectoryPoint(const drake::math::RigidTransformd& t,
-                                                            const Eigen::Matrix<double, 6, 1>& vel,
-                                                            const Eigen::Matrix<double, 6, 1>& acc,
-                                                            const double& duration,
-                                                            roport::CartesianTrajectoryPoint& p);
+  static void rigidTransformToGeometryPose(const drake::math::RigidTransformd& t, geometry_msgs::Pose& p);
+
+  static void rigidTransformToCartesianTrajectoryPoint(const drake::math::RigidTransformd& pose,
+                                                       const Eigen::Matrix<double, 6, 1>& vel,
+                                                       const Eigen::Matrix<double, 6, 1>& acc,
+                                                       const double& duration,
+                                                       roport::CartesianTrajectoryPoint& p);
 
   void drakeTrajectoryToCartesianTrajectory(const drake::trajectories::PiecewisePose<double>& drake_trajectory,
                                             roport::CartesianTrajectory& trajectory) const;
+
+  void drakePositionToJointTrajectoryPoint(const Eigen::VectorXd& q,
+                                           const double& time_from_start,
+                                           trajectory_msgs::JointTrajectoryPoint& wp);
 
   auto executeAllCartesianTrajectoriesCb(roport::ExecuteAllCartesianTrajectories::Request& req,
                                          roport::ExecuteAllCartesianTrajectories::Response& resp) -> bool;
@@ -148,12 +155,24 @@ class TrajectoryPlanner {
 
   void jointStatesCb(const sensor_msgs::JointState::ConstPtr& msg);
 
-  void currentJointStatesToInitialState(Eigen::VectorXd& initial_state);
+  void currentJointStatesToDrakePosition(Eigen::VectorXd& q);
 
-  bool generateConstraintsWithCartesianTrajectory(const std::vector<roport::CartesianTrajectory>& c_trajectories,
-                                                  trajectory_msgs::JointTrajectory& joint_trajectory);
+  bool generateJointTrajectoryWithIK(const std::vector<roport::CartesianTrajectory>& c_trajectories,
+                                     trajectory_msgs::JointTrajectory& sparse_j_trajectory);
 
-  // void cartesianTrajectoryToJointTrajectory();
+  bool generateDenseJointTrajectoryWithOptimization(const trajectory_msgs::JointTrajectory& sparse_joint_trajectory,
+                                                    trajectory_msgs::JointTrajectory& dense_joint_trajectory);
+
+  void generateDenseJointTrajectory(const trajectory_msgs::JointTrajectory& sparse_joint_trajectory,
+                                    trajectory_msgs::JointTrajectory& dense_joint_trajectory);
+
+  /** This function is under dev **/
+  bool optimizeDrakeJointTrajectory(const drake::trajectories::PiecewisePolynomial<double>& traj,
+                                    drake::trajectories::PiecewisePolynomial<double>& traj_opt);
+
+  /** This function is under dev **/
+  bool optimizePiecewisePolynomial(const drake::trajectories::PiecewisePolynomial<double>& traj,
+                                   drake::trajectories::PiecewisePolynomial<double>& traj_opt);
 };
 
 }  // namespace roport
