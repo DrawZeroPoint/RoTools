@@ -3,7 +3,13 @@
 namespace roport {
 
 TrajectoryPlanner::TrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
-    : nh_(nh), pnh_(pnh), visualize_(false), is_execute_(true), plant_(0.0), parser_(&plant_) {
+    : nh_(nh),
+      pnh_(pnh),
+      visualize_(false),
+      is_execute_(true),
+      plant_(0.001),
+      parser_(&plant_),
+      is_optimization_(false) {
   // Get all available planning group names
   XmlRpc::XmlRpcValue group_names;
   roport::getParam(nh_, pnh_, "group_names", group_names);
@@ -72,6 +78,21 @@ TrajectoryPlanner::TrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeH
   XmlRpc::XmlRpcValue urdf;
   roport::getParam(nh_, pnh_, "robot_description", urdf);
   model_indexes_ = parser_.AddModelsFromString(std::string(urdf), "URDF");
+  initializeDrakeActuators();
+
+  XmlRpc::XmlRpcValue fixed_floating_frame;
+  if (roport::getParam(nh_, pnh_, "fixed_floating_frame", fixed_floating_frame)) {
+    fixFloatingBase(std::string(fixed_floating_frame));
+    is_optimization_ = true;
+    XmlRpc::XmlRpcValue velocity_discount_factor;
+    roport::getParam(nh_, pnh_, "velocity_discount_factor", velocity_discount_factor);
+    velocity_discount_factor_ = double(velocity_discount_factor);
+    XmlRpc::XmlRpcValue effort_discount_factor;
+    roport::getParam(nh_, pnh_, "effort_discount_factor", effort_discount_factor);
+    effort_discount_factor_ = double(effort_discount_factor);
+  } else {
+    ROS_INFO("Param fixed_floating_frame is not set, Toppra optimization will not be activated");
+  }
   plant_.Finalize();
 
   // ROS interface initialization
@@ -99,6 +120,20 @@ TrajectoryPlanner::TrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeH
       ROS_INFO_STREAM(topic);
     }
   }
+}
+
+void TrajectoryPlanner::initializeDrakeActuators() {
+  for (drake::multibody::JointIndex joint_index(0); joint_index < plant_.num_joints(); ++joint_index) {
+    const auto& joint = plant_.get_joint(joint_index);
+    if (const auto* revolute_joint = dynamic_cast<const drake::multibody::RevoluteJoint<double>*>(&joint)) {
+      plant_.AddJointActuator(revolute_joint->name() + "_actuator", *revolute_joint, 80.0);
+    }
+  }
+}
+
+void TrajectoryPlanner::fixFloatingBase(const std::string& base_link) {
+  const auto& base_body = plant_.GetBodyByName(base_link, model_indexes_[0]);
+  plant_.WeldFrames(plant_.world_frame(), base_body.body_frame());
 }
 
 void TrajectoryPlanner::jointStatesCb(const sensor_msgs::JointState::ConstPtr& msg) {
@@ -235,7 +270,7 @@ void TrajectoryPlanner::jointTrajectoryPointToDrakePosition(const std::vector<st
 void TrajectoryPlanner::drakePositionToJointTrajectoryPoint(const Eigen::VectorXd& q,
                                                             const double& time_from_start,
                                                             trajectory_msgs::JointTrajectoryPoint& wp) {
-  ROS_ASSERT(q.size() == plant_.num_positions());
+  ROS_ASSERT_MSG(q.size() >= plant_.num_positions(), "q.size: %ti, num_pos: %i", q.size(), plant_.num_positions());
   // Select joint values to be added into trajectory by name
   std::vector<double> selected_q;
   for (const auto& joint_name : current_joint_state_.name) {
@@ -389,56 +424,6 @@ bool TrajectoryPlanner::generateJointTrajectoryWithIK(const std::vector<roport::
   return true;
 }
 
-bool TrajectoryPlanner::generateDenseJointTrajectoryWithOptimization(
-    const trajectory_msgs::JointTrajectory& sparse_joint_trajectory,
-    trajectory_msgs::JointTrajectory& dense_joint_trajectory) {
-  dense_joint_trajectory.header = sparse_joint_trajectory.header;
-  dense_joint_trajectory.joint_names = sparse_joint_trajectory.joint_names;
-
-  std::vector<double> times_from_start;
-  std::vector<Eigen::MatrixXd> knots;
-  for (const auto& waypoint : sparse_joint_trajectory.points) {
-    times_from_start.push_back(waypoint.time_from_start.toSec());
-    Eigen::VectorXd q;
-    jointTrajectoryPointToDrakePosition(dense_joint_trajectory.joint_names, waypoint, q);
-    knots.emplace_back(q);
-  }
-  auto trajectory =
-      drake::trajectories::PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(times_from_start, knots);
-  ROS_INFO_STREAM("nofs" << trajectory.get_number_of_segments());
-
-  drake::solvers::MathematicalProgram prog;
-  auto q = prog.NewContinuousVariables(plant_.num_positions(), "q");
-  auto v = prog.NewContinuousVariables(plant_.num_velocities(), "v");
-
-  Eigen::VectorXd max_joint_vel = Eigen::VectorXd::Ones(plant_.num_velocities()) * 10;
-  prog.AddConstraint(-max_joint_vel <= v);
-  prog.AddConstraint(v <= max_joint_vel);
-
-  for (size_t i = 0; i < times_from_start.size(); ++i) {
-    Eigen::VectorXd desired_q = trajectory.value(times_from_start[i]);
-    ROS_INFO_STREAM("Desired position at time" << times_from_start[i] << ":\n" << desired_q);
-    prog.AddQuadraticErrorCost(Eigen::MatrixXd::Identity(plant_.num_positions(), plant_.num_positions()), desired_q, q);
-  }
-
-  Eigen::VectorXd initial_q;
-  currentJointStatesToDrakePosition(initial_q);
-
-  Eigen::VectorXd initial_dq = plant_.GetVelocities(*plant_.CreateDefaultContext(), model_indexes_[0]);
-  Eigen::VectorXd initial_state(initial_q.size() + initial_dq.size());
-  initial_state << initial_q, initial_dq;
-
-  ROS_INFO_STREAM("Initial state:\n" << initial_state);
-  auto result = drake::solvers::Solve(prog);
-  if (result.is_success()) {
-    const auto& solution = result.GetSolution();
-    ROS_INFO_STREAM("Found solution:\n" << solution);
-  } else {
-    return false;
-  }
-  return true;
-}
-
 void TrajectoryPlanner::generateDenseJointTrajectory(const trajectory_msgs::JointTrajectory& sparse_joint_trajectory,
                                                      trajectory_msgs::JointTrajectory& dense_joint_trajectory) {
   dense_joint_trajectory.header = sparse_joint_trajectory.header;
@@ -455,6 +440,11 @@ void TrajectoryPlanner::generateDenseJointTrajectory(const trajectory_msgs::Join
   auto trajectory =
       drake::trajectories::PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(times_from_start, knots);
 
+  drake::trajectories::PiecewisePolynomial<double> optimized_traj;
+  if (is_optimization_ && optimizePiecewisePolynomialWithToppra(trajectory, optimized_traj)) {
+    trajectory = optimized_traj;
+  }
+
   for (double t = trajectory.start_time(); t <= trajectory.end_time(); t += joint_traj_time_step_) {
     Eigen::VectorXd q = trajectory.value(t);
     trajectory_msgs::JointTrajectoryPoint wp;
@@ -463,168 +453,42 @@ void TrajectoryPlanner::generateDenseJointTrajectory(const trajectory_msgs::Join
   }
 }
 
-bool TrajectoryPlanner::optimizeDrakeJointTrajectory(const drake::trajectories::PiecewisePolynomial<double>& traj,
-                                                     drake::trajectories::PiecewisePolynomial<double>& traj_opt) {
-  // Exception thrown while processing service call: The specified input port is abstract-valued,
-  // and this constraint only supports vector-valued input ports.
-  // Did you perhaps forget to pass a non-default `input_port_index` argument?
-  const auto& input_port = plant_.get_actuation_input_port();
-  const auto& input_port_index = input_port.get_index();
-  auto optimizer = DirectCollocation(&plant_, *plant_.CreateDefaultContext(), 12, joint_traj_time_step_,
-                                     joint_traj_time_step_, input_port_index);
-
-  const double kMaxSpeed = 1000;  //  rad/s
-  optimizer.AddEqualTimeIntervalsConstraints();
-
-  Eigen::VectorXd initial_states = Eigen::VectorXd::Zero(plant_.num_positions() + plant_.num_velocities());
-  initial_states.segment(0, plant_.num_positions()) = traj.value(0);
-
-  optimizer.AddConstraintToAllKnotPoints(optimizer.initial_state() == initial_states);
-  auto s = optimizer.state();
-  auto u = optimizer.input();
-  for (int k = 0; k < plant_.num_velocities(); ++k) {
-    optimizer.AddConstraintToAllKnotPoints(optimizer.state()(k + plant_.num_positions()) <= kMaxSpeed);
-    optimizer.AddConstraintToAllKnotPoints(optimizer.state()(k + plant_.num_positions()) >= -kMaxSpeed);
+bool TrajectoryPlanner::optimizePiecewisePolynomialWithToppra(
+    const drake::trajectories::PiecewisePolynomial<double>& traj,
+    drake::trajectories::PiecewisePolynomial<double>& traj_opt) {
+  if (plant_.num_positions() != plant_.num_velocities()) {
+    ROS_ERROR("Toppra does not support floating base robot.");
+    return false;
   }
 
-  optimizer.SetInitialTrajectory(drake::trajectories::PiecewisePolynomial<double>(), traj);
+  Eigen::VectorXd lower_vel, upper_vel, lower_effort, upper_effort;
+  getDiscountedVelocityConstraints(lower_vel, upper_vel, lower_effort, upper_effort);
 
-  auto traj_result = drake::solvers::Solve(optimizer.prog());
-  if (traj_result.is_success()) {
-    ROS_INFO_STREAM("Trajectory optimized");
-    traj_opt = optimizer.ReconstructStateTrajectory(traj_result);
-    ROS_INFO_STREAM(traj_opt.value(3));
+  auto gp = drake::multibody::Toppra::CalcGridPoints(traj, drake::multibody::CalcGridPointsOptions());
+  auto optimizer = drake::multibody::Toppra(traj, plant_, gp);
+
+  optimizer.AddJointVelocityLimit(lower_vel, upper_vel);
+  optimizer.AddJointTorqueLimit(lower_effort, upper_effort);
+
+  auto result = optimizer.SolvePathParameterization();
+  if (result.has_value()) {
+    ROS_INFO_STREAM("Trajectory optimized with TOPPRA");
+    // The result represents a time parameterization s(t), but not a trajectory q(s)
+    const auto& time_parameterization = result.value();
+    const auto& parameterized_traj =
+        drake::trajectories::PathParameterizedTrajectory<double>(traj, time_parameterization);
+
+    std::vector<double> times = time_parameterization.get_segment_times();
+    std::vector<Eigen::MatrixXd> samples;
+    for (double t : times) {
+      samples.push_back(parameterized_traj.value(t));
+    }
+    traj_opt = drake::trajectories::PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(times, samples);
+    ROS_INFO_STREAM("Trajectory Start time: " << traj_opt.start_time() << " End time: " << traj_opt.end_time());
     return true;
   }
-  ROS_WARN_STREAM("Failed to optimize trajectory");
+  ROS_WARN_STREAM("Failed to optimize trajectory with TOPPRA");
   return false;
-}
-
-bool TrajectoryPlanner::optimizePiecewisePolynomial(const drake::trajectories::PiecewisePolynomial<double>& traj,
-                                                    drake::trajectories::PiecewisePolynomial<double>& traj_opt) {
-  //  drake::solvers::MathematicalProgram prog;
-  //  auto q = prog.NewContinuousVariables(plant_.num_positions(), "q");
-  //  auto v = prog.NewContinuousVariables(plant_.num_velocities(), "v");
-  //
-  //  Eigen::VectorXd max_joint_vel = Eigen::VectorXd::Ones(plant_.num_velocities()) * 10;
-  //  prog.AddConstraint(-max_joint_vel <= v);
-  //  prog.AddConstraint(v <= max_joint_vel);
-  //
-  //  for (size_t i = 0; i < times_from_start.size(); ++i) {
-  //    Eigen::VectorXd desired_q = traj.value(times_from_start[i]);
-  //    ROS_INFO_STREAM("Desired position at time" << times_from_start[i] << ":\n" << desired_q);
-  //    prog.AddQuadraticErrorCost(Eigen::MatrixXd::Identity(plant_.num_positions(), plant_.num_positions()), desired_q,
-  //    q);
-  //  }
-  //
-  //  Eigen::VectorXd initial_q;
-  //  currentJointStatesToDrakePosition(initial_q);
-  //
-  //  Eigen::VectorXd initial_dq = plant_.GetVelocities(*plant_.CreateDefaultContext(), model_indexes_[0]);
-  //  Eigen::VectorXd initial_state(initial_q.size() + initial_dq.size());
-  //  initial_state << initial_q, initial_dq;
-  //
-  //  ROS_INFO_STREAM("Initial state:\n" << initial_state);
-  //  auto result = drake::solvers::Solve(prog);
-  //  if (result.is_success()) {
-  //    const auto& solution = result.GetSolution(q);
-  //    ROS_INFO_STREAM("Found solution:\n" << solution);
-  //  } else {
-  //    return false;
-  //  }
-  return true;
-}
-
-bool TrajectoryPlanner::makeJointTrajectoryWithDrake(const roport::CartesianTrajectory& sparse_trajectory,
-                                                     trajectory_msgs::JointTrajectory& joint_trajectory) {
-  joint_trajectory.header = sparse_trajectory.header;
-  joint_trajectory.joint_names = current_joint_state_.name;
-
-  std::string pure_ee_frame;
-  getSubStr(sparse_trajectory.ee_frame, '/', pure_ee_frame);
-  std::string pure_ref_frame;
-  getSubStr(sparse_trajectory.ref_frame, '/', pure_ref_frame);
-
-  const auto& ee_frame = plant_.GetFrameByName(pure_ee_frame);
-  const auto& ref_frame = plant_.GetFrameByName(pure_ref_frame);
-
-  auto lower_limits = plant_.GetPositionLowerLimits();
-  auto upper_limits = plant_.GetPositionUpperLimits();
-
-  double time_from_start = 0.0;
-  for (const auto& point : sparse_trajectory.points) {
-    drake::multibody::InverseKinematics ik(plant_);
-    drake::math::RigidTransformd t;
-    geometryPoseToRigidTransform(point.pose, t);
-
-    // Add pose constraint
-    ik.AddPositionConstraint(ee_frame, drake::Vector3<double>::Zero(), ref_frame, t.translation(), t.translation());
-    ik.AddOrientationConstraint(ee_frame, drake::math::RotationMatrixd::Identity(), ref_frame, t.rotation(), 0.0);
-    // Add joint position constraint
-    auto prog = ik.get_mutable_prog();
-    prog->AddBoundingBoxConstraint(lower_limits, upper_limits, ik.q());
-
-    // For floating base robots, the first 7 vars in initial_state represents the pose of the base frame
-    // wrt the world frame, which could be 1 0 0 0 0 0 0, i.e., the first 4 vars represent orientation,
-    // and the last 3 represent translation.
-    Eigen::VectorXd initial_q;
-    currentJointStatesToDrakePosition(initial_q);
-
-    const auto& result = drake::solvers::Solve(*prog, initial_q);
-    if (result.is_success()) {
-      // solution type: Eigen::VectorXd is for all joints of the robot
-      auto solution = result.GetSolution(ik.q());
-
-      auto traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold({0.0, 1.0}, {initial_q, solution});
-
-      // Exception thrown while processing service call: The specified input port is abstract-valued,
-      // and this constraint only supports vector-valued input ports.
-      // Did you perhaps forget to pass a non-default `input_port_index` argument?
-      const auto& input_port = plant_.get_actuation_input_port();
-      const auto& input_port_index = input_port.get_index();
-      auto traj_opt = drake::planning::trajectory_optimization::DirectCollocation(
-          &plant_, *plant_.CreateDefaultContext(), 10, 0.1, 0.1, input_port_index);
-
-      const double kMaxSpeed = 0.1;  //  rad/s
-      traj_opt.AddEqualTimeIntervalsConstraints();
-      ROS_INFO_STREAM(traj_opt.initial_state());
-      Eigen::VectorXd initial_states = Eigen::VectorXd::Zero(plant_.num_positions() + plant_.num_velocities());
-      initial_states.segment(0, plant_.num_positions()) = initial_q;
-      traj_opt.AddConstraintToAllKnotPoints(traj_opt.initial_state() == initial_q);
-      traj_opt.AddConstraintToAllKnotPoints(traj_opt.state()(7, plant_.num_positions()) <= kMaxSpeed);
-      traj_opt.AddConstraintToAllKnotPoints(traj_opt.state()(7, plant_.num_positions()) >= -kMaxSpeed);
-
-      auto traj_result = drake::solvers::Solve(traj_opt.prog());
-      if (traj_result.is_success()) {
-        auto optimized_traj = traj_opt.ReconstructInputTrajectory(traj_result);
-        ROS_INFO_STREAM("Trajectory optimized " << optimized_traj.value(0));
-      } else {
-        ROS_WARN_STREAM("Failed to optimize trajectory");
-      }
-
-      // Select joint values to be added into trajectory by name
-      std::vector<double> joint_positions(solution.data(), solution.data() + solution.size());
-      std::vector<double> selected_joint_positions;
-      for (const auto& joint_name : current_joint_state_.name) {
-        const auto& joint = plant_.GetJointByName(joint_name, model_indexes_[0]);
-        int joint_index = joint.position_start();
-        auto joint_position = joint_positions[joint_index];
-        selected_joint_positions.push_back(joint_position);
-      }
-
-      trajectory_msgs::JointTrajectoryPoint j_point;
-      j_point.positions = selected_joint_positions;
-
-      time_from_start += point.duration;
-      j_point.time_from_start = ros::Duration(time_from_start);
-      joint_trajectory.points.push_back(j_point);
-    } else {
-      ROS_ERROR("IK solution failed for pose:");
-      logROSPose(point.pose);
-      return false;
-    }
-  }
-  return true;
 }
 
 void TrajectoryPlanner::displayCartesianTrajectoryInRViz(const int& index,
@@ -651,5 +515,20 @@ void TrajectoryPlanner::displayJointTrajectoryInRViz(const trajectory_msgs::Join
   display_trajectory.trajectory.push_back(robot_trajectory);
 
   joint_trajectory_publisher_.publish(display_trajectory);
+}
+
+void TrajectoryPlanner::getDiscountedVelocityConstraints(Eigen::VectorXd& lower_vel,
+                                                         Eigen::VectorXd& upper_vel,
+                                                         Eigen::VectorXd& lower_effort,
+                                                         Eigen::VectorXd& upper_effort) {
+  lower_vel = plant_.GetVelocityLowerLimits() * velocity_discount_factor_;
+  ROS_INFO_STREAM("Velocity lower limits after discount:\n" << lower_vel.transpose());
+  upper_vel = plant_.GetVelocityUpperLimits() * velocity_discount_factor_;
+  ROS_INFO_STREAM("Velocity upper limits after discount:\n" << upper_vel.transpose());
+  // TODO the limits is not right
+  lower_effort = plant_.GetEffortLowerLimits() * effort_discount_factor_;
+  ROS_INFO_STREAM("Effort lower limits after discount:\n" << lower_effort.transpose());
+  upper_effort = plant_.GetEffortUpperLimits() * effort_discount_factor_;
+  ROS_INFO_STREAM("Effort upper limits after discount:\n" << upper_effort.transpose());
 }
 }  // namespace roport

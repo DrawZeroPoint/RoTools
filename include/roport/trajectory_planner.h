@@ -43,14 +43,18 @@
 #ifdef WITH_DRAKE
 #include <drake/common/find_resource.h>
 #include <drake/common/text_logging.h>
+#include <drake/common/trajectories/path_parameterized_trajectory.h>
 #include <drake/common/trajectories/piecewise_polynomial.h>
 #include <drake/common/trajectories/piecewise_pose.h>
 #include <drake/math/rigid_transform.h>
 #include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
+#include <drake/multibody/optimization/toppra.h>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/multibody/plant/multibody_plant.h>
 #include <drake/multibody/tree/multibody_tree.h>
+#include <drake/multibody/tree/revolute_joint.h>
 #include <drake/planning/trajectory_optimization/direct_collocation.h>
+#include <drake/planning/trajectory_optimization/direct_transcription.h>
 #include <drake/solvers/mathematical_program.h>
 #include <drake/solvers/solve.h>
 #endif
@@ -82,9 +86,6 @@ class TrajectoryPlanner {
                                         const roport::CartesianTrajectory& sparse_trajectory,
                                         roport::CartesianTrajectory& dense_trajectory);
 
-  bool makeJointTrajectoryWithDrake(const roport::CartesianTrajectory& sparse_trajectory,
-                                    trajectory_msgs::JointTrajectory& joint_trajectory);
-
   bool makeJointTrajectoryWithDrake(const roport::ExecuteAllCartesianTrajectories::Request& request,
                                     trajectory_msgs::JointTrajectory& joint_trajectory);
 
@@ -112,6 +113,10 @@ class TrajectoryPlanner {
   ros::ServiceServer execute_all_cartesian_trajectory_srv_;
   ros::ServiceServer execute_joint_trajectory_with_cartesian_trajectories_srv_;
 
+  bool is_optimization_;
+  double velocity_discount_factor_{0.5};
+  double effort_discount_factor_{0.95};
+
   ros::Duration wait_for_service_timeout_{1.0};
 
   std::vector<ros::ServiceClient> get_current_pose_clients_;
@@ -124,6 +129,10 @@ class TrajectoryPlanner {
 
   double default_time_step_{0.001};
   double joint_traj_time_step_{0.1};
+
+  void initializeDrakeActuators();
+
+  void fixFloatingBase(const std::string& base_link);
 
   static void geometryPoseToRigidTransform(const geometry_msgs::Pose& p, drake::math::RigidTransformd& t);
 
@@ -160,19 +169,23 @@ class TrajectoryPlanner {
   bool generateJointTrajectoryWithIK(const std::vector<roport::CartesianTrajectory>& c_trajectories,
                                      trajectory_msgs::JointTrajectory& sparse_j_trajectory);
 
-  bool generateDenseJointTrajectoryWithOptimization(const trajectory_msgs::JointTrajectory& sparse_joint_trajectory,
-                                                    trajectory_msgs::JointTrajectory& dense_joint_trajectory);
-
   void generateDenseJointTrajectory(const trajectory_msgs::JointTrajectory& sparse_joint_trajectory,
                                     trajectory_msgs::JointTrajectory& dense_joint_trajectory);
 
-  /** This function is under dev **/
-  bool optimizeDrakeJointTrajectory(const drake::trajectories::PiecewisePolynomial<double>& traj,
-                                    drake::trajectories::PiecewisePolynomial<double>& traj_opt);
+  /**
+   * Solves a Time Optimal Path Parameterization based on Reachability Analysis (TOPPRA)
+   * to find the fastest traversal of a given path, satisfying the given constraints.
+   * @param traj
+   * @param traj_opt
+   * @return
+   */
+  bool optimizePiecewisePolynomialWithToppra(const drake::trajectories::PiecewisePolynomial<double>& traj,
+                                             drake::trajectories::PiecewisePolynomial<double>& traj_opt);
 
-  /** This function is under dev **/
-  bool optimizePiecewisePolynomial(const drake::trajectories::PiecewisePolynomial<double>& traj,
-                                   drake::trajectories::PiecewisePolynomial<double>& traj_opt);
+  void getDiscountedVelocityConstraints(Eigen::VectorXd& lower_vel,
+                                        Eigen::VectorXd& upper_vel,
+                                        Eigen::VectorXd& lower_effort,
+                                        Eigen::VectorXd& upper_effort);
 };
 
 }  // namespace roport

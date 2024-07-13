@@ -16,4 +16,11 @@ joint_names: [
     "panda_right_joint6", "panda_right_joint7" ],
 ]
 
+# If true, will publish msgs to RViz for trajectory visualization
 display_trajectory: true
+
+# If set, the frame will be welded to the world frame and Toppra Optimization will be used
+fixed_floating_frame: "summit_xls_base_footprint"
+# The following will take effect if Toppra is activated.
+velocity_discount_factor: 0.2
+effort_discount_factor: 0.95
