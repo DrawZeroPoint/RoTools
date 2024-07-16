@@ -31,6 +31,8 @@
 #include <chrono>
 #include <cmath>
 #include <eigen3/Eigen/Dense>
+#include <urdf_parser/urdf_parser.h>
+#include <joint_limits_interface/joint_limits_urdf.h>
 
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -130,7 +132,7 @@ class TrajectoryPlanner {
   double default_time_step_{0.001};
   double joint_traj_time_step_{0.1};
 
-  void initializeDrakeActuators();
+  void initializeDrakeActuators(const std::string& robot_description);
 
   void fixFloatingBase(const std::string& base_link);
 

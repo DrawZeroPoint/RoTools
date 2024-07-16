@@ -9,6 +9,7 @@ auto main(int argc, char** argv) -> int {
 
   roport::TrajectoryPlanner planner(node_handle, pnh);
 
+  ROS_INFO("Roport Trajectory Planner ready.");
   ros::AsyncSpinner spinner(4);
   spinner.start();
   ros::waitForShutdown();

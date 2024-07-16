@@ -78,7 +78,7 @@ TrajectoryPlanner::TrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeH
   XmlRpc::XmlRpcValue urdf;
   roport::getParam(nh_, pnh_, "robot_description", urdf);
   model_indexes_ = parser_.AddModelsFromString(std::string(urdf), "URDF");
-  initializeDrakeActuators();
+  initializeDrakeActuators(std::string(urdf));
 
   XmlRpc::XmlRpcValue fixed_floating_frame;
   if (roport::getParam(nh_, pnh_, "fixed_floating_frame", fixed_floating_frame)) {
@@ -122,11 +122,22 @@ TrajectoryPlanner::TrajectoryPlanner(const ros::NodeHandle& nh, const ros::NodeH
   }
 }
 
-void TrajectoryPlanner::initializeDrakeActuators() {
+void TrajectoryPlanner::initializeDrakeActuators(const std::string& robot_description) {
+  std::shared_ptr<urdf::ModelInterface> urdf = urdf::parseURDF(robot_description);
+
   for (drake::multibody::JointIndex joint_index(0); joint_index < plant_.num_joints(); ++joint_index) {
     const auto& joint = plant_.get_joint(joint_index);
+
     if (const auto* revolute_joint = dynamic_cast<const drake::multibody::RevoluteJoint<double>*>(&joint)) {
-      plant_.AddJointActuator(revolute_joint->name() + "_actuator", *revolute_joint, 80.0);
+      urdf::JointConstSharedPtr urdf_joint = urdf->getJoint(joint.name());
+
+      joint_limits_interface::JointLimits limits;
+      if (!getJointLimits(urdf_joint, limits)) {
+        ROS_ERROR("Limits of joint %s is not found", joint.name().c_str());
+        continue;
+      }
+      plant_.AddJointActuator(revolute_joint->name() + "_actuator", *revolute_joint, limits.max_effort);
+      ROS_INFO("Added actuator for joint %s (max effort: %.3f Nm)", revolute_joint->name().c_str(), limits.max_effort);
     }
   }
 }
@@ -457,7 +468,7 @@ bool TrajectoryPlanner::optimizePiecewisePolynomialWithToppra(
     const drake::trajectories::PiecewisePolynomial<double>& traj,
     drake::trajectories::PiecewisePolynomial<double>& traj_opt) {
   if (plant_.num_positions() != plant_.num_velocities()) {
-    ROS_ERROR("Toppra does not support floating base robot.");
+    ROS_ERROR("TOPPRA does not support floating base robot.");
     return false;
   }
 
@@ -484,7 +495,7 @@ bool TrajectoryPlanner::optimizePiecewisePolynomialWithToppra(
       samples.push_back(parameterized_traj.value(t));
     }
     traj_opt = drake::trajectories::PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(times, samples);
-    ROS_INFO_STREAM("Trajectory Start time: " << traj_opt.start_time() << " End time: " << traj_opt.end_time());
+    ROS_INFO("Trajectory execution time: %fs (segments: %i)", traj_opt.end_time(), traj_opt.get_number_of_segments());
     return true;
   }
   ROS_WARN_STREAM("Failed to optimize trajectory with TOPPRA");
@@ -521,14 +532,16 @@ void TrajectoryPlanner::getDiscountedVelocityConstraints(Eigen::VectorXd& lower_
                                                          Eigen::VectorXd& upper_vel,
                                                          Eigen::VectorXd& lower_effort,
                                                          Eigen::VectorXd& upper_effort) {
-  lower_vel = plant_.GetVelocityLowerLimits() * velocity_discount_factor_;
-  ROS_INFO_STREAM("Velocity lower limits after discount:\n" << lower_vel.transpose());
+  ROS_INFO("Velocity limits after discount (%.3f):", velocity_discount_factor_);
   upper_vel = plant_.GetVelocityUpperLimits() * velocity_discount_factor_;
-  ROS_INFO_STREAM("Velocity upper limits after discount:\n" << upper_vel.transpose());
-  // TODO the limits is not right
-  lower_effort = plant_.GetEffortLowerLimits() * effort_discount_factor_;
-  ROS_INFO_STREAM("Effort lower limits after discount:\n" << lower_effort.transpose());
+  ROS_INFO_STREAM("Upper: " << upper_vel.transpose());
+  lower_vel = plant_.GetVelocityLowerLimits() * velocity_discount_factor_;
+  ROS_INFO_STREAM("Lower: " << lower_vel.transpose());
+
+  ROS_INFO("Effort limits after discount (%.3f): ", effort_discount_factor_);
   upper_effort = plant_.GetEffortUpperLimits() * effort_discount_factor_;
-  ROS_INFO_STREAM("Effort upper limits after discount:\n" << upper_effort.transpose());
+  ROS_INFO_STREAM("Upper: " << upper_effort.transpose());
+  lower_effort = plant_.GetEffortLowerLimits() * effort_discount_factor_;
+  ROS_INFO_STREAM("Lower: " << upper_effort.transpose());
 }
 }  // namespace roport
