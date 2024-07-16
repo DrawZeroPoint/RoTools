@@ -353,7 +353,12 @@ bool TrajectoryPlanner::makeCartesianTrajectoryWithDrake(geometry_msgs::Pose ini
     poses.push_back(intermediate_t);
   }
 
-  auto drake_trajectory = drake::trajectories::PiecewisePose<double>::MakeLinear(times, poses);
+  drake::trajectories::PiecewisePose<double> drake_trajectory;
+  if (sparse_trajectory.trajectory_type == roport::CartesianTrajectory::CUBIC) {
+    drake_trajectory = drake::trajectories::PiecewisePose<double>::MakeCubicLinearWithEndLinearVelocity(times, poses);
+  } else {
+    drake_trajectory = drake::trajectories::PiecewisePose<double>::MakeLinear(times, poses);
+  }
   drakeTrajectoryToCartesianTrajectory(drake_trajectory, dense_trajectory);
   return true;
 }
