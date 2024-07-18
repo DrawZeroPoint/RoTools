@@ -23,6 +23,7 @@ from rotools.utility.common import (
     all_close,
     get_transform_same_origin,
     to_ros_orientation,
+    merge_mujoco_xml,
 )
 from rotools.utility.color_palette import bwr_color_palette
 
@@ -47,7 +48,8 @@ class MuJoCoInterface(Thread):
 
     def __init__(
         self,
-        model_path,
+        robot_model_path,
+        scene_model_path=None,
         kinematics_path=None,
         actuator_path=None,
         enable_viewer=True,
@@ -57,7 +59,9 @@ class MuJoCoInterface(Thread):
         """Initialize the MuJoCoInterface.
 
         Args:
-            model_path (str): Path to the XML file containing the whole model of the robot.
+            robot_model_path (str): Path to the XML file containing the whole model of the robot. Currently we only
+                                    support one robot.
+            scene_model_path (str): [Optional] Path to the XML file containing the whole model of the scene.
             kinematics_path (str): [Optional] Path to the XML file containing the kinematic tree of the robot.
             actuator_path (str): [Optional] Path to the XML file containing the actuator and sensor of the robot.
             enable_viewer (bool): If true, the MuJoCo Viewer will be displayed.
@@ -69,11 +73,12 @@ class MuJoCoInterface(Thread):
 
         self._enable_viewer = enable_viewer
 
-        if not os.path.exists(model_path):
+        if not os.path.exists(robot_model_path):
             raise FileNotFoundError(
-                "Model XML file '{}' does not exist".format(model_path)
+                "Model XML file '{}' does not exist".format(robot_model_path)
             )
-        self._model_path = model_path
+        self._robot_model_path = robot_model_path
+        self._scene_model_path = scene_model_path
 
         # MuJoCo objects
         self._model = None
@@ -212,7 +217,13 @@ class MuJoCoInterface(Thread):
 
     def run(self):
         # The model, data, and viewer must be initialized here.
-        self._model = mujoco.MjModel.from_xml_path(self._model_path)
+        if self._scene_model_path is None:
+            self._model = mujoco.MjModel.from_xml_path(self._robot_model_path)
+        else:
+            xml_path = merge_mujoco_xml(self._robot_model_path, self._scene_model_path)
+            self._model = mujoco.MjModel.from_xml_path(xml_path)
+            os.remove(xml_path)
+
         # Optionally disable the 'anchor' connection of the object at the beginning
         try:
             self._model.equality("anchor").active = False

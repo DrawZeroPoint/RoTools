@@ -434,7 +434,7 @@ def to_ros_orientation(ori, check=False, w_first=False):
             if check and not np.allclose(np.linalg.norm(ori), 1.0):
                 raise ValueError(
                     "The input norm is not close to 1: {}".format(
-                        ori, np.linalg.norm(ori)
+                        ori,
                     )
                 )
             if w_first:
@@ -614,27 +614,37 @@ def get_param(name, value=None):
         return value
 
 
-def get_path(param_name, value=None):
-    """Get an absolute path str from the given ROS param.
-    If the param provides a relative path, will find it under ~
+def get_path(param_name, default_value=None):
+    """Retrieve an absolute path string from a specified ROS parameter.
+    If the parameter is not found on the parameter server but a path string is supplied,
+    the function checks if it's an absolute path. If so, it returns the path unchanged.
+    If it's a relative path, the function resolves it relative to the user's home directory denoted by '~'.
 
     Args:
-        param_name: str ROS param name.
-        value: str Default value if param does not exist.
+        param_name (str): ROS param name.
+        default_value (str): Default value if param does not exist.
 
     Returns:
         str Got absolute path.
     """
-    path = get_param(param_name, value)
+    path = get_param(param_name, default_value)
     if path is None:
-        raise FileNotFoundError("Failed to get the path from {}".format(param_name))
+        print_warn(
+            "Failed to get param '%s' from ROS param server, return default value"
+            % param_name
+        )
+        return default_value
     if path.startswith("/"):
         abs_path = path
     else:
         abs_path = os.path.join(os.path.join(os.path.expanduser("~"), path))
     if os.path.exists(abs_path):
         return abs_path
-    raise FileNotFoundError("Path {} does not exist".format(abs_path))
+    print_warn(
+        "Failed to get absolute path from ROS param '%s', return default value"
+        % param_name
+    )
+    return default_value
 
 
 def pretty_print_configs(configs):
@@ -905,3 +915,32 @@ def create_service_proxies(namespace, service_ids, service_types):
         service_id = namespace + "/" + service_ids
         wait_for_service(service_id)
         return rospy.ServiceProxy(service_id, service_types)
+
+
+def merge_mujoco_xml(robot_xml_path, scene_xml_path):
+    """This function merges scene xml file's content into robot xml file and store the merged xml file
+    into the same dir as the robot xml file. The absolute path of the result file is returned.
+
+    Args:
+        robot_xml_path (str): Absolute path to robot xml file.
+        scene_xml_path (str): Absolute path to scene xml file.
+
+    Returns:
+        str: Merged xml file path.
+    """
+    import xml.etree.ElementTree as ET
+
+    ignored_tags = {"size", "compiler"}
+    tree1 = ET.parse(robot_xml_path)
+    root1 = tree1.getroot()
+
+    tree2 = ET.parse(scene_xml_path)
+    root2 = tree2.getroot()
+
+    for e in root2:
+        if e.tag not in ignored_tags:
+            root1.append(e)
+
+    merged_xml_path = os.path.join(os.path.dirname(robot_xml_path), "merged.xml")
+    tree1.write(merged_xml_path, encoding="utf-8", xml_declaration=True)
+    return merged_xml_path
