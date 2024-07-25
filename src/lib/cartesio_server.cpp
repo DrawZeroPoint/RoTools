@@ -101,23 +101,38 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
   execute_trajectories_srv_ = nh_.advertiseService("execute_multiple_cartesian_trajectories",
                                                    &CartesIOServer::executeMultipleCartesianTrajectoriesCb, this);
 
-  // Base control
-  XmlRpc::XmlRpcValue base_linear_vel;
-  getParam(nh_, pnh_, "base_linear_vel", base_linear_vel);
-  ROS_ASSERT(base_linear_vel.getType() == XmlRpc::XmlRpcValue::TypeDouble);
-  ROS_INFO("Base linear vel: %f m/s", double(base_linear_vel));
-  base_linear_vel_ = base_linear_vel;
+  // Base control is only activated when there is a control group called 'base' (currently fixed) is given
+  auto result = findInVector<std::string>(group_names_, "base");
+  if (result.first) {
+    XmlRpc::XmlRpcValue base_linear_vel;
+    getParam(nh_, pnh_, "base_linear_vel", base_linear_vel);
+    ROS_ASSERT(base_linear_vel.getType() == XmlRpc::XmlRpcValue::TypeDouble);
+    ROS_INFO("Base linear vel: %f m/s", double(base_linear_vel));
+    base_linear_vel_ = base_linear_vel;
 
-  XmlRpc::XmlRpcValue base_angular_vel;
-  getParam(nh_, pnh_, "base_angular_vel", base_angular_vel);
-  ROS_ASSERT(base_angular_vel.getType() == XmlRpc::XmlRpcValue::TypeDouble);
-  ROS_INFO("Base angular vel: %f rad/s", double(base_angular_vel));
-  base_angular_vel_ = base_angular_vel;
+    XmlRpc::XmlRpcValue base_angular_vel;
+    getParam(nh_, pnh_, "base_angular_vel", base_angular_vel);
+    ROS_ASSERT(base_angular_vel.getType() == XmlRpc::XmlRpcValue::TypeDouble);
+    ROS_INFO("Base angular vel: %f rad/s", double(base_angular_vel));
+    base_angular_vel_ = base_angular_vel;
 
-  odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/odom", 1, &CartesIOServer::odomCb, this);
-  base_current_reference_sub_ = nh_.subscribe<geometry_msgs::PoseStamped>(
-      "cartesian/base/current_reference", 1, &CartesIOServer::baseCurrentReferenceCb, this);
-  cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
+    base_vel_config_cb_ = [this](auto&& ph1, auto&& ph2) {
+      baseVelConfigCb(std::forward<decltype(ph1)>(ph1), std::forward<decltype(ph2)>(ph2));
+    };
+    base_vel_config_server_.setCallback(base_vel_config_cb_);
+
+    odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/odom", 1, &CartesIOServer::odomCb, this);
+    base_current_reference_sub_ = nh_.subscribe<geometry_msgs::PoseStamped>(
+        "cartesian/base/current_reference", 1, &CartesIOServer::baseCurrentReferenceCb, this);
+    cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
+  } else {
+    ROS_INFO("The planning group 'base' is not defined, so base control is not initialized");
+  }
+}
+
+void CartesIOServer::baseVelConfigCb(roport::BaseVelConfigConfig config, uint32_t /**level**/) {
+  base_linear_vel_ = config.base_linear_vel;
+  base_angular_vel_ = config.base_angular_vel;
 }
 
 void CartesIOServer::baseCurrentReferenceCb(const geometry_msgs::PoseStamped::ConstPtr& msg) {

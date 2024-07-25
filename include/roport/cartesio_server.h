@@ -38,6 +38,8 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
 
+#include <dynamic_reconfigure/server.h>
+
 #include <Eigen/Dense>
 
 #include <cartesian_interface/ReachPoseAction.h>
@@ -52,6 +54,7 @@
 #include <roport/ExecuteMirroredPose.h>
 #include <roport/GetAllNames.h>
 #include <roport/GetGroupPose.h>
+#include <roport/BaseVelConfigConfig.h>
 
 #ifdef WITH_DRAKE
 #include <drake/common/trajectories/piecewise_pose.h>
@@ -96,12 +99,17 @@ class CartesIOServer {
   ros::Publisher cmd_vel_pub_;
   double base_linear_vel_{0.05};
   double base_angular_vel_{0.05};
+  typedef dynamic_reconfigure::Server<roport::BaseVelConfigConfig> BaseVelServer;
+  BaseVelServer base_vel_config_server_;
+  BaseVelServer::CallbackType base_vel_config_cb_;
 
   bool is_odom_initialized_{false};
   nav_msgs::Odometry odom_;
 
   using reachPoseActionClient = actionlib::SimpleActionClient<cartesian_interface::ReachPoseAction>;
   std::vector<std::shared_ptr<reachPoseActionClient>> control_clients_;
+
+  void baseVelConfigCb(roport::BaseVelConfigConfig config, uint32_t /**level**/);
 
   void baseCurrentReferenceCb(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
