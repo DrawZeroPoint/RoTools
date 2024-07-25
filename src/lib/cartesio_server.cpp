@@ -100,6 +100,40 @@ CartesIOServer::CartesIOServer(const ros::NodeHandle& node_handle, const ros::No
   // Servers for controlling multiple groups' trajectories
   execute_trajectories_srv_ = nh_.advertiseService("execute_multiple_cartesian_trajectories",
                                                    &CartesIOServer::executeMultipleCartesianTrajectoriesCb, this);
+
+  // Base control
+  XmlRpc::XmlRpcValue base_linear_vel;
+  getParam(nh_, pnh_, "base_linear_vel", base_linear_vel);
+  ROS_ASSERT(base_linear_vel.getType() == XmlRpc::XmlRpcValue::TypeDouble);
+  ROS_INFO("Base linear vel: %f m/s", double(base_linear_vel));
+  base_linear_vel_ = base_linear_vel;
+
+  XmlRpc::XmlRpcValue base_angular_vel;
+  getParam(nh_, pnh_, "base_angular_vel", base_angular_vel);
+  ROS_ASSERT(base_angular_vel.getType() == XmlRpc::XmlRpcValue::TypeDouble);
+  ROS_INFO("Base angular vel: %f rad/s", double(base_angular_vel));
+  base_angular_vel_ = base_angular_vel;
+
+  odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/odom", 1, &CartesIOServer::odomCb, this);
+  base_current_reference_sub_ = nh_.subscribe<geometry_msgs::PoseStamped>(
+      "cartesian/base/current_reference", 1, &CartesIOServer::baseCurrentReferenceCb, this);
+  cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
+}
+
+void CartesIOServer::baseCurrentReferenceCb(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+  if (!is_odom_initialized_) {
+    ROS_ERROR_ONCE("/odom msg is not received");
+    return;
+  }
+
+  geometry_msgs::Twist cmd_vel;
+  computeMecanumWheelCmdVel(odom_.pose.pose, msg->pose, base_linear_vel_, base_angular_vel_, cmd_vel);
+  cmd_vel_pub_.publish(cmd_vel);
+}
+
+void CartesIOServer::odomCb(const nav_msgs::Odometry::ConstPtr& msg) {
+  is_odom_initialized_ = true;
+  odom_ = *msg;
 }
 
 bool CartesIOServer::checkGroupValid(const std::string& required_group_name, int& index) {

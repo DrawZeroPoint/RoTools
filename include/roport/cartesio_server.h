@@ -42,6 +42,7 @@
 
 #include <cartesian_interface/ReachPoseAction.h>
 #include <trajectory_msgs/JointTrajectory.h>
+#include <nav_msgs/Odometry.h>
 
 #include <roport/ExecuteAllCartesianTrajectories.h>
 #include <roport/ExecuteAllLockedPoses.h>
@@ -87,8 +88,24 @@ class CartesIOServer {
 
   ros::ServiceServer execute_trajectories_srv_;
 
+  // For subscribing base current_reference pose sent by CartesI/O and convert it to cmd_vel
+  ros::Subscriber base_current_reference_sub_;
+  ros::Subscriber odom_sub_;
+
+  // For base velocity control
+  ros::Publisher cmd_vel_pub_;
+  double base_linear_vel_{0.05};
+  double base_angular_vel_{0.05};
+
+  bool is_odom_initialized_{false};
+  nav_msgs::Odometry odom_;
+
   using reachPoseActionClient = actionlib::SimpleActionClient<cartesian_interface::ReachPoseAction>;
   std::vector<std::shared_ptr<reachPoseActionClient>> control_clients_;
+
+  void baseCurrentReferenceCb(const geometry_msgs::PoseStamped::ConstPtr& msg);
+
+  void odomCb(const nav_msgs::Odometry::ConstPtr& msg);
 
   auto getGroupNamesCb(roport::GetAllNames::Request& req, roport::GetAllNames::Response& resp) -> bool;
 

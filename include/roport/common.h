@@ -29,6 +29,7 @@
 #define ROPORT_COMMON_H
 
 #include <ros/ros.h>
+#include <tf/transform_datatypes.h>
 #include <tf2_ros/transform_listener.h>
 #include <cmath>
 #include <Eigen/Eigen>
@@ -44,11 +45,11 @@ error "Missing the <filesystem> header."
 #endif
 #include <utility>
 
+#include <geometry_msgs/Accel.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Transform.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/Twist.h>
-#include <geometry_msgs/Accel.h>
 
 namespace roport {
 
@@ -656,6 +657,44 @@ auto findInVector(const std::vector<T>& vec_of_elements, const T& element) -> st
     result.second = -1;
   }
   return result;
+}
+
+inline void computeMecanumWheelCmdVel(const geometry_msgs::Pose& current_pose,
+                                      const geometry_msgs::Pose& target_pose,
+                                      const double& linear_speed,
+                                      const double& angular_speed,
+                                      geometry_msgs::Twist& cmd_vel) {
+  // Extract current and target positions
+  double current_x = current_pose.position.x;
+  double current_y = current_pose.position.y;
+  double target_x = target_pose.position.x;
+  double target_y = target_pose.position.y;
+
+  // Extract current and target orientations (yaw angles)
+  double current_yaw = tf::getYaw(current_pose.orientation);
+  double target_yaw = tf::getYaw(target_pose.orientation);
+
+  // Compute the differences
+  double dx = target_x - current_x;
+  double dy = target_y - current_y;
+  double dyaw = target_yaw - current_yaw;
+
+  // Normalize the yaw difference to be within [-pi, pi]
+  dyaw = atan2(sin(dyaw), cos(dyaw));
+
+  // Compute the required velocities
+  double distance = sqrt(dx * dx + dy * dy);
+  double linear_velocity = std::min(linear_speed, distance);
+  double angular_velocity = std::min(angular_speed, dyaw);
+
+  // Compute the direction to move in
+  double direction = atan2(dy, dx);
+
+  // Convert to robot frame velocities
+  ;
+  cmd_vel.linear.x = linear_velocity * cos(direction - current_yaw);
+  cmd_vel.linear.y = linear_velocity * sin(direction - current_yaw);
+  cmd_vel.angular.z = angular_velocity;
 }
 }  // namespace roport
 
